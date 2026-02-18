@@ -1,6 +1,6 @@
 # Lattice-to-Lindblad: Real-Time Gauge Dynamics & Open Quantum Systems
 
-A Python implementation and validation suite spanning **lattice gauge theory (Schwinger model, 1+1D QED)** and **open quantum systems (pNRQCD-motivated quarkonium in medium)**, with results documented in the included *Results_and_Validation* PDFs.
+A Python implementation and validation suite spanning **lattice gauge theory (Schwinger model, 1+1D QED)** and **open quantum systems (pNRQCD-motivated quarkonium in medium)**, with results documented in the included *Results_and_Validation* PDFs. Shared OQS utilities live in `utils_QOS.py`.
 
 Open-system (pNRQCD/Lindblad) results are motivated by:
 
@@ -103,6 +103,7 @@ python "04_Continuum Physics Results/code/OQS_continuum.py"
 ## Repository Structure
 
 ```
+  utils_QOS.py                                  # Shared Lindblad/OQS helpers used by OQS scripts
   Theoretical_Framework.pdf
   research_highlight.pdf
 
@@ -158,6 +159,9 @@ Where applicable, workflows aim to respect physical constraints (e.g., Gauss-law
 
 **Open-system modeling (Lindblad):**
 The quarkonium-in-medium component uses a singlet–octet open-system framework and studies survival/suppression under medium effects, with controlled baseline checks documented in the validation PDFs.
+
+Shared OQS utilities:
+`utils_QOS.py` centralizes common Lindblad/OQS routines so baseline, continuum, and validation scripts reuse the same operator/propagation/diagnostic logic.
 
 ---
 
