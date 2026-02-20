@@ -17,7 +17,7 @@ This repository contains four stages of code + validation artifacts, organized a
 | `01_Validation-Baseline/` | Gauge + OQS | U(1) MC checks, Schwinger Hamiltonian checks, Lindblad baseline singlet–octet (1 ⊕ 1) evolution | Baseline validation PDF + scripts |
 | `02_Static Benchmarks/` | Gauge + OQS| ED cross-checks, sector-preserving VQE benchmarks (N=4, N=8) | Lindblad baseline singlet–octet (1 ⊕ 8) evolution Benchmark PDF + VQE scripts |
 | `03_Non-Equilibrium Gauge Dynamics/` | Gauge | Real-time evolution under electric-field quench; string breaking diagnostics | Dynamics PDF + quench script |
-| `04_Continuum Physics Results/` | Gauge + OQS | Continuum-facing mass-gap analysis; continuum OQS studies (e.g., sequential suppression) | Continuum PDF + analysis scripts |
+| `04_Continuum Physics Results/` | Gauge + OQS | Continuum-facing mass-gap analysis with **ED validation (N≤20)** + **DMRG extension (TeNPy, N=30,40)**; continuum OQS studies | Continuum PDF + analysis scripts |
 
 **Project documents:**
 - `docs/Theoretical_Framework.pdf` — modeling assumptions, derivations, conventions
@@ -86,13 +86,14 @@ python "03_Non-Equilibrium Gauge Dynamics/code/field_quench_gauge.py"
 
 “Packaging” stage: continuum-facing and physics-grade analyses that build on validated baselines.
 
-* **Schwinger-model mass-gap** analysis (continuum-oriented study/extrapolation as documented).
+* **Schwinger-model mass-gap** analysis (continuum-oriented study/extrapolation utilizing ED validation for N≤20, and DMRG extension to N=30,40).
 * **Continuum OQS/Lindblad** analyses (e.g., sequential suppression; optional time-dependent medium evolution such as Bjorken-like cooling).
 
 **Code (examples):**
 
 ```bash
 python "04_Continuum Physics Results/code/schwinger_continuum_massgap.py" --help
+python "04_Continuum Physics Results/code/schwinger_dmrg.py" --help
 python "04_Continuum Physics Results/code/OQS_continuum.py"
 ```
 
@@ -127,8 +128,9 @@ python "04_Continuum Physics Results/code/OQS_continuum.py"
     Non_Equilibrium_Gauge_Dynamics_Results_and_Validation.pdf
 
 04_Continuum Physics Results/
-
+  
     schwinger_continuum_massgap.py
+    schwinger_dmrg.py
     OQS_continuum.py
     Continuum_Physics_Results_and_Validation.pdf
 ```
@@ -144,6 +146,11 @@ python -m venv .venv
 source .venv/bin/activate
 pip install numpy scipy matplotlib pandas
 ```
+If you want to run the DMRG extension, install TeNPy as well (package name may vary by environment):
+
+```bash
+pip install physics-tenpy
+```
 
 > Note: some folders include spaces; wrap paths in quotes (as shown above).
 
@@ -156,6 +163,9 @@ Each stage is designed to reduce ambiguity in later physics claims: (i) baseline
 
 **Symmetry/constraint preservation (gauge & VQE):**
 Where applicable, workflows aim to respect physical constraints (e.g., Gauss-law/gauge structure via gauge elimination; symmetry/sector projection in VQE) to avoid exploring unphysical sectors and to improve optimization stability.
+
+**Tensor-network extension (DMRG):**
+For continuum-facing Schwinger mass-gap results, ED is used for N≤20 validation, and TeNPy DMRG extends to N=30,40 with symmetry conservation (conserve="Sz") and  χ=100. The long-range electric term is implemented in a compact running-sum MPO to avoid quadratic-scaling MPO growth.
 
 **Open-system modeling (Lindblad):**
 The quarkonium-in-medium component uses a singlet–octet open-system framework and studies survival/suppression under medium effects, with controlled baseline checks documented in the validation PDFs.
