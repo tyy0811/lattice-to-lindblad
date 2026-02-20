@@ -144,13 +144,9 @@ Recommended: **Python 3.10+**
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install numpy scipy matplotlib pandas
+pip install -r requirements.txt
 ```
-If you want to run the DMRG extension, install TeNPy as well (package name may vary by environment):
-
-```bash
-pip install physics-tenpy
-```
+TeNPy is included in `requirements.txt` as `physics-tenpy`.
 
 > Note: some folders include spaces; wrap paths in quotes (as shown above).
 
@@ -184,7 +180,6 @@ Shared OQS utilities:
 * [3] Brambilla, Magorsch, Vairo, arXiv:2508.11743 (2025).
 
 ---
-
 
 
 
