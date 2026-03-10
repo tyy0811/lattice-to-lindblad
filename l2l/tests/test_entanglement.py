@@ -182,3 +182,39 @@ def test_extract_schmidt_values_by_sector_invalid_cut():
 
     with pytest.raises(ValueError, match="cut must be in"):
         extract_schmidt_values_by_sector(psi, cut=-1)
+
+
+# --- Tests for compute_sector_weights ---
+
+def test_compute_sector_weights_returns_dict():
+    """compute_sector_weights returns dict with float values."""
+    from l2l.entanglement import compute_sector_weights
+
+    sector_to_lambdas = {
+        "q0": np.array([0.7, 0.3]),
+        "q1": np.array([0.5, 0.1]),
+    }
+
+    weights = compute_sector_weights(sector_to_lambdas)
+
+    assert isinstance(weights, dict)
+    assert set(weights.keys()) == {"q0", "q1"}
+    # q0: 0.7^2 + 0.3^2 = 0.49 + 0.09 = 0.58
+    assert np.isclose(weights["q0"], 0.58)
+    # q1: 0.5^2 + 0.1^2 = 0.25 + 0.01 = 0.26
+    assert np.isclose(weights["q1"], 0.26)
+
+
+def test_compute_sector_weights_empty_sector():
+    """Empty sector should have weight 0."""
+    from l2l.entanglement import compute_sector_weights
+
+    sector_to_lambdas = {
+        "q0": np.array([0.5]),
+        "q1": np.array([]),
+    }
+
+    weights = compute_sector_weights(sector_to_lambdas)
+
+    assert weights["q0"] == 0.25
+    assert weights["q1"] == 0.0

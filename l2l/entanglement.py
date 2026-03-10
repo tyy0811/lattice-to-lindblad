@@ -181,3 +181,22 @@ def extract_schmidt_values_by_sector(psi, cut: int) -> dict[str, np.ndarray]:
         sector_to_lambdas[label] = np.sort(lambdas)[::-1]
 
     return sector_to_lambdas
+
+
+def compute_sector_weights(sector_to_lambdas: dict[str, np.ndarray]) -> dict[str, float]:
+    """Compute total probability weight per sector.
+
+    Parameters
+    ----------
+    sector_to_lambdas : dict[str, np.ndarray]
+        Mapping from sector label to Schmidt values in that sector.
+
+    Returns
+    -------
+    sector_to_weight : dict[str, float]
+        Mapping from sector label to sum(lambda^2) for that sector.
+    """
+    return {
+        label: float(np.sum(lambdas**2)) if len(lambdas) > 0 else 0.0
+        for label, lambdas in sector_to_lambdas.items()
+    }
