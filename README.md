@@ -2,11 +2,6 @@
 
 A Python implementation and validation suite spanning **lattice gauge theory (Schwinger model, 1+1D QED)**, **entanglement-structure diagnostics for tensor-network / QI packaging**, and **open quantum systems (pNRQCD-motivated quarkonium in medium)**, with results documented in the included *Results_and_Validation* reports. Shared OQS utilities live in `utils_QOS.py`.
 
-Open-system (pNRQCD/Lindblad) results are motivated by:
-
-> Brambilla et al., *Phys. Rev. D* **96**, 034021 (2017). arXiv:1612.07248
-> Brambilla et al., *Phys. Rev. D* **109**, 114016 (2024). arXiv:2403.15545
-> Brambilla et al., arXiv:2508.11743 (2025)
 
 ## Overview
 
@@ -297,8 +292,14 @@ The Schwinger open-dynamics extension complements this by asking a different que
 * [1] Brambilla, Escobedo, Soto, Vairo, *Phys. Rev. D* **96**, 034021 (2017); arXiv:1612.07248.
 * [2] Brambilla, Magorsch, Strickland, Vairo, Vander Griend, *Phys. Rev. D* **109**, 114016 (2024); arXiv:2403.15545.
 * [3] Brambilla, Magorsch, Vairo, arXiv:2508.11743 (2025).
+  
+ **Quantum information / tensor-structure context:**
+ 
+* [4] Acuaviva, Makam, Nieuwboer, Pérez-García, Sittner, Walter, Witteveen, *The minimal canonical form of a tensor network*, 2022; arXiv:2209.14358.
+* [5] van den Berg, Christandl, Lysikov, Nieuwboer, Walter, Zuiddam, *Computing moment polytopes of tensors, with applications in algebraic complexity and quantum information*, STOC 2025. doi:10.1145/3717823.3718221.
 
 **Gauge / tensor-network / entanglement context:**
 
 * Schwinger-model results in this repository use gauge-eliminated Hamiltonian workflows, ED cross-checks, and TeNPy-based tensor-network extensions where applicable.
 * The entanglement-structure stage is intended as a quantitative bridge between lattice gauge dynamics, tensor-network compressibility, and weakly open many-body evolution.
+* For broader mathematical context on tensor-network canonical structure and representability questions, see Refs. [4] and [5].
