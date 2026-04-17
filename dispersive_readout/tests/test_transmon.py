@@ -133,3 +133,29 @@ def test_transmon_summary_requires_N_transmon_ge_3():
     tr = TruncationParams(N_charge=5, N_transmon=2, N_resonator=15)
     with pytest.raises(ValueError, match="N_transmon"):
         transmon_summary(REFERENCE_DEVICE.transmon, tr)
+
+
+# -- diagonalize_transmon cache -------------------------------------------------
+
+def test_diagonalize_transmon_returns_readonly_cached_arrays():
+    """Cached eigenpairs must not be mutable — mutation would corrupt
+    subsequent cache hits."""
+    energies, states = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    assert not energies.flags.writeable
+    assert not states.flags.writeable
+
+    # Repeated calls with the same frozen-dataclass inputs return the same array identities.
+    e2, s2 = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    assert e2 is energies, "cache miss on identical inputs"
+    assert s2 is states
+
+
+def test_diagonalize_transmon_cache_distinguishes_params():
+    """Different n_g must miss the cache and produce a different eigendecomposition."""
+    from dataclasses import replace
+    p0 = REFERENCE_DEVICE.transmon
+    p_half = replace(p0, n_g=0.5)
+    e0, _ = diagonalize_transmon(p0, REFERENCE_DEVICE.truncation)
+    eh, _ = diagonalize_transmon(p_half, REFERENCE_DEVICE.truncation)
+    # Ground-shifted energies differ at n_g=0 vs 0.5 (charge dispersion)
+    assert not np.allclose(e0, eh, atol=0.0, rtol=0.0)
