@@ -36,7 +36,7 @@ def test_collapse_list_has_expected_channel_count():
     """Reference device (n_th > 0) builds:
        2 resonator ops (decay + heating)
        + 2*(Nq-1) qubit transitions (relaxation + thermal heating)
-       + (Nq-1) dephasing ops (one per upper level).
+       + Nq dephasing ops (one per level, L_j = sqrt(γ_φ) |j><j|).
 
     Catches accidental omission of any channel. Quantitative rate correctness
     is validated end-to-end by the V3 / V4 physics tests.
@@ -44,7 +44,7 @@ def test_collapse_list_has_expected_channel_count():
     d = REFERENCE_DEVICE
     Nq = d.truncation.N_transmon
     c_ops = build_collapse_operators(d, Nq, d.truncation.N_resonator)
-    expected = 2 + 2 * (Nq - 1) + (Nq - 1)
+    expected = 2 + 2 * (Nq - 1) + Nq
     assert len(c_ops) == expected, f"expected {expected} collapse ops, got {len(c_ops)}"
 
 

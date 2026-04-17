@@ -186,6 +186,72 @@ def test_V2_chi_analytic_vs_numerical_at_reference_device():
 
 
 @pytest.mark.slow
+def test_V4a_T2_recovery_from_pure_dephasing():
+    """V4a T2/gamma_phi recovery — validates the dephasing collapse operator.
+
+    Same H=0 simplification as V3 (see V3 docstring for the full rationale).
+    Here the qubit-diagonal drift would have produced a phase oscillation on
+    |0><1|, but |rho_01(t)|² = coh_magnitude² is invariant under that
+    phase rotation, so fitting the coherence *magnitude* decay gives T2
+    exactly.
+
+    Setup: initialize (|0> + |1>)/sqrt(2), set gamma_1 = 0 and n_th = 0 so
+    only gamma_phi drives decay, evolve for 5/gamma_phi ≈ 150 us, fit
+    exp(-gamma_phi·t) to |<0|rho|1>|.
+
+    Gate: gamma_phi_fit matches gamma_phi input to 1% (spec §4 V4).
+    """
+    import qutip as qt
+    from dispersive_readout.physics.lindblad import build_collapse_operators
+
+    d = REFERENCE_DEVICE
+    d_deph = replace(
+        d,
+        decoherence=replace(d.decoherence, gamma_1=0.0, n_th=0.0),
+    )
+    tr = d_deph.truncation
+    Nq, Nr = tr.N_transmon, tr.N_resonator
+
+    # Initial state: (|0>+|1>)/sqrt(2) ⊗ |vacuum>
+    psi0 = qt.tensor(
+        (qt.basis(Nq, 0) + qt.basis(Nq, 1)).unit(),
+        qt.basis(Nr, 0),
+    )
+    rho0 = psi0 * psi0.dag()
+
+    H_zero = qt.tensor(qt.qeye(Nq), qt.qeye(Nr)) * 0
+    c_ops = build_collapse_operators(d_deph, Nq, Nr)
+
+    # Coherence operator |0><1| ⊗ I_r — expectation is rho_01.
+    coherence_op = qt.tensor(qt.basis(Nq, 0) * qt.basis(Nq, 1).dag(), qt.qeye(Nr))
+
+    t_duration = 5.0 / d_deph.decoherence.gamma_phi
+    t_list = np.linspace(0.0, t_duration, 200)
+
+    result = qt.mesolve(
+        H_zero, rho0, t_list, c_ops=c_ops, e_ops=[coherence_op],
+        options={"nsteps": 10000, "atol": 1e-10, "rtol": 1e-8},
+    )
+
+    rho01 = np.asarray(result.expect[0], dtype=complex)
+    coh_mag = np.abs(rho01)
+
+    mask = coh_mag > 1e-3
+    log_c = np.log(coh_mag[mask])
+    coef = np.polyfit(t_list[mask], log_c, 1)
+    gamma_phi_fit = -coef[0]
+
+    rel_err = (
+        abs(gamma_phi_fit - d_deph.decoherence.gamma_phi)
+        / d_deph.decoherence.gamma_phi
+    )
+    assert rel_err < 0.01, (
+        f"V4a FAIL: γ_phi_fit = {gamma_phi_fit:.3e}, γ_phi_input = "
+        f"{d_deph.decoherence.gamma_phi:.3e}, rel err = {rel_err:.3%}."
+    )
+
+
+@pytest.mark.slow
 def test_V3_T1_recovery_from_undriven_decay():
     """V3 T1 recovery test — validates the collapse-operator machinery.
 

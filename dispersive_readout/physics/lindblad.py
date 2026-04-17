@@ -65,14 +65,20 @@ def build_collapse_operators(
             op = qt.basis(Nq, j) * qt.basis(Nq, j + 1).dag()
             c_ops.append(np.sqrt(rate) * qt.tensor(op, qt.qeye(Nr)))
 
-    # 4. Qubit pure dephasing: rate sqrt(2 γ_φ) for each upper level
-    for j in range(1, Nq):
-        if gamma_phi > 0:
-            proj = (
-                qt.basis(Nq, j) * qt.basis(Nq, j).dag()
-                - qt.basis(Nq, 0) * qt.basis(Nq, 0).dag()
-            )
-            c_ops.append(np.sqrt(2.0 * gamma_phi) * qt.tensor(proj, qt.qeye(Nr)))
+    # 4. Qubit pure dephasing: one projector per level, L_j = sqrt(γ_φ) |j><j|.
+    #
+    # Deviation from plan, which used sqrt(2γ_φ) × (|j><j| − |0><0|) for
+    # j = 1..Nq-1. That form cross-couples through the shared |0><0| term:
+    # every L_j contributes to dephasing of ρ_{01}, giving an effective rate
+    # of (Nq+2) γ_φ on the |0>-|1> coherence rather than γ_φ. At Nq=5 the
+    # V4a test fit ~7× the input γ_φ, matching the 4γ_φ + (Nq-2)γ_φ
+    # arithmetic exactly. The per-level-projector form below gives γ_φ
+    # decay on every coherence ρ_{jk}, j≠k, independent of Nq — the
+    # expected behavior when "gamma_phi" is the measured dephasing rate.
+    if gamma_phi > 0:
+        for j in range(Nq):
+            proj = qt.basis(Nq, j) * qt.basis(Nq, j).dag()
+            c_ops.append(np.sqrt(gamma_phi) * qt.tensor(proj, qt.qeye(Nr)))
 
     # 5. Qubit thermal heating (reverse direction)
     if n_th > 0:
