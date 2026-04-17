@@ -93,3 +93,21 @@ def test_dispersive_shift_from_simulation_is_real():
     d = REFERENCE_DEVICE
     chi_num = dispersive_shift_from_simulation(d)
     assert np.imag(chi_num) == pytest.approx(0.0, abs=1e-15)
+
+
+def test_dispersive_shift_from_simulation_rejects_too_small_truncation():
+    """Need bare |1⟩ in both subspaces; Truncation = 1 must raise ValueError."""
+    from dataclasses import replace
+    from dispersive_readout.physics.config import TruncationParams
+    d = REFERENCE_DEVICE
+    d_q1 = replace(
+        d, truncation=TruncationParams(N_charge=3, N_transmon=1, N_resonator=15)
+    )
+    with pytest.raises(ValueError, match="N_transmon"):
+        dispersive_shift_from_simulation(d_q1)
+
+    d_r1 = replace(
+        d, truncation=TruncationParams(N_charge=31, N_transmon=5, N_resonator=1)
+    )
+    with pytest.raises(ValueError, match="N_resonator"):
+        dispersive_shift_from_simulation(d_r1)

@@ -84,12 +84,28 @@ def dispersive_shift_from_simulation(device: DeviceConfig) -> float:
     states adiabatically connected to the bare product states
     |q,n⟩ for q ∈ {0,1} and n ∈ {0,1} (by overlap), and returns
         ((E(1,1) − E(1,0)) − (E(0,1) − E(0,0))) / 2.
+
+    Requires N_transmon >= 2 and N_resonator >= 2, since the definition uses
+    bare kets |1⟩_q and |1⟩_r. Raises ValueError otherwise — these are
+    narrower than the global TruncationParams contract, which allows =1 on
+    both dimensions for callers that only need the subspace they actually
+    have.
     """
     import qutip as qt
 
     from .transmon import charge_operator_matrix_elements, diagonalize_transmon
 
     tr = device.truncation
+    if tr.N_transmon < 2:
+        raise ValueError(
+            f"dispersive_shift_from_simulation requires N_transmon >= 2 "
+            f"(got {tr.N_transmon}); the chi definition uses bare qubit |1⟩."
+        )
+    if tr.N_resonator < 2:
+        raise ValueError(
+            f"dispersive_shift_from_simulation requires N_resonator >= 2 "
+            f"(got {tr.N_resonator}); the chi definition uses bare photon |1⟩."
+        )
     energies, eigenstates = diagonalize_transmon(device.transmon, tr)
     n_mat = charge_operator_matrix_elements(eigenstates, tr)
 

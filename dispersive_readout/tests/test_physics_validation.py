@@ -167,7 +167,7 @@ def test_V2_chi_analytic_vs_numerical_at_reference_device():
       * ω_q ↔ ω_k swaps (sign flip, >> 100% error)
     The tight 1e-4 version of V2 lives in
     test_V2_chi_analytic_converges_at_weak_coupling below — exercising the
-    same formula at g/2π = 12 MHz where 3rd-order residual is negligible.
+    same formula at g/2π = 8 MHz where the 3rd-order residual is ~6e-5.
     """
     d = REFERENCE_DEVICE
     energies, states = diagonalize_transmon(d.transmon, d.truncation)
@@ -186,18 +186,19 @@ def test_V2_chi_analytic_vs_numerical_at_reference_device():
 
 
 def test_V2_chi_analytic_converges_at_weak_coupling():
-    """Tight (1e-3) analytic-vs-numerical χ agreement at reduced coupling.
+    """Tight (1e-4) analytic-vs-numerical χ agreement at reduced coupling.
 
     Same formula, same numerics, same device — only g/2π reduced from
-    120 MHz to 12 MHz, shrinking the 3rd-order residual by (12/120)² = 1e-2.
-    Agreement here is the cleanest gate that the PLUS-sign 2nd-order
-    analytic formula is algebraically correct; V2 at REFERENCE_DEVICE sets
-    the bug-level floor.
+    120 MHz to 8 MHz, shrinking the 3rd-order residual by (8/120)² ≈ 4.4e-3.
+    Observed relative error at g/2π = 8 MHz: ~6e-5, safely inside the 1e-4
+    gate. Agreement here is the cleanest gate that the PLUS-sign 2nd-order
+    analytic formula is algebraically correct; V2 at REFERENCE_DEVICE
+    (2% tolerance) sets the bug-level floor at physical coupling.
     """
     from dataclasses import replace
     from dispersive_readout.physics.config import CouplingParams
     d = REFERENCE_DEVICE
-    d_weak = replace(d, coupling=CouplingParams(g=_TWO_PI * 12e6))
+    d_weak = replace(d, coupling=CouplingParams(g=_TWO_PI * 8e6))
     energies, states = diagonalize_transmon(d_weak.transmon, d_weak.truncation)
     n_mat = charge_operator_matrix_elements(states, d_weak.truncation)
     chi_per_level = dispersive_shift_full(
@@ -206,7 +207,7 @@ def test_V2_chi_analytic_converges_at_weak_coupling():
     chi_analytic_half = (chi_per_level[1] - chi_per_level[0]) / 2.0
     chi_numerical_half = dispersive_shift_from_simulation(d_weak)
     rel_error = abs(chi_analytic_half - chi_numerical_half) / abs(chi_analytic_half)
-    assert rel_error < 1e-3, (
+    assert rel_error < 1e-4, (
         f"Weak-coupling V2 FAIL: chi analytic/2π = "
         f"{chi_analytic_half/_TWO_PI/1e6:.6f} MHz, numerical/2π = "
         f"{chi_numerical_half/_TWO_PI/1e6:.6f} MHz, rel err = {rel_error:.2e}"
