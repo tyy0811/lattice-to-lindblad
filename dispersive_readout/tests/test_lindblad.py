@@ -36,7 +36,10 @@ def test_collapse_list_has_expected_channel_count():
     """Reference device (n_th > 0) builds:
        2 resonator ops (decay + heating)
        + 2*(Nq-1) qubit transitions (relaxation + thermal heating)
-       + Nq dephasing ops (one per level, L_j = sqrt(γ_φ) |j><j|).
+       + Nq dephasing ops (one per level, L_j = sqrt(γ_φ) |j><j|)
+       + (Nq-1) Purcell decay ops (added in Task 15 refactor since the
+         dispersive-frame Hamiltonian has transverse coupling transformed
+         out, so Purcell must be wired in explicitly).
 
     Catches accidental omission of any channel. Quantitative rate correctness
     is validated end-to-end by the V3 / V4 physics tests.
@@ -44,7 +47,7 @@ def test_collapse_list_has_expected_channel_count():
     d = REFERENCE_DEVICE
     Nq = d.truncation.N_transmon
     c_ops = build_collapse_operators(d, Nq, d.truncation.N_resonator)
-    expected = 2 + 2 * (Nq - 1) + Nq
+    expected = 2 + 2 * (Nq - 1) + Nq + (Nq - 1)
     assert len(c_ops) == expected, f"expected {expected} collapse ops, got {len(c_ops)}"
 
 

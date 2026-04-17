@@ -3,8 +3,32 @@
 Collapse operators are constructed in the dressed transmon eigenbasis, not
 the bare charge basis and not a 2-level approximation. This matters for
 Module 2 leakage tracking. Pure dephasing in the multi-level transmon uses
-the convention (|j><j| − |0><0|) for j > 0 with per-level rate scaling.
-See Blais et al. RMP 93, 025005 (2021) §III.E.
+per-level projectors L_j = sqrt(γ_φ) |j><j| (single-projector gauge of the
+standard σ_z dephasing convention) so that every |j><k| coherence decays
+at γ_φ regardless of Nq, avoiding the spurious cross-dephasing that the
+(|j><j| − |0><0|) gauge produces in the N-level transmon. Adapted from
+Blais et al. RMP 93, 025005 (2021) §III.E.
+
+Frame convention (Task 15 refactor, approved by plan author):
+
+build_hamiltonian returns the *dispersive-regime effective Hamiltonian* in
+the fully-rotating frame: each transmon level rotates at its bare
+frequency ω_j, the resonator rotates at ω_d = ω_r + detuning. A 2nd-order
+Schrieffer-Wolff transformation eliminates the bare coupling g n̂(a + a†);
+its residual effect is the per-level Lamb shift Δω_j and the dispersive
+pull χ_j a†a. In this frame the stiff GHz oscillations of the rotating-
+frame-at-ω_r approach are gone, and long-timescale (T1, Purcell) Lindblad
+integrations become ~100× faster.
+
+Since the transverse coupling is no longer explicit, spontaneous qubit
+emission via the resonator ("Purcell decay") must be added as an explicit
+collapse operator: γ_P_{j→j-1} = (g|⟨j-1|n̂|j⟩|/Δ_{j,j-1})² κ where
+Δ_{j,j-1} = ω_j − ω_{j-1} − ω_r. V4b validates this formula against the
+dressed-state resonator-component overlap of the full JC Hamiltonian.
+
+This refactor is necessary for Modules 2–4: at the original frame's
+~115 s/readout call, Module 3's 10,000 calls would require 13 days;
+the dispersive frame brings it to ~1 s/call and ~3 hours total.
 """
 from __future__ import annotations
 
@@ -52,7 +76,7 @@ def build_collapse_operators(
         c_ops.append(np.sqrt(kappa * n_th) * a.dag())
 
     # Build charge matrix elements for relaxation scaling in the dressed basis.
-    _, eigenstates = diagonalize_transmon(device.transmon, tr)
+    energies, eigenstates = diagonalize_transmon(device.transmon, tr)
     n_mat = charge_operator_matrix_elements(eigenstates, tr)
     # Normalize so |<0|n̂|1>|² is the reference scale (rate γ_1 applies to |1>→|0>).
     ref_sq = abs(n_mat[0, 1]) ** 2
@@ -89,6 +113,27 @@ def build_collapse_operators(
                 op = qt.basis(Nq, j + 1) * qt.basis(Nq, j).dag()
                 c_ops.append(np.sqrt(rate) * qt.tensor(op, qt.qeye(Nr)))
 
+    # 6. Purcell decay |j> -> |j-1> at rate (g|n_{j-1,j}| / Delta_{j,j-1})^2 kappa.
+    #
+    # In the lab/rotating-frame Hamiltonian the transverse coupling produces
+    # Purcell decay implicitly: dressed |j,0> hybridizes with |j-1,1>, which
+    # decays at κ. The dispersive-frame Hamiltonian returned by
+    # build_hamiltonian has the transverse coupling transformed out, so that
+    # implicit pathway is gone and Purcell must be added explicitly. Rate
+    # derived from 2nd-order perturbation: the amplitude of |j-1, 1> in the
+    # dressed |j, 0> state is (g |n_{j-1,j}|) / (ω_j − ω_{j-1} − ω_r), so
+    # κ a acting on that admixture decays the qubit at rate |amplitude|² × κ.
+    # Verified in test_V4b against the dressed-state overlap of the full
+    # Jaynes-Cummings Hamiltonian.
+    for j in range(1, Nq):
+        delta_j = energies[j] - energies[j - 1] - device.resonator.omega_r
+        n_elem = abs(n_mat[j - 1, j])
+        # Include (1 + n_th) thermal factor for consistency with qubit relaxation.
+        gamma_P = ((device.coupling.g * n_elem) / delta_j) ** 2 * kappa * (1.0 + n_th)
+        if gamma_P > 0:
+            op = qt.basis(Nq, j - 1) * qt.basis(Nq, j).dag()
+            c_ops.append(np.sqrt(gamma_P) * qt.tensor(op, qt.qeye(Nr)))
+
     return c_ops
 
 
@@ -97,22 +142,38 @@ def build_hamiltonian(
     drive_params: DriveParams,
     frame: Literal["rotating", "dispersive"] = "rotating",
 ) -> tuple[qt.Qobj, list]:
-    """Drift Hamiltonian + QuTiP-compatible drive spec.
+    """Dispersive-regime effective Hamiltonian in the fully-rotating frame.
 
-    Rotating frame at ω_d = ω_r + detuning:
-      H_q  = Σ_j (ω_j − j ω_d) |j><j| ⊗ I_r
-      H_r  = (ω_r − ω_d) a†a
-      H_c  = g Σ_{jk} <j|n̂|k> |j><k| ⊗ (a + a†)
-      H_drive(t) = ε(t) (a + a†)
+    Frame: each transmon level j rotates at its bare frequency ω_j, the
+    resonator rotates at ω_d = ω_r + detuning. 2nd-order Schrieffer-Wolff
+    eliminates the transverse coupling g n̂(a + a†); its residual is the
+    per-level Lamb shift Δω_j and dispersive pull χ_j a†a:
 
-    ε(t) is an erf-difference flat-top pulse with Gaussian edges of width σ.
+        H_eff = Σ_j Δω_j |j><j|                       (Lamb shift, diagonal qubit)
+              + Σ_j χ_j |j><j| a†a                    (dispersive shift)
+              + (ω_r − ω_d) a†a                       (resonator in its rot frame)
+              + ε(t) (a + a†)                         (drive, RWA-reduced)
 
-    'dispersive' frame is not implemented in Module 1; it is reserved for
-    validation-only use. Calling with frame='dispersive' raises
-    NotImplementedError. Do not silently return rotating frame instead.
+    with
+        Δω_j = Σ_{k≠j} |g ⟨j|n̂|k⟩|² / (ω_j − ω_k − ω_r)
+        χ_j  = Σ_{k≠j} |g ⟨j|n̂|k⟩|² × [1/(ω_j − ω_k − ω_r) + 1/(ω_j − ω_k + ω_r)]
+              (computed by dispersive_shift_full; includes Bloch-Siegert).
+
+    Since the qubit diagonal is absorbed by the rotating-frame transform, the
+    remaining diagonal is Lamb + χ·n_photon ~ tens of MHz rather than the
+    previous ~GHz. This makes the ODE non-stiff and ~100× faster.
+
+    'rotating' and 'dispersive' are aliases in this implementation (the only
+    frame currently supported). Other frames raise NotImplementedError —
+    callers that need the full bare JC Hamiltonian must add it explicitly.
     """
-    if frame not in ("rotating",):
-        raise NotImplementedError(f"frame '{frame}' not implemented in Module 1")
+    if frame not in ("rotating", "dispersive"):
+        raise NotImplementedError(
+            f"frame '{frame}' not supported — 'rotating' and 'dispersive' "
+            f"are aliases for the dispersive-regime effective Hamiltonian."
+        )
+
+    from .dispersive import dispersive_shift_full
 
     tr = device.truncation
     Nq = tr.N_transmon
@@ -121,32 +182,48 @@ def build_hamiltonian(
     energies, eigenstates = diagonalize_transmon(device.transmon, tr)
     n_mat = charge_operator_matrix_elements(eigenstates, tr)
 
-    # Drive frequency: on resonance with resonator plus optional detuning.
-    omega_d = device.resonator.omega_r + drive_params.detuning
+    g = device.coupling.g
+    omega_r = device.resonator.omega_r
+    omega_d = omega_r + drive_params.detuning
 
-    # Transmon term in rotating frame: diag(omega_j - j * omega_d)
-    qubit_diag = np.array([energies[j] - j * omega_d for j in range(Nq)])
-    H_q = qt.tensor(qt.Qobj(np.diag(qubit_diag)), qt.qeye(Nr))
+    # Per-level chi_j (non-RWA 2nd-order PT, includes Bloch-Siegert term)
+    chi_per_level = dispersive_shift_full(energies, n_mat, g, omega_r)
 
-    # Resonator term: (omega_r - omega_d) a†a
+    # Lamb shift: Δω_j = Σ |g n_jk|² / (ω_j − ω_k − ω_r)
+    # Same sum as χ_j but keeping only the near-resonant (−ω_r) denominator.
+    lamb_shifts = np.zeros(Nq, dtype=float)
+    for j in range(Nq):
+        total = 0.0
+        for k in range(Nq):
+            if k == j:
+                continue
+            coupling_sq = (g * abs(n_mat[j, k])) ** 2
+            delta_jk = energies[j] - energies[k]
+            total += coupling_sq / (delta_jk - omega_r)
+        lamb_shifts[j] = total
+
     a = qt.tensor(qt.qeye(Nq), qt.destroy(Nr))
-    H_r = (device.resonator.omega_r - omega_d) * a.dag() * a
+    n_ph = a.dag() * a
 
-    # Coupling term: g * <j|n̂|k> * |j><k| ⊗ (a + a†)
-    # Retain only adjacent selection-rule contributions; full matrix keeps all.
-    n_op_q = qt.tensor(qt.Qobj(n_mat), qt.qeye(Nr))
-    H_c = device.coupling.g * n_op_q * (a + a.dag())
+    # Resonator drift (vanishes on drive resonance)
+    H_r = (omega_r - omega_d) * n_ph
 
-    # Symmetrize to absorb floating-point asymmetries (~1e-6 rad/s at
-    # frequency scales of 1e10 rad/s, well below any physical resolution);
-    # QuTiP's isherm check is strict and would otherwise return False.
-    H0_raw = H_q + H_r + H_c
+    # Qubit Lamb shift: diagonal on qubit subspace
+    H_q_lamb = qt.tensor(qt.Qobj(np.diag(lamb_shifts)), qt.qeye(Nr))
+
+    # Dispersive shift: Σ_j χ_j |j><j| ⊗ a†a
+    H_chi = 0 * qt.tensor(qt.qeye(Nq), qt.qeye(Nr))
+    for j in range(Nq):
+        proj_j = qt.tensor(qt.basis(Nq, j) * qt.basis(Nq, j).dag(), qt.qeye(Nr))
+        H_chi = H_chi + chi_per_level[j] * proj_j * n_ph
+
+    # Symmetrize against float roundoff (~1e-6 rad/s at scales of 1e10 rad/s)
+    H0_raw = H_r + H_q_lamb + H_chi
     H0 = 0.5 * (H0_raw + H0_raw.dag())
 
-    # Drive operator: ε(t) (a + a†)
+    # Drive operator (same ε(t) convention as before; unchanged between frames)
     drive_op = a + a.dag()
 
-    # Envelope: erf-difference flat-top with sigma_edge gaussian rise/fall.
     eps_0 = drive_params.amplitude
     t_end = drive_params.duration
     sigma = drive_params.edge_sigma
