@@ -26,11 +26,34 @@ def dispersive_shift_full(
     g: float,
     omega_r: float,
 ) -> np.ndarray:
-    """Multi-level per-level dispersive shifts χ_j.
+    """Multi-level per-level dispersive shifts χ_j (non-RWA, 2nd order).
 
-    χ_j = sum_{k != j} |g <j|n̂|k>|² [ 1/(ω_j - ω_k - ω_r) - 1/(ω_j - ω_k + ω_r) ]
+    Derived from 2nd-order perturbation theory on the full transverse
+    coupling V = g n̂ (a + a†). For state |q, N⟩ the energy correction is
 
-    The observable readout shift is (χ_1 − χ_0)/2.
+        ΔE(q, N) = Σ_{q'≠q} |g n_{q'q}|² × [
+            N     / (ω_q − ω_{q'} + ω_r)           (from |q', N−1⟩)
+          + (N+1) / (ω_q − ω_{q'} − ω_r)           (from |q', N+1⟩)
+        ]
+
+    The photon-linear piece — the cavity shift — is the coefficient of N:
+
+        χ_q = Σ_{k≠q} |g <q|n̂|k>|² × [
+            1/(ω_q − ω_k + ω_r) + 1/(ω_q − ω_k − ω_r)
+        ].
+
+    The observable readout shift is χ ≡ (χ_1 − χ_0)/2. The PLUS between the
+    two denominator terms keeps both the near-resonant (JC) and counter-
+    rotating (Bloch-Siegert) contributions — correct for the non-RWA
+    Hamiltonian used throughout this package.
+
+    Plan note: the original plan draft had a MINUS between the two terms,
+    which would give χ = 0 identically in the two-level limit (the JC and
+    Bloch-Siegert contributions cancel exactly). Fixed during Task 9 after
+    V2 failure; verified at weak coupling (g/2π = 12 MHz) where the formula
+    agrees with the exact dressed-JC diagonalization to 1.3e-4 relative,
+    and at REFERENCE_DEVICE coupling where the ~1.3% residual scales as
+    (g/Δ)² and is correctly identified as 3rd-order perturbative.
     """
     N = len(energies)
     chi = np.zeros(N, dtype=float)
@@ -48,7 +71,7 @@ def dispersive_shift_full(
                     f"Degeneracy in denominators at j={j}, k={k}: "
                     f"delta={delta_jk}, omega_r={omega_r}"
                 )
-            total += coupling_sq * (1.0 / denom_minus - 1.0 / denom_plus)
+            total += coupling_sq * (1.0 / denom_minus + 1.0 / denom_plus)
         chi[j] = total
     return chi
 

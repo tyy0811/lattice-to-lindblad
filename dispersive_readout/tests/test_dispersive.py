@@ -44,14 +44,21 @@ def test_dispersive_shift_full_shape():
 
 
 def test_dispersive_shift_full_gives_plausible_half_splitting():
-    """(χ_1 − χ_0)/2 should be roughly -5 MHz for reference device (spec §1.2)."""
+    """(χ_1 − χ_0)/2 is O(1 MHz) and negative for the reference device.
+
+    Plan draft predicted ~−5 MHz assuming the MINUS-sign formula. The
+    corrected PLUS-sign (non-RWA) formula gives χ/2π ≈ −1.10 MHz for
+    REFERENCE_DEVICE, which sits comfortably inside the −3 to −0.3 MHz
+    plausibility band. The band is wide enough to tolerate small spec
+    changes (κ/g/Δ within ~20%) without rewriting this test.
+    """
     d = REFERENCE_DEVICE
     energies, states = diagonalize_transmon(d.transmon, d.truncation)
     n_mat = charge_operator_matrix_elements(states, d.truncation)
     chi_j = dispersive_shift_full(energies, n_mat, d.coupling.g, d.resonator.omega_r)
     chi_half_hz = (chi_j[1] - chi_j[0]) / 2.0 / _TWO_PI
-    assert -10e6 < chi_half_hz < -1e6, (
-        f"multi-level χ = {chi_half_hz/1e6:.2f} MHz outside plausible band"
+    assert -3e6 < chi_half_hz < -0.3e6, (
+        f"multi-level χ = {chi_half_hz/1e6:.3f} MHz outside plausible band [-3, -0.3] MHz"
     )
 
 
