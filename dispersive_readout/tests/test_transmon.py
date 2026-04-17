@@ -86,3 +86,43 @@ def test_diagonalize_omega01_in_plausible_range():
     energies, _ = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
     omega_01_hz = energies[1] / _TWO_PI
     assert 4.3e9 < omega_01_hz < 4.9e9, f"omega_01/2π = {omega_01_hz/1e9:.3f} GHz outside Marxer band"
+
+
+# -- matrix elements + summary -------------------------------------------------
+
+def test_charge_matrix_elements_shape():
+    _, states = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    n_mat = charge_operator_matrix_elements(states, REFERENCE_DEVICE.truncation)
+    assert n_mat.shape == (REFERENCE_DEVICE.truncation.N_transmon,
+                          REFERENCE_DEVICE.truncation.N_transmon)
+
+
+def test_charge_matrix_is_hermitian():
+    _, states = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    n_mat = charge_operator_matrix_elements(states, REFERENCE_DEVICE.truncation)
+    assert np.allclose(n_mat, n_mat.conj().T, atol=1e-10)
+
+
+def test_charge_matrix_element_01_dominant():
+    """|<0|n̂|1>| should be larger than |<0|n̂|2>| (selection rule in deep transmon regime)."""
+    _, states = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    n_mat = charge_operator_matrix_elements(states, REFERENCE_DEVICE.truncation)
+    assert abs(n_mat[0, 1]) > 10.0 * abs(n_mat[0, 2])
+
+
+def test_transmon_summary_keys():
+    summary = transmon_summary(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    required = {
+        "omega_01", "omega_12", "alpha", "E_J_over_E_C",
+        "charge_dispersion_01", "n_matrix_01", "n_matrix_12",
+    }
+    assert required.issubset(summary.keys()), f"missing keys: {required - summary.keys()}"
+
+
+def test_transmon_summary_values_plausible():
+    s = transmon_summary(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    # anharmonicity negative (transmon); ~-200 MHz
+    alpha_hz = s["alpha"] / _TWO_PI
+    assert -260e6 < alpha_hz < -160e6, f"alpha/2π = {alpha_hz/1e6:.1f} MHz outside plausible band"
+    # E_J/E_C ≈ 74
+    assert 70 < s["E_J_over_E_C"] < 80

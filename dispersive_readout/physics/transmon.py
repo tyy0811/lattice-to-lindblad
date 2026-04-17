@@ -58,10 +58,47 @@ def charge_operator_matrix_elements(
     eigenstates: np.ndarray,
     trunc: TruncationParams,
 ) -> np.ndarray:
-    """<j|n_hat|k> in the truncated transmon basis."""
-    raise NotImplementedError  # Task 4
+    """<j|n_hat|k> in the truncated transmon eigenbasis.
+
+    The charge operator is diagonal in the charge basis with entries
+    n = -N//2, ..., +N//2, so the transformed matrix is
+        n_mat[j, k] = sum_q conj(eigenstates[q, j]) * n_q * eigenstates[q, k].
+    For the standard real-symmetric charge Hamiltonian, eigenstates can be
+    chosen real, so n_mat is real symmetric in practice.
+    """
+    N = trunc.N_charge
+    n_values = np.arange(-(N // 2), N // 2 + 1, dtype=float)
+    return eigenstates.conj().T @ (n_values[:, None] * eigenstates)
 
 
 def transmon_summary(params: TransmonParams, trunc: TruncationParams) -> dict:
-    """Diagnostic dict: omega_01, omega_12, alpha, E_J_over_E_C, charge dispersion, n-matrix elements."""
-    raise NotImplementedError  # Task 4
+    """Summary dict for logging and spot checks.
+
+    Returns a dict with keys (all rad/s unless noted):
+      omega_01, omega_12: transition frequencies.
+      alpha:              anharmonicity = omega_12 - omega_01.
+      E_J_over_E_C:       dimensionless.
+      charge_dispersion_01: ω_01(n_g=0.5) − ω_01(n_g=0), in rad/s.
+      n_matrix_01, n_matrix_12: |<0|n̂|1>|, |<1|n̂|2>|.
+    """
+    energies, states = diagonalize_transmon(params, trunc)
+    n_mat = charge_operator_matrix_elements(states, trunc)
+
+    omega_01 = energies[1] - energies[0]
+    omega_12 = energies[2] - energies[1]
+
+    # Charge dispersion: re-diagonalize at n_g = 0.5 and compare omega_01.
+    from dataclasses import replace
+    params_half = replace(params, n_g=0.5)
+    energies_half, _ = diagonalize_transmon(params_half, trunc)
+    omega_01_half = energies_half[1] - energies_half[0]
+
+    return {
+        "omega_01": omega_01,
+        "omega_12": omega_12,
+        "alpha": omega_12 - omega_01,
+        "E_J_over_E_C": params.E_J / params.E_C,
+        "charge_dispersion_01": abs(omega_01_half - omega_01),
+        "n_matrix_01": abs(n_mat[0, 1]),
+        "n_matrix_12": abs(n_mat[1, 2]),
+    }
