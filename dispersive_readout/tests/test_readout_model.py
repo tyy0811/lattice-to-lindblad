@@ -1,4 +1,10 @@
-"""Readout-model integration tests (dynamics + IQ separation + assignment fidelity)."""
+"""Readout-model integration tests (dynamics + IQ separation + assignment fidelity).
+
+All tests here drive a full Lindblad master-equation integration via QuTiP
+mesolve. Marked @pytest.mark.slow so the fast TDD suite can skip them via
+`pytest -m "not slow"`. Run on-demand with `pytest -m slow` or the default
+`pytest`.
+"""
 from __future__ import annotations
 
 import math
@@ -16,6 +22,8 @@ from dispersive_readout.physics.readout_model import (
 )
 
 _TWO_PI = 2.0 * math.pi
+
+pytestmark = pytest.mark.slow
 
 
 def _default_drive() -> DriveParams:

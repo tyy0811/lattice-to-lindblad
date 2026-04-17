@@ -7,6 +7,7 @@ tolerance rationale.
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -125,7 +126,6 @@ def test_computational_manifold_charge_dispersion_small():
     computational-manifold size (3 levels). If the reference device or
     truncation changes materially, reconsider the manifold size.
     """
-    from dataclasses import replace
     d = REFERENCE_DEVICE
     energies_0, _ = diagonalize_transmon(d.transmon, d.truncation)
     energies_half, _ = diagonalize_transmon(replace(d.transmon, n_g=0.5), d.truncation)
@@ -182,6 +182,67 @@ def test_V2_chi_analytic_vs_numerical_at_reference_device():
         f"V2 FAIL (REFERENCE_DEVICE): chi analytic/2π = "
         f"{chi_analytic_half/_TWO_PI/1e6:.4f} MHz, numerical/2π = "
         f"{chi_numerical_half/_TWO_PI/1e6:.4f} MHz, rel err = {rel_error:.2e}"
+    )
+
+
+@pytest.mark.slow
+def test_V3_T1_recovery_from_undriven_decay():
+    """V3 T1 recovery test — validates the collapse-operator machinery.
+
+    Uses H=0 (drive-free, trivial Hamiltonian) rather than calling
+    simulate_readout with drive_amplitude=0. Rationale: at rotating frame
+    ω_d = ω_r, transmon level j rotates at ω_j − j·ω_d ~ 2–10 GHz in the
+    drift Hamiltonian. The Lindblad solver then needs ~100 ps timesteps,
+    which makes 5·T1 = 150 μs integration fail with IntegratorException
+    (excess work done) regardless of nsteps or solver choice.
+
+    For population decay the qubit-diagonal drift commutes with |j⟩⟨j|, so
+    setting H=0 gives physically identical populations to the full drift +
+    zero drive case. The coupling term g n̂ (a+a†) contributes only
+    Purcell-type corrections of order (g/Δ)² κ — that physics is tested
+    separately against the analytic formula in V4b.
+
+    This is a validation-test simplification; simulate_readout itself is
+    unchanged and correct for short-pulse readout (Modules 2+). The bypass
+    is isolated to V3 and V4a and documented in the docstring of each test.
+
+    Gate: γ_fit matches γ_1 input to 1% (spec §4 V3).
+    """
+    import qutip as qt
+    from dispersive_readout.physics.lindblad import build_collapse_operators
+
+    d = REFERENCE_DEVICE
+    d_pure = replace(
+        d,
+        decoherence=replace(d.decoherence, gamma_phi=0.0, n_th=0.0),
+    )
+    T1 = 1.0 / d_pure.decoherence.gamma_1
+    tr = d_pure.truncation
+    Nq, Nr = tr.N_transmon, tr.N_resonator
+
+    H_zero = qt.tensor(qt.qeye(Nq), qt.qeye(Nr)) * 0
+    c_ops = build_collapse_operators(d_pure, Nq, Nr)
+    psi0 = qt.tensor(qt.basis(Nq, 1), qt.basis(Nr, 0))
+    e_ops = [
+        qt.tensor(qt.basis(Nq, j) * qt.basis(Nq, j).dag(), qt.qeye(Nr))
+        for j in range(Nq)
+    ]
+    t_list = np.linspace(0.0, 5.0 * T1, 300)
+
+    result = qt.mesolve(
+        H_zero, psi0, t_list, c_ops=c_ops, e_ops=e_ops,
+        options={"nsteps": 10000, "atol": 1e-10, "rtol": 1e-8},
+    )
+
+    p1 = np.asarray(result.expect[1], dtype=float)
+    mask = p1 > 1e-3
+    coef = np.polyfit(t_list[mask], np.log(p1[mask]), 1)
+    gamma_fit = -coef[0]
+
+    rel_err = abs(gamma_fit - d_pure.decoherence.gamma_1) / d_pure.decoherence.gamma_1
+    assert rel_err < 0.01, (
+        f"V3 FAIL: γ_fit = {gamma_fit:.3e}, γ_input = {d_pure.decoherence.gamma_1:.3e}, "
+        f"rel err = {rel_err:.3%}."
     )
 
 
