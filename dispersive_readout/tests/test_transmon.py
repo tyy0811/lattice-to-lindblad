@@ -126,3 +126,10 @@ def test_transmon_summary_values_plausible():
     assert -260e6 < alpha_hz < -160e6, f"alpha/2π = {alpha_hz/1e6:.1f} MHz outside plausible band"
     # E_J/E_C ≈ 74
     assert 70 < s["E_J_over_E_C"] < 80
+
+
+def test_transmon_summary_requires_N_transmon_ge_3():
+    """Two-level truncation cannot supply omega_12 / |<1|n̂|2>|."""
+    tr = TruncationParams(N_charge=5, N_transmon=2, N_resonator=15)
+    with pytest.raises(ValueError, match="N_transmon"):
+        transmon_summary(REFERENCE_DEVICE.transmon, tr)

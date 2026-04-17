@@ -74,6 +74,12 @@ def charge_operator_matrix_elements(
 def transmon_summary(params: TransmonParams, trunc: TruncationParams) -> dict:
     """Summary dict for logging and spot checks.
 
+    Requires N_transmon >= 3 (the summary reports omega_12 and |<1|n̂|2>|,
+    which live on level |2⟩). Raises ValueError otherwise — this is stricter
+    than the global TruncationParams contract (which permits N_transmon = 1
+    or 2 for callers that only need the qubit subspace) and applies only to
+    this diagnostic function.
+
     Returns a dict with keys (all rad/s unless noted):
       omega_01, omega_12: transition frequencies.
       alpha:              anharmonicity = omega_12 - omega_01.
@@ -81,6 +87,11 @@ def transmon_summary(params: TransmonParams, trunc: TruncationParams) -> dict:
       charge_dispersion_01: ω_01(n_g=0.5) − ω_01(n_g=0), in rad/s.
       n_matrix_01, n_matrix_12: |<0|n̂|1>|, |<1|n̂|2>|.
     """
+    if trunc.N_transmon < 3:
+        raise ValueError(
+            f"transmon_summary requires N_transmon >= 3 (got {trunc.N_transmon}); "
+            f"it reports omega_12 and |<1|n̂|2>| which live on level |2⟩."
+        )
     energies, states = diagonalize_transmon(params, trunc)
     n_mat = charge_operator_matrix_elements(states, trunc)
 

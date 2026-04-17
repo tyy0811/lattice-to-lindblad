@@ -19,27 +19,47 @@ _TWO_PI = 2.0 * math.pi
 
 # -- V1: transmon eigenstructure ----------------------------------------------
 
-def test_V1a_transmon_anharmonicity_matches_perturbative():
-    """Koch 2007: for E_J/E_C >> 1, α ≈ -E_C to leading order.
+def test_V1a_transmon_anharmonicity_matches_next_order():
+    """Transmon anharmonicity matches the next-order perturbative formula.
 
-    Tolerance 15% (deviation from spec §4 V1 which listed 5%). At E_J/E_C ≈ 74
-    the next-order correction α ≈ -E_C · (1 + sqrt(E_C/E_J)) already sits at
-    ~11.5% above leading order, so 5% is physically infeasible regardless of
-    implementation. Cross-checked with huge-basis brute-force (N_charge=401)
-    and the empirical next-order fit α ≈ -E_C · (1 + sqrt(E_C/E_J)) matches
-    the numerical answer to ~0.1% — confirming the gap is real physics, not
-    a truncation or diagonalization bug. 15% bounds the leading-order gap
-    comfortably for E_J/E_C ≥ 50; if REFERENCE_DEVICE ever moves to ratios
-    < 50 this test should be tightened against the next-order formula.
+    Primary gate (1% tolerance): α ≈ -E_C · (1 + sqrt(E_C/E_J)). This
+    captures both the leading Koch-2007 α = -E_C limit and the dominant
+    higher-order correction from the sextic term in the cos(φ) expansion.
+    Numerically matches exact diagonalization to ~0.1% for E_J/E_C ≥ 50
+    (verified at ratios 50, 74, 100, 200, 500). Cross-checked with
+    brute-force N_charge=401 to rule out truncation artefacts.
+
+    Deviation from spec §4 V1 (originally 5% against -E_C leading-order):
+    at E_J/E_C ≈ 74 the leading-order gap is an inherent ~11.5% from exact
+    diagonalization, so a 5%-on-leading-order gate is physically infeasible
+    regardless of implementation. The next-order gate here is tighter (1%)
+    and also catches real regressions more reliably than a wide tolerance on
+    a formula that is known to be 10%+ away from the true anharmonicity.
+
+    Secondary sanity check (15% leading-order, non-gating): bounds the
+    direction and order of magnitude of α against -E_C. Kept as belt-and-
+    braces for catastrophic bugs (sign flip, off-by-factor).
     """
+    import math as _math
     d = REFERENCE_DEVICE
     s = transmon_summary(d.transmon, d.truncation)
-    alpha_predicted = -d.transmon.E_C
     alpha_numerical = s["alpha"]
-    rel_error = abs(alpha_numerical - alpha_predicted) / abs(alpha_predicted)
-    assert rel_error < 0.15, (
-        f"V1a FAIL: alpha/2π numerical = {alpha_numerical/_TWO_PI/1e6:.2f} MHz, "
-        f"predicted = {alpha_predicted/_TWO_PI/1e6:.2f} MHz, rel err = {rel_error:.3%}"
+
+    # Primary gate: next-order perturbative formula, 1% tolerance.
+    alpha_next_order = -d.transmon.E_C * (1.0 + _math.sqrt(d.transmon.E_C / d.transmon.E_J))
+    rel_err_next = abs(alpha_numerical - alpha_next_order) / abs(alpha_next_order)
+    assert rel_err_next < 0.01, (
+        f"V1a FAIL (next-order): alpha/2π numerical = {alpha_numerical/_TWO_PI/1e6:.3f} MHz, "
+        f"-E_C·(1+sqrt(E_C/E_J)) = {alpha_next_order/_TWO_PI/1e6:.3f} MHz, "
+        f"rel err = {rel_err_next:.3%}."
+    )
+
+    # Secondary (leading-order, 15% sanity band): catches sign/scale bugs.
+    alpha_leading = -d.transmon.E_C
+    rel_err_leading = abs(alpha_numerical - alpha_leading) / abs(alpha_leading)
+    assert rel_err_leading < 0.15, (
+        f"V1a sanity FAIL (leading-order): alpha/2π = {alpha_numerical/_TWO_PI/1e6:.2f} MHz, "
+        f"-E_C = {alpha_leading/_TWO_PI/1e6:.2f} MHz, rel err = {rel_err_leading:.3%}."
     )
 
 
@@ -80,29 +100,39 @@ def test_N_charge_convergence_below_1e_6_relative():
     assert rel < 1e-6, f"N_charge not converged at default={default_N}: rel change = {rel:.2e}"
 
 
-def test_bound_transmon_levels_charge_dispersion_small():
-    """Bound transmon levels (|0⟩...|2⟩ for REFERENCE_DEVICE) must have charge
-    dispersion < 10 kHz. Deviation from plan: the plan checked the top kept
-    level (j=N_transmon-1=4), but at E_J/E_C ≈ 74 with N_transmon=5 the upper
-    two levels (|3⟩, |4⟩) sit at or above the top of the Josephson well and
-    enter the rotor regime — their charge dispersion is physically large
-    (0.2 MHz and 3 MHz), not a truncation bug. They are retained as a
-    completeness basis for perturbative sums over intermediate states
-    (dispersive_shift_full, dressed diagonalization), not as converged
-    transmon eigenstates. The physically meaningful convergence gate applies
-    to the bound levels actually used as qubit states, which are |0⟩..|2⟩
-    here. If N_transmon ever grows past the number of bound levels, only
-    bound levels should be checked.
+def test_computational_manifold_charge_dispersion_small():
+    """Computational-manifold levels (|0⟩, |1⟩, |2⟩) must have charge
+    dispersion < 10 kHz for REFERENCE_DEVICE.
+
+    These are the levels used as qubit/readout states by Module 1 and by
+    the shelving-readout work in Modules 2–4. For REFERENCE_DEVICE, the
+    measured per-level dispersions are (0, ~190 Hz, ~7.5 kHz) at n_g=0.5,
+    all well below the 10 kHz bound.
+
+    Deviation from the plan, which originally applied this bound to the
+    *top kept* level (j = N_transmon - 1). At E_J/E_C ≈ 74 with N_transmon
+    = 5 the upper two levels (|3⟩, |4⟩) have physically large dispersion
+    (~0.2 MHz and ~3 MHz) even though they remain eigenstates of the full
+    charge-basis Hamiltonian — their cosine-potential wavefunctions are
+    strongly mixed across adjacent charge wells at those energies, which
+    produces large n_g sensitivity by construction. They are retained as a
+    completeness basis for the perturbative sums used by `dispersive_shift_full`
+    and for the dressed-state identification in `dispersive_shift_from_simulation`,
+    not as converged qubit states. Applying the 10 kHz gate to them would
+    fail on correct physics.
+
+    Scope note: this test is specific to REFERENCE_DEVICE's
+    computational-manifold size (3 levels). If the reference device or
+    truncation changes materially, reconsider the manifold size.
     """
     from dataclasses import replace
     d = REFERENCE_DEVICE
     energies_0, _ = diagonalize_transmon(d.transmon, d.truncation)
     energies_half, _ = diagonalize_transmon(replace(d.transmon, n_g=0.5), d.truncation)
-    # Highest bound level = highest j such that energies_0[j] - energies_0[0] < E_J.
-    # For REFERENCE_DEVICE (E_J/2π = 15.5 GHz, omega_01 ≈ 4.88 GHz, |α| ≈ 234 MHz)
-    # this is j=2 (E_2 − E_0 ≈ 9.5 GHz < 15.5 GHz).
-    highest_bound_j = 2
-    dispersion_hz = abs(energies_half[highest_bound_j] - energies_0[highest_bound_j]) / _TWO_PI
-    assert dispersion_hz < 10e3, (
-        f"highest bound level (j={highest_bound_j}) dispersion = {dispersion_hz:.1f} Hz"
-    )
+    COMPUTATIONAL_MANIFOLD = range(0, 3)  # |0⟩, |1⟩, |2⟩
+    for j in COMPUTATIONAL_MANIFOLD:
+        dispersion_hz = abs(energies_half[j] - energies_0[j]) / _TWO_PI
+        assert dispersion_hz < 10e3, (
+            f"computational-manifold level j={j} dispersion = {dispersion_hz:.1f} Hz "
+            f"(expected < 10 kHz)."
+        )
