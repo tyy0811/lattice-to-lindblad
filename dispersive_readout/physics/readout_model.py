@@ -42,7 +42,7 @@ class ReadoutResult:
         mask = (self.t >= t0) & (self.t <= t1)
         if mask.sum() < 2:
             raise ValueError(f"Window {window} contains fewer than 2 samples")
-        return np.trapz(self.a_expectation[mask], self.t[mask])
+        return np.trapezoid(self.a_expectation[mask], self.t[mask])
 
 
 @dataclass(frozen=True)
@@ -151,7 +151,76 @@ def compute_assignment_fidelity(
     n_shots: int = 10000,
     noise_model: Literal["ideal", "gaussian"] = "gaussian",
 ) -> AssignmentFidelityResult:
-    raise NotImplementedError  # Task 17
+    """Single-shot assignment fidelity from two simulated trajectories.
+
+    Integrates ⟨a⟩(t) over the window for each of |0> and |1> to get
+    deterministic centroids; adds per-shot circular Gaussian noise in IQ space
+    (when noise_model='gaussian'); classifies shots with the perpendicular-
+    bisector discriminator; returns F = 1 - (P(1|0) + P(0|1)) / 2.
+    """
+    if noise_model not in ("ideal", "gaussian"):
+        raise ValueError(f"noise_model must be 'ideal' or 'gaussian', got {noise_model!r}")
+
+    c0 = result_ground.integrated_iq(integration_window)
+    c1 = result_excited.integrated_iq(integration_window)
+    separation = abs(c1 - c0)
+    if separation == 0:
+        raise ValueError("IQ centroids coincide — dispersive regime lost or window too short.")
+
+    t0, t1 = integration_window
+    window_duration = t1 - t0
+    kappa = result_ground.device.resonator.kappa
+    # Shot-noise σ per quadrature for integrated homodyne output.
+    # Homodyne photocurrent variance is T/2 per quadrature in the convention
+    # where Gambetta 2008's integrated output is s = √(2κ) ∫⟨a⟩ dt. Scaled
+    # into the |Δc| = |∫⟨a⟩ dt| integrated units, σ_per_quadrature = √(T/(4κ)),
+    # giving SNR = |Δc|/σ_per_quadrature = 2√(κ/T) × |Δc| which matches
+    # the standard dispersive-readout formula SNR² = 4κ |Δα|² T for
+    # well-separated steady states. Perpendicular-bisector fidelity then
+    # follows F = 1 − Q(SNR/2) for equal-prior two-state discrimination.
+    # Plan draft's σ = √(κT/2) reversed κ ↔ 1/κ and gave SNR values that
+    # didn't match Gambetta — caught when reference device gave 50% fidelity
+    # instead of the ≥95% the plan expected at these parameters.
+    sigma = np.sqrt(window_duration / (4.0 * kappa)) if noise_model == "gaussian" else 0.0
+
+    rng = np.random.default_rng(seed=42)
+
+    if sigma == 0.0:
+        # Ideal case: all shots fall on the centroid; F = 1 if centroids differ.
+        F = 1.0
+        F_unc = 0.0
+    else:
+        # Per-quadrature noise: each of Re, Im gets an independent σ-Gaussian.
+        draws_0 = c0 + sigma * (
+            rng.standard_normal(n_shots) + 1j * rng.standard_normal(n_shots)
+        )
+        draws_1 = c1 + sigma * (
+            rng.standard_normal(n_shots) + 1j * rng.standard_normal(n_shots)
+        )
+        # Perpendicular-bisector discriminator:
+        # decision axis = unit vector from c0 to c1; midpoint = (c0+c1)/2.
+        axis = (c1 - c0) / separation
+        midpoint = 0.5 * (c0 + c1)
+        proj_0 = np.real((draws_0 - midpoint) * np.conj(axis))
+        proj_1 = np.real((draws_1 - midpoint) * np.conj(axis))
+        # Classify: proj > 0 → predicted |1>
+        wrong_0 = np.mean(proj_0 > 0)   # P(1|0)
+        wrong_1 = np.mean(proj_1 <= 0)  # P(0|1)
+        F = 1.0 - 0.5 * (wrong_0 + wrong_1)
+        # Bootstrap uncertainty (binomial-standard-error of F)
+        F_unc = np.sqrt(F * (1.0 - F) / n_shots)
+
+    return AssignmentFidelityResult(
+        F_assign=float(F),
+        F_assign_uncertainty=float(F_unc),
+        centroid_0=complex(c0),
+        centroid_1=complex(c1),
+        snr=float(separation / sigma) if sigma > 0 else float("inf"),
+        separation_distance=float(separation),
+        integration_window=(float(t0), float(t1)),
+        n_shots=int(n_shots),
+        noise_model=noise_model,
+    )
 
 
 def snr_vs_integration_time(
