@@ -82,12 +82,29 @@ class TruncationParams:
 
     N_charge:    # charge states in [-N_charge//2, +N_charge//2]; must be odd.
     N_transmon:  transmon levels kept after diagonalization.
+                 Must satisfy 1 <= N_transmon <= N_charge.
     N_resonator: resonator Fock basis size. Runtime-checked against
                  mean photon number during readout (readout_model.py).
     """
     N_charge: int = 13
     N_transmon: int = 5
     N_resonator: int = 15
+
+    def __post_init__(self) -> None:
+        if self.N_charge < 3:
+            raise ValueError(f"N_charge must be >= 3 (got {self.N_charge}).")
+        if self.N_charge % 2 == 0:
+            raise ValueError(
+                f"N_charge must be odd (got {self.N_charge}) so the ladder is symmetric about zero."
+            )
+        if self.N_transmon < 1:
+            raise ValueError(f"N_transmon must be >= 1 (got {self.N_transmon}).")
+        if self.N_transmon > self.N_charge:
+            raise ValueError(
+                f"N_transmon ({self.N_transmon}) cannot exceed N_charge ({self.N_charge})."
+            )
+        if self.N_resonator < 1:
+            raise ValueError(f"N_resonator must be >= 1 (got {self.N_resonator}).")
 
 
 @dataclass(frozen=True)

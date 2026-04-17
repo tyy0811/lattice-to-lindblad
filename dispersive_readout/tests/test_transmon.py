@@ -31,12 +31,6 @@ def test_charge_basis_hamiltonian_shape_and_dtype():
     assert H.dtype == np.float64
 
 
-def test_charge_basis_hamiltonian_rejects_even_N_charge():
-    bad = TruncationParams(N_charge=12, N_transmon=5, N_resonator=15)
-    with pytest.raises(ValueError, match="odd"):
-        charge_basis_hamiltonian(REFERENCE_DEVICE.transmon, bad)
-
-
 def test_charge_basis_diagonal_is_charging_energy():
     """Diagonal entries must be 4 E_C (n - n_g)^2."""
     p = TransmonParams(E_C=_TWO_PI * 210e6, E_J=_TWO_PI * 15.5e9, n_g=0.0)

@@ -66,3 +66,23 @@ def test_truncation_defaults_match_spec():
     assert t.N_resonator == 15
     # N_charge must be odd so the charge ladder is symmetric about zero
     assert t.N_charge % 2 == 1
+
+
+def test_truncation_rejects_even_N_charge():
+    with pytest.raises(ValueError, match="odd"):
+        TruncationParams(N_charge=12, N_transmon=5, N_resonator=15)
+
+
+def test_truncation_rejects_N_transmon_gt_N_charge():
+    """Requesting more transmon levels than the charge ladder provides is an error."""
+    with pytest.raises(ValueError, match="N_transmon"):
+        TruncationParams(N_charge=5, N_transmon=7, N_resonator=15)
+
+
+def test_truncation_rejects_nonpositive_dimensions():
+    with pytest.raises(ValueError, match="N_transmon"):
+        TruncationParams(N_charge=13, N_transmon=0, N_resonator=15)
+    with pytest.raises(ValueError, match="N_resonator"):
+        TruncationParams(N_charge=13, N_transmon=5, N_resonator=0)
+    with pytest.raises(ValueError, match="N_charge"):
+        TruncationParams(N_charge=1, N_transmon=1, N_resonator=15)
