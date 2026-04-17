@@ -41,9 +41,17 @@ def diagonalize_transmon(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Diagonalize and return (energies, eigenstates) for the lowest N_transmon levels.
 
-    Ground-state energy is shifted to 0. Eigenstates are columns in the charge basis.
+    Ground-state energy is shifted to 0. Eigenstates are returned as a
+    (N_charge, N_transmon) array whose columns are eigenvectors in the charge
+    basis.
     """
-    raise NotImplementedError  # Task 3
+    H = charge_basis_hamiltonian(params, trunc)
+    # np.linalg.eigh returns ascending eigenvalues for Hermitian input.
+    eigvals_all, eigvecs_all = np.linalg.eigh(H)
+    energies = eigvals_all[: trunc.N_transmon].copy()
+    eigenstates = eigvecs_all[:, : trunc.N_transmon].copy()
+    energies -= energies[0]  # shift ground state to zero by convention
+    return energies, eigenstates
 
 
 def charge_operator_matrix_elements(

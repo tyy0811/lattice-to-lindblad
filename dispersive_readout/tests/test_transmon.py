@@ -60,3 +60,35 @@ def test_charge_basis_offdiagonal_is_josephson():
         for j in range(trunc.N_charge):
             if abs(i - j) > 1:
                 assert H[i, j] == 0.0
+
+
+# -- diagonalization -----------------------------------------------------------
+
+def test_diagonalize_returns_correct_shapes():
+    trunc = TruncationParams()
+    energies, states = diagonalize_transmon(REFERENCE_DEVICE.transmon, trunc)
+    assert energies.shape == (trunc.N_transmon,)
+    assert states.shape == (trunc.N_charge, trunc.N_transmon)
+
+
+def test_diagonalize_energies_sorted_ascending():
+    energies, _ = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    assert np.all(np.diff(energies) > 0)
+
+
+def test_diagonalize_ground_energy_shifted_to_zero():
+    energies, _ = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    assert energies[0] == pytest.approx(0.0, abs=1e-20)
+
+
+def test_diagonalize_eigenstates_orthonormal():
+    _, states = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    gram = states.conj().T @ states
+    assert np.allclose(gram, np.eye(gram.shape[0]), atol=1e-10)
+
+
+def test_diagonalize_omega01_in_plausible_range():
+    """For the reference device ω_01/2π should be ~4.4–4.8 GHz (Marxer device band)."""
+    energies, _ = diagonalize_transmon(REFERENCE_DEVICE.transmon, REFERENCE_DEVICE.truncation)
+    omega_01_hz = energies[1] / _TWO_PI
+    assert 4.3e9 < omega_01_hz < 4.9e9, f"omega_01/2π = {omega_01_hz/1e9:.3f} GHz outside Marxer band"
