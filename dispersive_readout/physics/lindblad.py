@@ -91,5 +91,68 @@ def build_hamiltonian(
     drive_params: DriveParams,
     frame: Literal["rotating", "dispersive"] = "rotating",
 ) -> tuple[qt.Qobj, list]:
-    """Rotating-frame drift + time-dependent drive spec. Implemented in Task 11."""
-    raise NotImplementedError  # Task 11
+    """Drift Hamiltonian + QuTiP-compatible drive spec.
+
+    Rotating frame at ω_d = ω_r + detuning:
+      H_q  = Σ_j (ω_j − j ω_d) |j><j| ⊗ I_r
+      H_r  = (ω_r − ω_d) a†a
+      H_c  = g Σ_{jk} <j|n̂|k> |j><k| ⊗ (a + a†)
+      H_drive(t) = ε(t) (a + a†)
+
+    ε(t) is an erf-difference flat-top pulse with Gaussian edges of width σ.
+
+    'dispersive' frame is not implemented in Module 1; it is reserved for
+    validation-only use. Calling with frame='dispersive' raises
+    NotImplementedError. Do not silently return rotating frame instead.
+    """
+    if frame not in ("rotating",):
+        raise NotImplementedError(f"frame '{frame}' not implemented in Module 1")
+
+    tr = device.truncation
+    Nq = tr.N_transmon
+    Nr = tr.N_resonator
+
+    energies, eigenstates = diagonalize_transmon(device.transmon, tr)
+    n_mat = charge_operator_matrix_elements(eigenstates, tr)
+
+    # Drive frequency: on resonance with resonator plus optional detuning.
+    omega_d = device.resonator.omega_r + drive_params.detuning
+
+    # Transmon term in rotating frame: diag(omega_j - j * omega_d)
+    qubit_diag = np.array([energies[j] - j * omega_d for j in range(Nq)])
+    H_q = qt.tensor(qt.Qobj(np.diag(qubit_diag)), qt.qeye(Nr))
+
+    # Resonator term: (omega_r - omega_d) a†a
+    a = qt.tensor(qt.qeye(Nq), qt.destroy(Nr))
+    H_r = (device.resonator.omega_r - omega_d) * a.dag() * a
+
+    # Coupling term: g * <j|n̂|k> * |j><k| ⊗ (a + a†)
+    # Retain only adjacent selection-rule contributions; full matrix keeps all.
+    n_op_q = qt.tensor(qt.Qobj(n_mat), qt.qeye(Nr))
+    H_c = device.coupling.g * n_op_q * (a + a.dag())
+
+    # Symmetrize to absorb floating-point asymmetries (~1e-6 rad/s at
+    # frequency scales of 1e10 rad/s, well below any physical resolution);
+    # QuTiP's isherm check is strict and would otherwise return False.
+    H0_raw = H_q + H_r + H_c
+    H0 = 0.5 * (H0_raw + H0_raw.dag())
+
+    # Drive operator: ε(t) (a + a†)
+    drive_op = a + a.dag()
+
+    # Envelope: erf-difference flat-top with sigma_edge gaussian rise/fall.
+    eps_0 = drive_params.amplitude
+    t_end = drive_params.duration
+    sigma = drive_params.edge_sigma
+    t_rise = 3.0 * sigma
+    t_fall = t_end - t_rise
+    if t_fall <= t_rise + 2.0 * sigma:
+        raise ValueError(
+            f"Drive duration {t_end*1e9:.1f} ns too short for rise/fall "
+            f"width {sigma*1e9:.1f} ns; need t_end > 6*sigma + 2*sigma."
+        )
+
+    def envelope(t: float, args: dict) -> float:
+        return 0.5 * eps_0 * (erf((t - t_rise) / sigma) - erf((t - t_fall) / sigma))
+
+    return H0, [drive_op, envelope]
