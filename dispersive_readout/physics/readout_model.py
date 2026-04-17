@@ -228,4 +228,33 @@ def snr_vs_integration_time(
     drive_params: DriveParams,
     t_integration_values: np.ndarray,
 ) -> np.ndarray:
-    raise NotImplementedError  # Task 18
+    """SNR(t_int) using the physical homodyne formula SNR = |Δc|/σ_per_quadrature
+    with σ_per_quadrature = √(t_int / (4κ)).
+
+    Runs one |0⟩ trajectory and one |1⟩ trajectory out to the maximum
+    t_integration value, then computes SNR for each window (0, t_int).
+    """
+    if np.any(t_integration_values <= 0):
+        raise ValueError("t_integration_values must be strictly positive.")
+
+    t_max = float(t_integration_values.max())
+    if t_max > drive_params.duration:
+        raise ValueError(
+            f"t_integration max {t_max*1e9:.1f} ns exceeds drive duration "
+            f"{drive_params.duration*1e9:.1f} ns."
+        )
+
+    # Use a fine grid so cumulative-trapezoid integration is accurate at all windows.
+    t_list = np.linspace(0.0, drive_params.duration, 1001)
+    r0 = simulate_readout(device, drive_params, initial_qubit_state=0, t_list=t_list)
+    r1 = simulate_readout(device, drive_params, initial_qubit_state=1, t_list=t_list)
+
+    snrs = np.zeros_like(t_integration_values, dtype=float)
+    kappa = device.resonator.kappa
+    for i, t_int in enumerate(t_integration_values):
+        c0 = r0.integrated_iq((0.0, float(t_int)))
+        c1 = r1.integrated_iq((0.0, float(t_int)))
+        sep = abs(c1 - c0)
+        sigma = np.sqrt(float(t_int) / (4.0 * kappa))
+        snrs[i] = sep / sigma if sigma > 0 else float("inf")
+    return snrs

@@ -114,3 +114,17 @@ def test_assignment_fidelity_sanity_on_reference_device():
     window = (50e-9, 500e-9)
     f = compute_assignment_fidelity(r0, r1, window, n_shots=20000, noise_model="gaussian")
     assert f.F_assign >= 0.95, f"Reference device fidelity {f.F_assign:.4f} below 0.95 — flag to human."
+
+
+def test_snr_vs_integration_time_shape_and_monotone_rise():
+    """SNR should rise roughly as sqrt(t) over short integrations and plateau."""
+    d = REFERENCE_DEVICE
+    drv = _default_drive()
+    t_int = np.linspace(50e-9, 450e-9, 9)
+    snr = snr_vs_integration_time(d, drv, t_int)
+    assert snr.shape == (9,)
+    # Monotone rise before plateau: first half must be non-decreasing (tolerating noise)
+    early = snr[: len(snr) // 2]
+    assert np.all(np.diff(early) >= -0.05), f"SNR not rising: {early}"
+    # Final SNR should exceed the first SNR
+    assert snr[-1] > snr[0]
