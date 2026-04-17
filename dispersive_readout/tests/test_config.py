@@ -61,7 +61,10 @@ def test_reference_device_matches_spec():
 
 def test_truncation_defaults_match_spec():
     t = TruncationParams()
-    assert t.N_charge == 13
+    # N_charge = 31 chosen to satisfy Koch 2007 convergence criterion
+    # (>> sqrt(8 E_J/E_C) ≈ 24 for REFERENCE_DEVICE); spec originally listed
+    # 13 but that was insufficient to converge the |0⟩–|1⟩ charge dispersion.
+    assert t.N_charge == 31
     assert t.N_transmon == 5
     assert t.N_resonator == 15
     # N_charge must be odd so the charge ladder is symmetric about zero

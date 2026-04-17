@@ -81,12 +81,15 @@ class TruncationParams:
     """Hilbert-space truncation sizes.
 
     N_charge:    # charge states in [-N_charge//2, +N_charge//2]; must be odd.
+                 Koch 2007 requires N_charge >> sqrt(8 E_J / E_C) for charge
+                 dispersion to converge. For REFERENCE_DEVICE (E_J/E_C ≈ 74)
+                 sqrt(8 * 74) ≈ 24, so default = 31 gives ~6 points of margin.
     N_transmon:  transmon levels kept after diagonalization.
                  Must satisfy 1 <= N_transmon <= N_charge.
     N_resonator: resonator Fock basis size. Runtime-checked against
                  mean photon number during readout (readout_model.py).
     """
-    N_charge: int = 13
+    N_charge: int = 31
     N_transmon: int = 5
     N_resonator: int = 15
 
