@@ -12,7 +12,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from dispersive_readout.physics.config import REFERENCE_DEVICE, TruncationParams
+from dispersive_readout.physics.config import DriveParams, REFERENCE_DEVICE, TruncationParams
 from dispersive_readout.physics.transmon import diagonalize_transmon, transmon_summary
 
 _TWO_PI = 2.0 * math.pi
@@ -320,6 +320,39 @@ def test_V4b_purcell_formula_matches_dressed_state_overlap():
         f"V4b FAIL: γ_P analytic/2π = {gamma_P_analytic/_TWO_PI/1e3:.3f} kHz, "
         f"dressed-overlap/2π = {gamma_P_dressed/_TWO_PI/1e3:.3f} kHz, "
         f"rel err = {rel_err:.3%}"
+    )
+
+
+@pytest.mark.slow
+def test_N_resonator_convergence_during_readout():
+    """End-of-pulse <a> must change by < 1e-3 (absolute) when N_resonator: 15 → 20.
+
+    If this fails at the reference amplitude, bump N_resonator to 25 and
+    flag per spec §8 item 3. In the dispersive-frame refactor (Task 15),
+    mean photon number sits well below 1 at this drive, so N_res=15 has
+    wide safety margin; this test guards against accidental drive-amplitude
+    increases or resonator-parameter regressions that would push photons
+    toward the Fock cutoff.
+    """
+    from dispersive_readout.physics.config import TruncationParams
+    from dispersive_readout.physics.readout_model import simulate_readout
+    d_15 = REFERENCE_DEVICE
+    d_20 = replace(
+        REFERENCE_DEVICE,
+        truncation=TruncationParams(N_charge=31, N_transmon=5, N_resonator=20),
+    )
+    drv = DriveParams(amplitude=_TWO_PI * 2e6, duration=500e-9, detuning=0.0)
+    t_list = np.linspace(0.0, drv.duration, 151)
+
+    res15 = simulate_readout(d_15, drv, initial_qubit_state=0, t_list=t_list)
+    res20 = simulate_readout(d_20, drv, initial_qubit_state=0, t_list=t_list)
+
+    end15 = res15.a_expectation[-20:].mean()
+    end20 = res20.a_expectation[-20:].mean()
+    diff = abs(end15 - end20)
+    assert diff < 1e-3, (
+        f"N_resonator NOT CONVERGED at 15: |<a>_15 − <a>_20| = {diff:.2e}. "
+        f"Bump to 25 and re-flag."
     )
 
 
