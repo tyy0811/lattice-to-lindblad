@@ -7,3 +7,4 @@ from .operating_point import (
     calibrate_drive_amplitude,
     get_reference_operating_point,
 )
+from .purcell_isolation import analytic_purcell_rate

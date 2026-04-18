@@ -51,3 +51,17 @@ def test_analytic_calibration_hits_target_fidelity_within_3_sigma():
         f"Calibration gave F={f.F_assign:.4f}, expected {target}±{3*sigma_shot:.4f}. "
         f"Either the analytic formula is wrong or fallback is needed."
     )
+
+
+def test_analytic_purcell_rate_positive_at_reference():
+    """γ_P at REFERENCE should be positive and of order (g/Δ)²κ ~ O(kHz)."""
+    from dispersive_readout.physics import REFERENCE_DEVICE
+    from dispersive_readout.analysis import analytic_purcell_rate
+
+    gamma_P = analytic_purcell_rate(REFERENCE_DEVICE)
+    assert gamma_P > 0.0
+    # Order-of-magnitude sanity: g/Δ ≈ 120 MHz / 2700 MHz ≈ 0.044
+    # γ_P / κ ≈ 0.044² ≈ 1.9e-3; κ/2π = 5 MHz → γ_P/2π ~ 9.5 kHz
+    kappa = REFERENCE_DEVICE.resonator.kappa
+    ratio = gamma_P / kappa
+    assert 1e-4 < ratio < 1e-1, f"γ_P/κ = {ratio:.2e} outside plausible range"
