@@ -26,6 +26,7 @@ Seven substantive blockers were raised during brainstorming and resolved with sp
 | 6 | Reduce `purcell_isolation.py` to one function (`analytic_purcell_rate`); replace moot B3 tests with `test_simulated_purcell_matches_analytic_within_1_percent` at REFERENCE + `..._at_strong_coupling` at 2× REFERENCE coupling with 5% tolerance | Post-blocker-2, Purcell is a proper collapse-operator channel, so `effective_T1_from_device` and `decomposed_T1` are YAGNI. Original B3 compared Hamiltonian frames made equivalent by blocker 1. |
 | 7 | Figure 2 presentation is two-tier: short caption (~70 words, 5-second read) + adjacent methods note (~140 words) carrying the defensive content from blockers 1, 3, 5, 6 | Stacked in one caption the defensive sentences hit ~180 words, defeating the caption's 5-second-read purpose. |
 | 8 | B2 criterion amended from `\|R\| < 0.2 × denom` to `\|R\| ≤ max(3σ_R, 0.2 × denom)`, with regime reporting. Figure-producing runs use `n_shots=100_000` (new kwarg on `get_reference_operating_point`) to recover the physics-dominated regime. CI still runs at `n_shots=10_000` for speed. | At REFERENCE with n_shots=10⁴, σ_shot ≈ 10⁻³ is comparable to (F_ideal − F_full) ≈ 1.5×10⁻³, making the original relative-only criterion unfalsifiable on the physics question it was designed to test. Surfaced at Task 8 implementation when B2 fluctuated 0.2–1.4 across identical-physics runs. |
+| 9 | Three coupled changes from adversarial review: (a) `compute_full_error_budget` passes a single shared F_full baseline into each per-channel computation (variance reduction); (b) `ChannelContribution.delta_F` validator no longer clips [-0.005, 0] to 0 — it preserves signed values and only raises for `< -0.005`; (c) calibration-sensitivity `delta_F_uncertainty` combines asymmetry and shot-noise SE in quadrature rather than asymmetry alone. | (a) Per-channel re-sampled baselines inflate the residual noise and make B1's algebraic identity the only thing being validated. (b) One-sided floor converts symmetric shot noise into asymmetric positive bars, biasing the mean upward for channels near the shot-noise floor and corrupting the published YAML at the data-model level. (c) Symmetric perturbations can produce asymmetry ≈ 0 even when all three fidelities are individually noisy, collapsing the reported uncertainty to near zero. All three corrupt the physical attribution, not just the plot presentation. |
 
 ---
 
@@ -79,8 +80,10 @@ where `F_ideal` = all four active-loss channels disabled (`DecoherenceParams(gam
 **Group B — Calibration sensitivity (2 channels).** Each measures F loss under a named perturbation about the nominal calibration:
 
 ```
-ΔF_c = mean(|F_full − F_+|, |F_full − F_-|)     (always non-negative)
-err_c = |F_+ − F_-| / 2                          (asymmetry as error bar)
+ΔF_c    = mean(|F_full − F_+|, |F_full − F_-|)               (always non-negative)
+err_asy = |F_+ − F_-| / 2                                     (asymmetry)
+σ_shot_Δ² = σ_F_full² + 0.25 × (σ_F_+² + σ_F_-²)              (shot-noise propagated into the mean)
+err_c   = sqrt(err_asy² + σ_shot_Δ²)                          (amendment 9c)
 ```
 
 Group-B bars do **not** enter the arithmetic identity and are not summable with Group A. Error bars on calibration bars are `err_c` (asymmetry), not bootstrap uncertainty.
@@ -284,10 +287,14 @@ class ChannelContribution(BaseModel):
 
     @field_validator("delta_F")
     @classmethod
-    def nonnegative(cls, v: float) -> float:
-        if v < -0.005:       # shot-noise floor
+    def not_significantly_negative(cls, v: float) -> float:
+        # Amendment 9b: preserve signed values. The -0.005 hard gate still
+        # catches turn-off-logic bugs that would push ΔF strongly negative,
+        # but small shot-noise negatives are stored as-is so the residual
+        # and the YAML do not get a one-sided bias.
+        if v < -0.005:
             raise ValueError(f"Channel contribution unexpectedly negative: {v}")
-        return max(v, 0.0)
+        return v
 
 
 class ErrorBudget(BaseModel):

@@ -1,12 +1,25 @@
 """Coherent/incoherent error-budget decomposition data model and computation.
 
 See MODULE_2_SPEC.md §2 (methodology), §5.3 (schemas), §6 (tests).
+Amendment 9 changes the shared-baseline budget computation, the signed-ΔF
+validator, and the calibration-sensitivity uncertainty propagation.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import math
+from dataclasses import replace
 from typing import Literal
 
+import numpy as np
 from pydantic import BaseModel, field_validator
+
+from ..physics.config import DecoherenceParams, DeviceConfig, DriveParams
+from ..physics.readout_model import (
+    compute_assignment_fidelity,
+    simulate_readout,
+)
 
 
 ChannelName = Literal[
@@ -24,10 +37,14 @@ ChannelGroup = Literal["active_loss", "calibration_sensitivity"]
 class ChannelContribution(BaseModel):
     """Single channel's contribution to the error budget.
 
-    For active_loss channels: delta_F = F_c_off - F_full (non-negative modulo
-    shot noise); uncertainty is analytic binomial SE propagated in quadrature.
+    For active_loss channels: delta_F = F_c_off - F_full (may be slightly
+    negative from shot noise; signed value is preserved). Uncertainty is
+    analytic binomial SE propagated in quadrature.
+
     For calibration_sensitivity channels: delta_F = mean(|F_full - F_±|)
-    (non-negative by construction); uncertainty is the ± asymmetry |F_+ - F_-|/2.
+    (non-negative by construction). Uncertainty combines the ± asymmetry
+    and the shot-noise SE of the mean-of-abs estimator in quadrature
+    (amendment 9c).
     """
     name: ChannelName
     group: ChannelGroup
@@ -38,14 +55,18 @@ class ChannelContribution(BaseModel):
 
     @field_validator("delta_F")
     @classmethod
-    def nonnegative(cls, v: float) -> float:
+    def not_significantly_negative(cls, v: float) -> float:
+        # Amendment 9b: preserve signed values. The -0.005 hard gate still
+        # catches turn-off-logic bugs that would push ΔF strongly negative,
+        # but small shot-noise negatives are stored as-is so the residual
+        # and the YAML do not get a one-sided bias.
         if v < -0.005:
             raise ValueError(
                 f"Channel contribution unexpectedly negative: {v}. "
-                f"Small negatives from shot noise are floored to zero; "
-                f"< -0.005 indicates a bug in the turn-off logic."
+                f"< -0.005 indicates a bug in the turn-off logic; small "
+                f"shot-noise-range negatives are preserved as signed."
             )
-        return max(v, 0.0)
+        return v
 
 
 class ErrorBudget(BaseModel):
@@ -111,18 +132,6 @@ def export_budget_to_yaml(budget: ErrorBudget, path) -> None:
     )
 
 
-import math
-from dataclasses import replace
-
-import numpy as np
-
-from ..physics.config import DecoherenceParams, DeviceConfig, DriveParams
-from ..physics.readout_model import (
-    simulate_readout,
-    compute_assignment_fidelity,
-)
-
-
 def _F_at(
     device: DeviceConfig,
     drive: DriveParams,
@@ -151,120 +160,119 @@ def _device_with_decoherence(device: DeviceConfig, **overrides) -> DeviceConfig:
     )
 
 
+# Active-loss channel → DecoherenceParams override to turn that channel off.
+_ACTIVE_LOSS_OVERRIDES: dict[ChannelName, dict] = {
+    "T1_intrinsic":   {"gamma_1": 0.0},
+    "pure_dephasing": {"gamma_phi": 0.0},
+    "thermal":        {"n_th": 0.0},
+    "purcell":        {"purcell_enabled": False},
+}
+
+_ACTIVE_LOSS_DESCRIPTIONS: dict[ChannelName, str] = {
+    "T1_intrinsic":   "Fidelity loss from intrinsic T1 relaxation (γ_1).",
+    "pure_dephasing": "Fidelity loss from pure dephasing (γ_φ).",
+    "thermal":        "Fidelity loss from thermal bath occupation (n_th).",
+    "purcell":        "Fidelity loss from Purcell-enhanced decay (g²κ/Δ²).",
+}
+
+
+def _active_loss_contribution(
+    operating_point,
+    channel: ChannelName,
+    F_full: float,
+    sigma_full: float,
+) -> ChannelContribution:
+    """Active-loss ΔF using a caller-provided shared baseline (amendment 9a)."""
+    device = operating_point.device
+    drive = operating_point.drive
+    window = operating_point.integration_window
+    n_shots = operating_point.n_shots
+
+    dev_off = _device_with_decoherence(device, **_ACTIVE_LOSS_OVERRIDES[channel])
+    F_off, sigma_off = _F_at(dev_off, drive, window, n_shots)
+    delta_F = F_off - F_full
+    sigma_delta = math.sqrt(sigma_off ** 2 + sigma_full ** 2)
+    return ChannelContribution(
+        name=channel,
+        group="active_loss",
+        delta_F=delta_F,
+        delta_F_uncertainty=sigma_delta,
+        description=_ACTIVE_LOSS_DESCRIPTIONS[channel],
+    )
+
+
+def _calibration_contribution(
+    operating_point,
+    channel: ChannelName,
+    F_full: float,
+    sigma_full: float,
+) -> ChannelContribution:
+    """Calibration-sensitivity ΔF with shot-noise-propagated uncertainty
+    (amendment 9c)."""
+    device = operating_point.device
+    drive = operating_point.drive
+    window = operating_point.integration_window
+    n_shots = operating_point.n_shots
+
+    if channel == "drive_amplitude":
+        perturbation = 0.05
+        drive_plus = replace(drive, amplitude=drive.amplitude * (1.0 + perturbation))
+        drive_minus = replace(drive, amplitude=drive.amplitude * (1.0 - perturbation))
+        description = "Fidelity loss under ±5% drive amplitude miscalibration."
+        perturbation_description = "amplitude ±5% of nominal ε₀"
+    elif channel == "drive_detuning":
+        kappa = device.resonator.kappa
+        perturbation = kappa / 4.0
+        drive_plus = replace(drive, detuning=drive.detuning + perturbation)
+        drive_minus = replace(drive, detuning=drive.detuning - perturbation)
+        description = "Fidelity loss under ±κ/4 drive detuning error."
+        perturbation_description = "detuning ±κ/4 about nominal ω_d = ω_r"
+    else:
+        raise ValueError(f"Not a calibration-sensitivity channel: {channel!r}")
+
+    F_plus, sigma_plus = _F_at(device, drive_plus, window, n_shots)
+    F_minus, sigma_minus = _F_at(device, drive_minus, window, n_shots)
+
+    delta_F = 0.5 * (abs(F_full - F_plus) + abs(F_full - F_minus))
+    # Amendment 9c: combine asymmetry and shot-noise SE of mean-of-abs.
+    # Var(0.5(F_full − F_+ + F_full − F_−)) = σ_F_full² + 0.25(σ_+² + σ_−²)
+    # (assuming independent shot draws; correct when each _F_at call uses its
+    # own ephemeral RNG, which it does).
+    err_asymmetry = 0.5 * abs(F_plus - F_minus)
+    sigma_shot_sq = sigma_full ** 2 + 0.25 * (sigma_plus ** 2 + sigma_minus ** 2)
+    err_total = math.sqrt(err_asymmetry ** 2 + sigma_shot_sq)
+
+    return ChannelContribution(
+        name=channel,
+        group="calibration_sensitivity",
+        delta_F=delta_F,
+        delta_F_uncertainty=err_total,
+        description=description,
+        perturbation_description=perturbation_description,
+    )
+
+
 def compute_channel_contribution(
     operating_point,
     channel: ChannelName,
 ) -> ChannelContribution:
-    """Compute the marginal fidelity loss attributable to a single channel.
-
-    Active-loss channels (T1, dephasing, thermal, Purcell) zero their
-    respective field and compute ΔF = F_off − F_full. Calibration-sensitivity
-    channels (drive_amplitude, drive_detuning) perturb DriveParams and
-    compute mean-of-absolute losses.
-
-    See MODULE_2_SPEC.md §2.1 and §2.3 for details.
+    """Public per-channel API: computes a fresh baseline and returns one
+    ChannelContribution. For standalone use (single-channel sanity
+    checks, tests). For the full budget, `compute_full_error_budget`
+    reuses a single baseline across channels (amendment 9a).
     """
     device = operating_point.device
     drive = operating_point.drive
     window = operating_point.integration_window
     n_shots = operating_point.n_shots
 
-    # Baseline F (all channels on)
     F_full, sigma_full = _F_at(device, drive, window, n_shots)
 
-    if channel == "T1_intrinsic":
-        dev_off = _device_with_decoherence(device, gamma_1=0.0)
-        F_off, sigma_off = _F_at(dev_off, drive, window, n_shots)
-        delta_F = F_off - F_full
-        sigma_delta = math.sqrt(sigma_off**2 + sigma_full**2)
-        return ChannelContribution(
-            name="T1_intrinsic",
-            group="active_loss",
-            delta_F=delta_F,
-            delta_F_uncertainty=sigma_delta,
-            description="Fidelity loss from intrinsic T1 relaxation (γ_1).",
-        )
-
-    if channel == "pure_dephasing":
-        dev_off = _device_with_decoherence(device, gamma_phi=0.0)
-        F_off, sigma_off = _F_at(dev_off, drive, window, n_shots)
-        delta_F = F_off - F_full
-        sigma_delta = math.sqrt(sigma_off**2 + sigma_full**2)
-        return ChannelContribution(
-            name="pure_dephasing",
-            group="active_loss",
-            delta_F=delta_F,
-            delta_F_uncertainty=sigma_delta,
-            description="Fidelity loss from pure dephasing (γ_φ).",
-        )
-
-    if channel == "thermal":
-        dev_off = _device_with_decoherence(device, n_th=0.0)
-        F_off, sigma_off = _F_at(dev_off, drive, window, n_shots)
-        delta_F = F_off - F_full
-        sigma_delta = math.sqrt(sigma_off**2 + sigma_full**2)
-        return ChannelContribution(
-            name="thermal",
-            group="active_loss",
-            delta_F=delta_F,
-            delta_F_uncertainty=sigma_delta,
-            description="Fidelity loss from thermal bath occupation (n_th).",
-        )
-
-    if channel == "purcell":
-        dev_off = _device_with_decoherence(device, purcell_enabled=False)
-        F_off, sigma_off = _F_at(dev_off, drive, window, n_shots)
-        delta_F = F_off - F_full
-        sigma_delta = math.sqrt(sigma_off**2 + sigma_full**2)
-        return ChannelContribution(
-            name="purcell",
-            group="active_loss",
-            delta_F=delta_F,
-            delta_F_uncertainty=sigma_delta,
-            description="Fidelity loss from Purcell-enhanced decay (g²κ/Δ²).",
-        )
-
-    if channel == "drive_amplitude":
-        perturbation = 0.05
-        drive_plus = replace(drive, amplitude=drive.amplitude * (1.0 + perturbation))
-        drive_minus = replace(drive, amplitude=drive.amplitude * (1.0 - perturbation))
-        F_plus, sigma_plus = _F_at(device, drive_plus, window, n_shots)
-        F_minus, sigma_minus = _F_at(device, drive_minus, window, n_shots)
-        delta_F = 0.5 * (abs(F_full - F_plus) + abs(F_full - F_minus))
-        # Asymmetry error bar
-        err = 0.5 * abs(F_plus - F_minus)
-        return ChannelContribution(
-            name="drive_amplitude",
-            group="calibration_sensitivity",
-            delta_F=delta_F,
-            delta_F_uncertainty=err,
-            description="Fidelity loss under ±5% drive amplitude miscalibration.",
-            perturbation_description="amplitude ±5% of nominal ε₀",
-        )
-
-    if channel == "drive_detuning":
-        kappa = device.resonator.kappa
-        perturbation = kappa / 4.0
-        drive_plus = replace(drive, detuning=drive.detuning + perturbation)
-        drive_minus = replace(drive, detuning=drive.detuning - perturbation)
-        F_plus, sigma_plus = _F_at(device, drive_plus, window, n_shots)
-        F_minus, sigma_minus = _F_at(device, drive_minus, window, n_shots)
-        delta_F = 0.5 * (abs(F_full - F_plus) + abs(F_full - F_minus))
-        err = 0.5 * abs(F_plus - F_minus)
-        return ChannelContribution(
-            name="drive_detuning",
-            group="calibration_sensitivity",
-            delta_F=delta_F,
-            delta_F_uncertainty=err,
-            description="Fidelity loss under ±κ/4 drive detuning error.",
-            perturbation_description="detuning ±κ/4 about nominal ω_d = ω_r",
-        )
-
+    if channel in _ACTIVE_LOSS_OVERRIDES:
+        return _active_loss_contribution(operating_point, channel, F_full, sigma_full)
+    if channel in ("drive_amplitude", "drive_detuning"):
+        return _calibration_contribution(operating_point, channel, F_full, sigma_full)
     raise NotImplementedError(f"Channel {channel!r} not yet implemented.")
-
-
-import hashlib
-import json
 
 
 def _operating_point_id(operating_point) -> str:
@@ -305,8 +313,13 @@ def compute_full_error_budget(
 ) -> ErrorBudget:
     """Compute the complete error budget at the given operating point.
 
+    Per amendment 9a, all six channel contributions share a single F_full
+    baseline sampled once at the budget level. This variance-reduces the
+    per-channel ΔF estimates and keeps the residual math consistent with
+    the channel math (both reference the same F_full sample).
+
     Returns an ErrorBudget with:
-    - F_full: baseline fidelity (all channels on)
+    - F_full: shared baseline fidelity (all channels on)
     - F_ideal: ceiling with all 4 active-loss channels disabled
     - channels: list of 6 ChannelContribution
     - residual_active: R_active = (F_ideal - F_full) - Σ_active ΔF_c
@@ -320,9 +333,10 @@ def compute_full_error_budget(
     window = operating_point.integration_window
     n_shots = operating_point.n_shots
 
+    # Single shared baseline, reused by every channel (amendment 9a).
     F_full, sigma_full = _F_at(device, drive, window, n_shots)
 
-    # F_ideal: all active-loss channels disabled
+    # F_ideal: all active-loss channels disabled simultaneously
     dev_ideal = _device_with_decoherence(
         device,
         gamma_1=0.0,
@@ -332,16 +346,38 @@ def compute_full_error_budget(
     )
     F_ideal, sigma_ideal = _F_at(dev_ideal, drive, window, n_shots)
 
-    contributions = [
-        compute_channel_contribution(operating_point, ch) for ch in channels
-    ]
-    active = [c for c in contributions if c.group == "active_loss"]
+    contributions: list[ChannelContribution] = []
+    for ch in channels:
+        if ch in _ACTIVE_LOSS_OVERRIDES:
+            contributions.append(
+                _active_loss_contribution(operating_point, ch, F_full, sigma_full)
+            )
+        elif ch in ("drive_amplitude", "drive_detuning"):
+            contributions.append(
+                _calibration_contribution(operating_point, ch, F_full, sigma_full)
+            )
+        else:
+            raise ValueError(f"Unknown channel: {ch!r}")
 
+    active = [c for c in contributions if c.group == "active_loss"]
+    N = len(active)
     active_sum = sum(c.delta_F for c in active)
     residual_active = (F_ideal - F_full) - active_sum
-    # σ_R² = σ_F_ideal² + σ_F_full² + Σ σ_ΔF²
-    sigma_residual_sq = sigma_ideal**2 + sigma_full**2 + sum(
-        c.delta_F_uncertainty**2 for c in active
+    # Shared-baseline σ_R propagation. With F_full shared across all channel
+    # ΔFs, R = F_ideal − F_full − Σ(F_off_c − F_full) = F_ideal + (N−1)·F_full
+    # − Σ F_off_c, so
+    #   σ_R² = σ_ideal² + (N−1)²·σ_full² + Σ σ_off_c²
+    # Individual σ_ΔF_c² = σ_off_c² + σ_full², so
+    #   Σ σ_off_c² = Σ σ_ΔF_c² − N·σ_full²
+    # → σ_R² = σ_ideal² + ((N−1)² − N)·σ_full² + Σ σ_ΔF_c²
+    # For N=4 the coefficient on σ_full² is 5 (vs the naive 1 that treats
+    # ΔFs as independent). Amendment 9a.
+    sum_sigma_delta_sq = sum(c.delta_F_uncertainty ** 2 for c in active)
+    coeff = (N - 1) ** 2 - N
+    sigma_residual_sq = (
+        sigma_ideal ** 2
+        + coeff * sigma_full ** 2
+        + sum_sigma_delta_sq
     )
     sigma_residual = math.sqrt(sigma_residual_sq)
 
