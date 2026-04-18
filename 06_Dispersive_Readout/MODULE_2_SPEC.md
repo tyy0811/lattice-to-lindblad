@@ -107,23 +107,26 @@ Target: `F_full ≈ 0.99` on the low-amplitude branch of the F(ε₀) curve.
 Dispersive-regime steady-state coherent amplitude for qubit in `|j⟩`:
 
 ```
-α_j(ε₀) = ε₀ / (κ/2 − i(χ_j + ω_r − ω_d))
+α_j(ε₀) = ε₀ / (κ/2 − i(χ_j + (ω_r − ω_d)))
 ```
 
-At detuning = 0 and on-resonance with ω_r, the separation is linear in ε₀:
+At ω_d = ω_r (on-resonance with bare resonator), the separation is linear in ε₀:
 
 ```
-|Δα(ε₀)| = ε₀ × |1/(κ/2 − iχ_0) − 1/(κ/2 − iχ_1)|
+|Δα(ε₀)| = ε₀ × |M|    where    M = 1/(κ/2 − iχ_0) − 1/(κ/2 − iχ_1)
 ```
 
-Closed-form calibration: given target SNR from `F_target = 1 − Q(SNR/2)`:
+`|M|` has units of s/rad (inverse angular-frequency). Using `SNR² = 4κ |Δα|² T_int`
+(Module 1 Task 17, validated against Gambetta 2008) and `F = 1 − Q(SNR/2)`:
 
 ```
-SNR_target ≈ 2 × Φ⁻¹(F_target)         # Φ⁻¹(0.99) ≈ 2.33 → SNR_target ≈ 4.66
-ε₀_analytic = SNR_target / (2 × sqrt(κ × T_int) × |dα/dε₀|)
+SNR_target = 2 × Φ⁻¹(F_target)              # Φ⁻¹(0.99) ≈ 2.326 → SNR_target ≈ 4.65
+ε₀_analytic = SNR_target / (2 × |M| × sqrt(κ × T_int))
 ```
 
 where `T_int = integration_window[1] − integration_window[0]`.
+
+Dimensional check: |M| is s/rad, sqrt(κ·T_int) is dimensionless, so the denominator is s/rad. SNR_target is dimensionless, so ε₀_analytic comes out in rad/s. ✓
 
 **Verification step (mandatory).** Simulate at `ε₀_analytic`, measure `F_verified` via `compute_assignment_fidelity`, compare to `F_target`:
 
@@ -269,6 +272,9 @@ class ChannelContribution(BaseModel):
     delta_F: float            # non-negative (§2.1)
     delta_F_uncertainty: float  # analytic σ for active_loss, asymmetry for calibration_sensitivity
     description: str
+    perturbation_description: str | None = None
+    # Populated only for calibration_sensitivity channels (e.g., "amplitude ±5%",
+    # "detuning ±κ/4"). None for active_loss. Makes YAML export self-documenting.
 
     @field_validator("delta_F")
     @classmethod
@@ -394,15 +400,25 @@ def test_analytic_calibration_hits_target_fidelity_within_3_sigma():
 
 ### 7.1 Layout
 
-Single-panel waterfall, 8 bars left-to-right:
+Single-panel waterfall, 8 bars across two visual groups. Two candidate orderings — to be decided at render time based on visual clarity:
 
+**Candidate A (author-first reading, unusual for waterfalls):**
 ```
 | Total infidelity | [  T1 | dephasing | thermal | Purcell  ] | [ drive_amp | drive_det ] | R_active |
    anchor                   ── Active loss group ──                ── Cal sens group ──      residual
                              (warm palette)                          (cool palette)            (grey)
 ```
 
-Horizontal dashed reference line at `1 − F_ideal`, labeled "Ideal-limit floor."
+**Candidate B (classic waterfall, ideal-floor on left, active-loss sums to measured):**
+```
+| Ideal floor | T1 | dephasing | thermal | Purcell | R_active | === | drive_amp | drive_det |
+                    ── Active loss stacks up to Total infidelity ──            ── Cal sens ──
+                    (warm palette)                              (grey)    (cool palette)
+```
+
+Candidate B is the more conventional waterfall reading (left = baseline ideal, contributions stack rightward to the measured total) and separates calibration sensitivity as a visually-independent group with its own scale. Render both as a first pass on Day 6 morning; pick whichever reads cleanest without requiring the Methods note to decode.
+
+Horizontal dashed reference line at `1 − F_ideal`, labeled "Ideal-limit floor" (Candidate A) or absorbed into the leftmost bar (Candidate B).
 
 Bar heights in 10⁻³ units on y-axis. Annotations above each bar: percentage of total infidelity to 2 sig figs for active-loss and residual bars; `|ΔF| at ±perturbation` for calibration bars (asymmetry shown as small tick marks above and below bar top, not percentage).
 
@@ -436,11 +452,11 @@ Followed immediately by:
 
 **Afternoon:**
 - Task 6: `error_budget.py` Pydantic schemas (`ChannelContribution`, `ErrorBudget`) + B4 Pydantic test.
-- Task 7: `compute_channel_contribution` for each of the 6 channels.
+- Task 7: `compute_channel_contribution` for each of the 6 channels. **In PLAN.md this expands into 7a–7f (one atomic commit per channel):** 7a `T1_intrinsic`, 7b `pure_dephasing`, 7c `thermal`, 7d `purcell`, 7e `drive_amplitude`, 7f `drive_detuning`. Calibration-sensitivity channels (7e, 7f) have non-trivial asymmetry bookkeeping and may balloon; if so, defer 7f to Day 6 morning — it depends only on already-shipped Module 1 API and doesn't block Task 8.
 - Task 8: `compute_full_error_budget` + B1 + B2 tests.
-- Task 9: B3 Purcell sanity tests (REFERENCE + strong coupling).
+- Task 9: B3 Purcell sanity tests (REFERENCE + strong coupling). **May defer the strong-coupling variant (B3b) to Day 6 morning if Day 5 runs long — it's an independent unit test.**
 
-**End-of-day checkpoint:** `ErrorBudget` produced + YAML-serialized for REFERENCE. All 6 channels report nonzero contributions. B1, B2, B3, B4 passing. `n̄/n_crit` ratio measured and recorded.
+**End-of-day checkpoint:** `ErrorBudget` produced + YAML-serialized for REFERENCE. All 6 channels report nonzero contributions. B1, B2, B3a, B4 passing. `n̄/n_crit` ratio measured and recorded.
 
 ### Day 6 (Tue Apr 21) — Figure 2 + polish
 
