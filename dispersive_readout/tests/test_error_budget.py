@@ -250,3 +250,98 @@ def test_B2_active_loss_residual_is_consistent_with_additivity():
         f"Channels interact strongly enough that marginal attribution is "
         f"breaking down — consider regrouping (e.g., merge T1+purcell)."
     )
+
+
+def test_B3_simulated_purcell_matches_analytic_within_1_percent_at_reference():
+    """Simulated ΔF_Purcell vs analytic γ_P-weighted prediction at REFERENCE.
+
+    The test compares Purcell rates, not ΔF values directly: fit γ_P from
+    simulated T1_eff with γ_1=γ_φ=n_th=0 (Purcell is the only remaining
+    relaxation channel), compare to analytic_purcell_rate at 1% tolerance.
+    Physics ceiling for 2nd-order PT residual is ~0.2% at g/Δ≈0.044.
+    """
+    from dispersive_readout.physics import REFERENCE_DEVICE
+    from dispersive_readout.analysis import analytic_purcell_rate
+
+    # Analytic prediction
+    gamma_P_analytic = analytic_purcell_rate(REFERENCE_DEVICE)
+
+    from dataclasses import replace
+    from dispersive_readout.physics import DriveParams, simulate_readout
+    from dispersive_readout.physics.config import DeviceConfig
+
+    # Build γ_1=γ_φ=n_th=0 device with Purcell still on
+    new_dec = replace(REFERENCE_DEVICE.decoherence, gamma_1=0.0, gamma_phi=0.0, n_th=0.0)
+    dev = DeviceConfig(
+        transmon=REFERENCE_DEVICE.transmon,
+        resonator=REFERENCE_DEVICE.resonator,
+        coupling=REFERENCE_DEVICE.coupling,
+        decoherence=new_dec,
+        truncation=REFERENCE_DEVICE.truncation,
+    )
+
+    # Zero-drive (H_drive=0); long enough to see Purcell decay.
+    # Use a very small amplitude so drive doesn't dominate.
+    T = 5.0 / gamma_P_analytic  # ~5 Purcell lifetimes
+    T = min(T, 100e-6)           # cap at 100 μs to bound solver cost
+    drv = DriveParams(amplitude=1e-6, duration=T, detuning=0.0, edge_sigma=2e-9)
+    r = simulate_readout(dev, drv, initial_qubit_state=1)
+
+    # Extract γ_P from exponential fit of P(|1⟩)(t): P(|1⟩) = exp(-γ_P t)
+    p1 = r.qubit_populations[:, 1]
+    t = r.t
+    # Fit in log space; restrict to P(|1⟩) > 0.1 for clean fit.
+    mask = p1 > 0.1
+    log_p1 = np.log(p1[mask])
+    t_fit = t[mask]
+    slope, _intercept = np.polyfit(t_fit, log_p1, 1)
+    gamma_P_sim = -slope
+
+    ratio = gamma_P_sim / gamma_P_analytic
+    assert 0.99 <= ratio <= 1.01, (
+        f"Simulated Purcell γ_P = {gamma_P_sim:.3e} rad/s, analytic = "
+        f"{gamma_P_analytic:.3e} rad/s, ratio = {ratio:.4f}. "
+        f"Expected 1 ± 0.01 at REFERENCE."
+    )
+
+
+def test_B3_simulated_purcell_matches_analytic_at_strong_coupling():
+    """Same as B3 at REFERENCE but with 2× coupling (g/Δ ≈ 0.088), 5% tol.
+
+    If this fails but B3a passes, the 2nd-order SW approximation is
+    tighter than we thought — an informative regime-scope measurement,
+    not a bug. Document in the report if it fires."""
+    from dataclasses import replace
+    from dispersive_readout.physics import REFERENCE_DEVICE
+    from dispersive_readout.physics.config import (
+        CouplingParams, DeviceConfig,
+    )
+    from dispersive_readout.physics import DriveParams, simulate_readout
+    from dispersive_readout.analysis import analytic_purcell_rate
+
+    # 2× coupling device
+    new_coup = CouplingParams(g=2.0 * REFERENCE_DEVICE.coupling.g)
+    new_dec = replace(REFERENCE_DEVICE.decoherence, gamma_1=0.0, gamma_phi=0.0, n_th=0.0)
+    dev = DeviceConfig(
+        transmon=REFERENCE_DEVICE.transmon,
+        resonator=REFERENCE_DEVICE.resonator,
+        coupling=new_coup,
+        decoherence=new_dec,
+        truncation=REFERENCE_DEVICE.truncation,
+    )
+
+    gamma_P_analytic = analytic_purcell_rate(dev)
+    T = min(5.0 / gamma_P_analytic, 100e-6)
+    drv = DriveParams(amplitude=1e-6, duration=T, detuning=0.0, edge_sigma=2e-9)
+    r = simulate_readout(dev, drv, initial_qubit_state=1)
+
+    p1 = r.qubit_populations[:, 1]
+    mask = p1 > 0.1
+    slope, _ = np.polyfit(r.t[mask], np.log(p1[mask]), 1)
+    gamma_P_sim = -slope
+    ratio = gamma_P_sim / gamma_P_analytic
+    assert 0.95 <= ratio <= 1.05, (
+        f"At 2×g: simulated γ_P = {gamma_P_sim:.3e}, analytic = "
+        f"{gamma_P_analytic:.3e}, ratio = {ratio:.4f}. 5% tol exceeded; "
+        f"2nd-order SW approximation failing at this coupling."
+    )
