@@ -101,6 +101,70 @@ def _render_candidate_B(budget: ErrorBudget, path: Path) -> None:
     plt.close(fig)
 
 
+def _render_candidate_A(budget: ErrorBudget, path: Path) -> None:
+    """Author-first: Total infidelity | active loss | cal sens | R_active."""
+    active = budget.active_loss_channels
+    calib = budget.calibration_channels
+
+    labels = (
+        ["Total\ninfidelity"]
+        + [c.name.replace("_", "\n") for c in active]
+        + [""]  # separator
+        + [c.name.replace("_", "\n") for c in calib]
+        + ["R_active"]
+    )
+    values = (
+        [budget.total_infidelity]
+        + [c.delta_F for c in active]
+        + [0.0]
+        + [c.delta_F for c in calib]
+        + [budget.residual_active]
+    )
+    errors = (
+        [0.0]
+        + [c.delta_F_uncertainty for c in active]
+        + [0.0]
+        + [c.delta_F_uncertainty for c in calib]
+        + [budget.residual_active_uncertainty]
+    )
+    values_milli = [v * 1e3 for v in values]
+    errors_milli = [e * 1e3 for e in errors]
+
+    warm = plt.cm.OrRd(np.linspace(0.4, 0.85, len(active)))
+    cool = plt.cm.Blues(np.linspace(0.5, 0.85, len(calib)))
+    colors = (
+        ["#333333"]                   # total infidelity anchor
+        + list(warm)
+        + ["none"]                     # separator
+        + list(cool)
+        + ["#555555"]                  # residual
+    )
+
+    fig, ax = plt.subplots(figsize=(8, 4.5), dpi=150)
+    x = np.arange(len(labels))
+    ax.bar(x, values_milli, color=colors, edgecolor="black", linewidth=0.6)
+    ax.errorbar(x, values_milli, yerr=errors_milli, fmt="none",
+                ecolor="black", capsize=2, linewidth=0.8)
+
+    # Reference line at ideal floor
+    ideal_milli = (1.0 - budget.F_ideal) * 1e3
+    ax.axhline(y=ideal_milli, color="grey", linestyle=":", linewidth=0.8)
+    ax.text(len(labels) - 0.5, ideal_milli, f" Ideal floor",
+            va="center", fontsize=8, color="grey")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, fontsize=8)
+    ax.set_ylabel("Contribution to 1 − F (× 10⁻³)", fontsize=10)
+    ax.set_title(
+        f"Candidate A — Assignment Infidelity Decomposition\n"
+        f"F_full = {budget.F_full:.4f}, F_ideal = {budget.F_ideal:.4f}",
+        fontsize=10,
+    )
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main() -> None:
     print("Computing reference operating point (calibration + verification)...")
     # n_shots=100_000 per amendment 8: recovers physics-dominated regime so
@@ -118,11 +182,21 @@ def main() -> None:
     for c in budget.channels:
         print(f"  {c.name:20s}  ΔF = {c.delta_F:.5f} ± {c.delta_F_uncertainty:.5f}")
 
-    png_path = FIG_DIR / "fig2_error_budget.png"
     yaml_path = FIG_DIR / "fig2_data.yaml"
-    _render_candidate_B(budget, png_path)
+    png_B = FIG_DIR / "fig2_error_budget_candidate_B.png"
+    png_A = FIG_DIR / "fig2_error_budget_candidate_A.png"
+    _render_candidate_B(budget, png_B)
+    _render_candidate_A(budget, png_A)
     export_budget_to_yaml(budget, yaml_path)
-    print(f"Wrote {png_path} and {yaml_path}")
+
+    # Winner → canonical Figure 2. Candidate B chosen per spec §7.1 default
+    # (classic waterfall: left=ideal, contributions stack rightward to
+    # measured total; calibration sensitivity as visually-separated group).
+    import shutil
+    winner_path = FIG_DIR / "fig2_error_budget.png"
+    shutil.copy2(png_B, winner_path)
+    print(f"Wrote {png_B}, {png_A}, {yaml_path}")
+    print(f"Winner (Candidate B) → {winner_path}")
 
 
 if __name__ == "__main__":
