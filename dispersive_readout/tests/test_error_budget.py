@@ -345,3 +345,33 @@ def test_B3_simulated_purcell_matches_analytic_at_strong_coupling():
         f"{gamma_P_analytic:.3e}, ratio = {ratio:.4f}. 5% tol exceeded; "
         f"2nd-order SW approximation failing at this coupling."
     )
+
+
+def test_B5_budget_yaml_round_trip(tmp_path):
+    """export_budget_to_yaml + re-read reproduces the ErrorBudget exactly."""
+    from dispersive_readout.analysis import (
+        ErrorBudget, ChannelContribution,
+        get_reference_operating_point, compute_full_error_budget,
+        export_budget_to_yaml,
+    )
+    import yaml
+
+    op = get_reference_operating_point()
+    budget = compute_full_error_budget(op)
+
+    yaml_path = tmp_path / "fig2_data.yaml"
+    export_budget_to_yaml(budget, yaml_path)
+
+    # Re-read and reconstruct
+    reread = yaml.safe_load(yaml_path.read_text())
+    channels = [ChannelContribution(**d) for d in reread["channels"]]
+    reread.pop("channels")
+    round_trip = ErrorBudget(channels=channels, **reread)
+
+    assert round_trip.F_full == budget.F_full
+    assert round_trip.F_ideal == budget.F_ideal
+    assert round_trip.residual_active == budget.residual_active
+    assert len(round_trip.channels) == len(budget.channels)
+    for c_orig, c_new in zip(budget.channels, round_trip.channels):
+        assert c_orig.name == c_new.name
+        assert c_orig.delta_F == c_new.delta_F
