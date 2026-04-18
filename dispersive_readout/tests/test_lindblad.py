@@ -89,3 +89,34 @@ def test_drive_envelope_peaks_near_midpulse():
     mid = drv.duration / 2.0
     # Midpulse should be within 1% of full amplitude
     assert abs(func(mid, {}) - drv.amplitude) < 0.01 * drv.amplitude
+
+
+def test_purcell_disabled_removes_purcell_collapse_operators():
+    """Setting purcell_enabled=False must omit the Purcell channel operators."""
+    from dispersive_readout.physics.config import (
+        DecoherenceParams, DeviceConfig, REFERENCE_DEVICE
+    )
+    from dispersive_readout.physics.lindblad import build_collapse_operators
+
+    tr = REFERENCE_DEVICE.truncation
+    Nq, Nr = tr.N_transmon, tr.N_resonator
+
+    device_on = REFERENCE_DEVICE  # purcell_enabled=True by default
+    device_off = DeviceConfig(
+        transmon=REFERENCE_DEVICE.transmon,
+        resonator=REFERENCE_DEVICE.resonator,
+        coupling=REFERENCE_DEVICE.coupling,
+        decoherence=DecoherenceParams(
+            gamma_1=REFERENCE_DEVICE.decoherence.gamma_1,
+            gamma_phi=REFERENCE_DEVICE.decoherence.gamma_phi,
+            n_th=REFERENCE_DEVICE.decoherence.n_th,
+            purcell_enabled=False,
+        ),
+        truncation=tr,
+    )
+
+    c_ops_on = build_collapse_operators(device_on, Nq, Nr)
+    c_ops_off = build_collapse_operators(device_off, Nq, Nr)
+
+    # Purcell adds Nq-1 operators (|j> -> |j-1> for j=1..Nq-1)
+    assert len(c_ops_on) - len(c_ops_off) == Nq - 1

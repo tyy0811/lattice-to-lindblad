@@ -125,14 +125,15 @@ def build_collapse_operators(
     # κ a acting on that admixture decays the qubit at rate |amplitude|² × κ.
     # Verified in test_V4b against the dressed-state overlap of the full
     # Jaynes-Cummings Hamiltonian.
-    for j in range(1, Nq):
-        delta_j = energies[j] - energies[j - 1] - device.resonator.omega_r
-        n_elem = abs(n_mat[j - 1, j])
-        # Include (1 + n_th) thermal factor for consistency with qubit relaxation.
-        gamma_P = ((device.coupling.g * n_elem) / delta_j) ** 2 * kappa * (1.0 + n_th)
-        if gamma_P > 0:
-            op = qt.basis(Nq, j - 1) * qt.basis(Nq, j).dag()
-            c_ops.append(np.sqrt(gamma_P) * qt.tensor(op, qt.qeye(Nr)))
+    if device.decoherence.purcell_enabled:
+        for j in range(1, Nq):
+            delta_j = energies[j] - energies[j - 1] - device.resonator.omega_r
+            n_elem = abs(n_mat[j - 1, j])
+            # Include (1 + n_th) thermal factor for consistency with qubit relaxation.
+            gamma_P = ((device.coupling.g * n_elem) / delta_j) ** 2 * kappa * (1.0 + n_th)
+            if gamma_P > 0:
+                op = qt.basis(Nq, j - 1) * qt.basis(Nq, j).dag()
+                c_ops.append(np.sqrt(gamma_P) * qt.tensor(op, qt.qeye(Nr)))
 
     return c_ops
 
