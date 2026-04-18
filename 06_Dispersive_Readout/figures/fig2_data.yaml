@@ -1,0 +1,44 @@
+operating_point_id: 8e563e25589f9b93
+F_full: 0.98985
+F_ideal: 0.99216
+residual_active: -0.0006000000000000449
+residual_active_uncertainty: 0.0009759000476483234
+channels:
+- name: T1_intrinsic
+  group: active_loss
+  delta_F: 0.0011400000000000299
+  delta_F_uncertainty: 0.00044053683387430787
+  description: "Fidelity loss from intrinsic T1 relaxation (\u03B3_1)."
+  perturbation_description: null
+- name: pure_dephasing
+  group: active_loss
+  delta_F: 0.0
+  delta_F_uncertainty: 0.00044265191911930173
+  description: "Fidelity loss from pure dephasing (\u03B3_\u03C6)."
+  perturbation_description: null
+- name: thermal
+  group: active_loss
+  delta_F: 0.0
+  delta_F_uncertainty: 0.0004494631764672155
+  description: Fidelity loss from thermal bath occupation (n_th).
+  perturbation_description: null
+- name: purcell
+  group: active_loss
+  delta_F: 0.0017700000000000493
+  delta_F_uncertainty: 0.0004267261575061934
+  description: "Fidelity loss from Purcell-enhanced decay (g\xB2\u03BA/\u0394\xB2\
+    )."
+  perturbation_description: null
+- name: drive_amplitude
+  group: calibration_sensitivity
+  delta_F: 0.0025474999999999803
+  delta_F_uncertainty: 0.0025474999999999803
+  description: "Fidelity loss under \xB15% drive amplitude miscalibration."
+  perturbation_description: "amplitude \xB15% of nominal \u03B5\u2080"
+- name: drive_detuning
+  group: calibration_sensitivity
+  delta_F: 0.02163750000000003
+  delta_F_uncertainty: 0.02163750000000003
+  description: "Fidelity loss under \xB1\u03BA/4 drive detuning error."
+  perturbation_description: "detuning \xB1\u03BA/4 about nominal \u03C9_d = \u03C9\
+    _r"
