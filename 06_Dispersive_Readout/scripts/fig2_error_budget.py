@@ -165,6 +165,33 @@ def _render_candidate_A(budget: ErrorBudget, path: Path) -> None:
     plt.close(fig)
 
 
+def _compute_n_bar_over_n_crit(op) -> tuple[float, float, float]:
+    """Return (n̄_peak, n_crit, ratio) at the operating point.
+
+    n_crit = (Δ_10 / (2g))² per Shillito 2022. n̄_peak is the maximum
+    mean-photon-number measured in a baseline simulation starting in |1⟩
+    (the worse case; drive populates the resonator more there).
+    """
+    from dispersive_readout.physics import simulate_readout
+    from dispersive_readout.physics.transmon import (
+        charge_operator_matrix_elements, diagonalize_transmon,
+    )
+
+    device = op.device
+    tr = device.truncation
+    energies, _ = diagonalize_transmon(device.transmon, tr)
+    g = device.coupling.g
+    omega_r = device.resonator.omega_r
+    delta_10 = energies[1] - energies[0] - omega_r
+    n_crit = (delta_10 / (2.0 * g)) ** 2
+
+    # Peak photon number from a |1> baseline sim
+    r = simulate_readout(device, op.drive, initial_qubit_state=1)
+    n_bar_peak = float(r.photon_number.max())
+
+    return n_bar_peak, float(n_crit), n_bar_peak / float(n_crit)
+
+
 def main() -> None:
     print("Computing reference operating point (calibration + verification)...")
     # n_shots=100_000 per amendment 8: recovers physics-dominated regime so
@@ -181,6 +208,9 @@ def main() -> None:
           f"± {budget.residual_active_uncertainty:.5f}")
     for c in budget.channels:
         print(f"  {c.name:20s}  ΔF = {c.delta_F:.5f} ± {c.delta_F_uncertainty:.5f}")
+
+    n_bar, n_crit, ratio = _compute_n_bar_over_n_crit(op)
+    print(f"  n̄_peak = {n_bar:.2f}, n_crit = {n_crit:.1f}, n̄/n_crit = {ratio:.3f}")
 
     yaml_path = FIG_DIR / "fig2_data.yaml"
     png_B = FIG_DIR / "fig2_error_budget_candidate_B.png"

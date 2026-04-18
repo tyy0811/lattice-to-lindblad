@@ -1,44 +1,44 @@
 operating_point_id: 8e563e25589f9b93
-F_full: 0.99003
-F_ideal: 0.992015
-residual_active: -0.0007149999999999102
-residual_active_uncertainty: 0.0009732645556322293
+F_full: 0.98988
+F_ideal: 0.99224
+residual_active: -6.499999999998174e-05
+residual_active_uncertainty: 0.0009694226344840515
 channels:
 - name: T1_intrinsic
   group: active_loss
-  delta_F: 0.0002749999999999142
-  delta_F_uncertainty: 0.00044215415496181887
+  delta_F: 0.00022500000000003073
+  delta_F_uncertainty: 0.000436013195614536
   description: "Fidelity loss from intrinsic T1 relaxation (\u03B3_1)."
   perturbation_description: null
 - name: pure_dephasing
   group: active_loss
-  delta_F: 0.0005600000000000049
-  delta_F_uncertainty: 0.0004403198269440072
+  delta_F: 0.00017000000000000348
+  delta_F_uncertainty: 0.0004444207949680113
   description: "Fidelity loss from pure dephasing (\u03B3_\u03C6)."
   perturbation_description: null
 - name: thermal
   group: active_loss
   delta_F: 0.0
-  delta_F_uncertainty: 0.0004465106986400219
+  delta_F_uncertainty: 0.00044220999479885044
   description: Fidelity loss from thermal bath occupation (n_th).
   perturbation_description: null
 - name: purcell
   group: active_loss
-  delta_F: 0.0018650000000000055
-  delta_F_uncertainty: 0.0004249374727533444
+  delta_F: 0.0020299999999999763
+  delta_F_uncertainty: 0.00042360303941308157
   description: "Fidelity loss from Purcell-enhanced decay (g\xB2\u03BA/\u0394\xB2\
     )."
   perturbation_description: null
 - name: drive_amplitude
   group: calibration_sensitivity
-  delta_F: 0.0025100000000000122
-  delta_F_uncertainty: 0.0025100000000000122
+  delta_F: 0.002827499999999983
+  delta_F_uncertainty: 0.002827499999999983
   description: "Fidelity loss under \xB15% drive amplitude miscalibration."
   perturbation_description: "amplitude \xB15% of nominal \u03B5\u2080"
 - name: drive_detuning
   group: calibration_sensitivity
-  delta_F: 0.022035000000000027
-  delta_F_uncertainty: 0.022035000000000027
+  delta_F: 0.02201249999999999
+  delta_F_uncertainty: 0.02201249999999999
   description: "Fidelity loss under \xB1\u03BA/4 drive detuning error."
   perturbation_description: "detuning \xB1\u03BA/4 about nominal \u03C9_d = \u03C9\
     _r"
