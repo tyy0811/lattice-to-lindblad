@@ -53,6 +53,32 @@ def test_analytic_calibration_hits_target_fidelity_within_3_sigma():
     )
 
 
+def test_B4_negative_contribution_raises():
+    """ChannelContribution with delta_F < -0.005 must raise ValueError.
+    Small negatives (shot-noise floor) are floored to zero."""
+    from dispersive_readout.analysis import ChannelContribution
+
+    # Below -0.005 floor: must raise
+    with pytest.raises(ValueError, match="negative"):
+        ChannelContribution(
+            name="T1_intrinsic",
+            group="active_loss",
+            delta_F=-0.01,
+            delta_F_uncertainty=1e-4,
+            description="test",
+        )
+
+    # Within shot-noise floor: accepted, floored to 0
+    c = ChannelContribution(
+        name="T1_intrinsic",
+        group="active_loss",
+        delta_F=-0.003,  # > -0.005 floor
+        delta_F_uncertainty=1e-4,
+        description="test",
+    )
+    assert c.delta_F == 0.0
+
+
 def test_analytic_purcell_rate_positive_at_reference():
     """γ_P at REFERENCE should be positive and of order (g/Δ)²κ ~ O(kHz)."""
     from dispersive_readout.physics import REFERENCE_DEVICE

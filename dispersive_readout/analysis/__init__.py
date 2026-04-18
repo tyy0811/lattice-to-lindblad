@@ -8,3 +8,10 @@ from .operating_point import (
     get_reference_operating_point,
 )
 from .purcell_isolation import analytic_purcell_rate
+from .error_budget import (
+    ChannelName,
+    ChannelGroup,
+    ChannelContribution,
+    ErrorBudget,
+    export_budget_to_yaml,
+)
