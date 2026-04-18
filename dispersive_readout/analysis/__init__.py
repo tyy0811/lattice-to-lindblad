@@ -14,4 +14,5 @@ from .error_budget import (
     ChannelContribution,
     ErrorBudget,
     export_budget_to_yaml,
+    compute_channel_contribution,
 )

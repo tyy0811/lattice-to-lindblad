@@ -91,3 +91,19 @@ def test_analytic_purcell_rate_positive_at_reference():
     kappa = REFERENCE_DEVICE.resonator.kappa
     ratio = gamma_P / kappa
     assert 1e-4 < ratio < 1e-1, f"γ_P/κ = {ratio:.2e} outside plausible range"
+
+
+def test_T1_intrinsic_contribution_nonzero_at_reference():
+    """Turning off γ_1 at REFERENCE should improve F by a non-trivial amount."""
+    from dispersive_readout.analysis import (
+        get_reference_operating_point,
+        compute_channel_contribution,
+    )
+
+    op = get_reference_operating_point()
+    c = compute_channel_contribution(op, channel="T1_intrinsic")
+
+    assert c.name == "T1_intrinsic"
+    assert c.group == "active_loss"
+    assert c.delta_F > 0.0
+    assert c.delta_F_uncertainty > 0.0
