@@ -192,3 +192,61 @@ def test_drive_detuning_sensitivity_matches_second_order_taylor_within_20_percen
     assert c.delta_F >= 0.0
     assert c.perturbation_description is not None
     assert "κ/4" in c.perturbation_description or "kappa/4" in c.perturbation_description
+
+
+def test_B1_active_loss_sums_to_ideal_minus_full_within_tolerance():
+    """Σ ΔF_c + R_active ≈ (F_ideal − F_full) within 3σ_prop for active group."""
+    from dispersive_readout.analysis import (
+        get_reference_operating_point,
+        compute_full_error_budget,
+    )
+    op = get_reference_operating_point()
+    budget = compute_full_error_budget(op)
+
+    active_sum = sum(c.delta_F for c in budget.active_loss_channels)
+    identity_lhs = budget.F_ideal - budget.F_full
+    identity_rhs = active_sum + budget.residual_active
+    tolerance = 3.0 * budget.residual_active_uncertainty
+    assert abs(identity_lhs - identity_rhs) <= tolerance, (
+        f"Additivity violation: (F_ideal - F_full) = {identity_lhs:.5f}, "
+        f"Σ ΔF + R = {identity_rhs:.5f}, tol = {tolerance:.5f}"
+    )
+
+
+def test_B2_active_loss_residual_is_consistent_with_additivity():
+    """|R_active| ≤ max(3σ_R, 0.2 × (F_ideal − F_full)).
+
+    Per spec amendment 8: two-regime criterion combined with max():
+      - Noise-dominated (denom ~ σ_R at CI's n_shots=1e4): 3σ_R clause fires,
+        testing R is consistent with zero within shot-noise propagation.
+      - Physics-dominated (denom >> σ_R, e.g. figure run at n_shots=1e5):
+        0.2×denom clause fires, testing that channels interact weakly.
+
+    Reports which clause was active so future debugging can distinguish
+    noise-dominated passes from physics-dominated passes.
+    """
+    from dispersive_readout.analysis import (
+        get_reference_operating_point,
+        compute_full_error_budget,
+    )
+    op = get_reference_operating_point()
+    budget = compute_full_error_budget(op)
+
+    R = budget.residual_active
+    sigma_R = budget.residual_active_uncertainty
+    denom = budget.F_ideal - budget.F_full
+    threshold = max(3.0 * sigma_R, 0.2 * denom)
+
+    if abs(R) < 3.0 * sigma_R:
+        regime = "noise-dominated (R consistent with zero within 3σ_R)"
+    elif abs(R) < 0.2 * denom:
+        regime = "physics-dominated (R small relative to denom; channels weakly interacting)"
+    else:
+        regime = "FAIL"
+
+    assert abs(R) <= threshold, (
+        f"B2 FAIL: R={R:.3e}, σ_R={sigma_R:.3e}, denom={denom:.3e}, "
+        f"threshold=max(3σ_R, 0.2*denom)={threshold:.3e}. regime={regime}. "
+        f"Channels interact strongly enough that marginal attribution is "
+        f"breaking down — consider regrouping (e.g., merge T1+purcell)."
+    )

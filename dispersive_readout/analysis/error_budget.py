@@ -261,3 +261,95 @@ def compute_channel_contribution(
         )
 
     raise NotImplementedError(f"Channel {channel!r} not yet implemented.")
+
+
+import hashlib
+import json
+
+
+def _operating_point_id(operating_point) -> str:
+    """Deterministic hash of OperatingPoint fields for traceability in YAML."""
+    device = operating_point.device
+    payload = {
+        "omega_r": device.resonator.omega_r,
+        "kappa": device.resonator.kappa,
+        "g": device.coupling.g,
+        "E_C": device.transmon.E_C,
+        "E_J": device.transmon.E_J,
+        "gamma_1": device.decoherence.gamma_1,
+        "gamma_phi": device.decoherence.gamma_phi,
+        "n_th": device.decoherence.n_th,
+        "amplitude": operating_point.drive.amplitude,
+        "duration": operating_point.drive.duration,
+        "detuning": operating_point.drive.detuning,
+        "window": list(operating_point.integration_window),
+        "n_shots": operating_point.n_shots,
+    }
+    blob = json.dumps(payload, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()[:16]
+
+
+_DEFAULT_CHANNELS: list[ChannelName] = [
+    "T1_intrinsic",
+    "pure_dephasing",
+    "thermal",
+    "purcell",
+    "drive_amplitude",
+    "drive_detuning",
+]
+
+
+def compute_full_error_budget(
+    operating_point,
+    channels: list[ChannelName] | None = None,
+) -> ErrorBudget:
+    """Compute the complete error budget at the given operating point.
+
+    Returns an ErrorBudget with:
+    - F_full: baseline fidelity (all channels on)
+    - F_ideal: ceiling with all 4 active-loss channels disabled
+    - channels: list of 6 ChannelContribution
+    - residual_active: R_active = (F_ideal - F_full) - Σ_active ΔF_c
+    - residual_active_uncertainty: quadrature-propagated σ_R
+    """
+    if channels is None:
+        channels = _DEFAULT_CHANNELS
+
+    device = operating_point.device
+    drive = operating_point.drive
+    window = operating_point.integration_window
+    n_shots = operating_point.n_shots
+
+    F_full, sigma_full = _F_at(device, drive, window, n_shots)
+
+    # F_ideal: all active-loss channels disabled
+    dev_ideal = _device_with_decoherence(
+        device,
+        gamma_1=0.0,
+        gamma_phi=0.0,
+        n_th=0.0,
+        purcell_enabled=False,
+    )
+    F_ideal, sigma_ideal = _F_at(dev_ideal, drive, window, n_shots)
+
+    contributions = [
+        compute_channel_contribution(operating_point, ch) for ch in channels
+    ]
+    active = [c for c in contributions if c.group == "active_loss"]
+
+    active_sum = sum(c.delta_F for c in active)
+    residual_active = (F_ideal - F_full) - active_sum
+    # σ_R² = σ_F_ideal² + σ_F_full² + Σ σ_ΔF²
+    sigma_residual_sq = sigma_ideal**2 + sigma_full**2 + sum(
+        c.delta_F_uncertainty**2 for c in active
+    )
+    sigma_residual = math.sqrt(sigma_residual_sq)
+
+    return ErrorBudget(
+        operating_point_id=_operating_point_id(operating_point),
+        F_full=F_full,
+        F_ideal=F_ideal,
+        channels=contributions,
+        residual_active=residual_active,
+        residual_active_uncertainty=sigma_residual,
+    )

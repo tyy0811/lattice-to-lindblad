@@ -178,12 +178,22 @@ def calibrate_drive_amplitude(
     )
 
 
-def get_reference_operating_point() -> OperatingPoint:
+def get_reference_operating_point(n_shots: int = 10_000) -> OperatingPoint:
     """Return the canonical operating point for Figure 2.
 
     Calibration runs on first call (< 3 s total: analytic solve + one
     verification sim × two qubit states). No persistent cache — fast
     enough to compute on demand.
+
+    Parameters
+    ----------
+    n_shots : int
+        Shots per fidelity evaluation. Default 10_000 for CI speed; Figure 2
+        script calls with n_shots=100_000 to recover the physics-dominated
+        regime for the waterfall (amendment 8: at 10_000 shots, (F_ideal −
+        F_full) ≈ σ_shot, so B2's per-channel bars and residual-vs-denom
+        ratio are noise-smeared). The calibration itself always uses 10_000
+        shots — σ_shot tolerance is fine for single-point ε₀ recovery.
     """
     integration_window = (50e-9, 500e-9)
     epsilon_0 = calibrate_drive_amplitude(
@@ -202,5 +212,5 @@ def get_reference_operating_point() -> OperatingPoint:
             edge_sigma=2e-9,
         ),
         integration_window=integration_window,
-        n_shots=10_000,
+        n_shots=n_shots,
     )
