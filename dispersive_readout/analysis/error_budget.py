@@ -185,4 +185,79 @@ def compute_channel_contribution(
             description="Fidelity loss from intrinsic T1 relaxation (γ_1).",
         )
 
+    if channel == "pure_dephasing":
+        dev_off = _device_with_decoherence(device, gamma_phi=0.0)
+        F_off, sigma_off = _F_at(dev_off, drive, window, n_shots)
+        delta_F = F_off - F_full
+        sigma_delta = math.sqrt(sigma_off**2 + sigma_full**2)
+        return ChannelContribution(
+            name="pure_dephasing",
+            group="active_loss",
+            delta_F=delta_F,
+            delta_F_uncertainty=sigma_delta,
+            description="Fidelity loss from pure dephasing (γ_φ).",
+        )
+
+    if channel == "thermal":
+        dev_off = _device_with_decoherence(device, n_th=0.0)
+        F_off, sigma_off = _F_at(dev_off, drive, window, n_shots)
+        delta_F = F_off - F_full
+        sigma_delta = math.sqrt(sigma_off**2 + sigma_full**2)
+        return ChannelContribution(
+            name="thermal",
+            group="active_loss",
+            delta_F=delta_F,
+            delta_F_uncertainty=sigma_delta,
+            description="Fidelity loss from thermal bath occupation (n_th).",
+        )
+
+    if channel == "purcell":
+        dev_off = _device_with_decoherence(device, purcell_enabled=False)
+        F_off, sigma_off = _F_at(dev_off, drive, window, n_shots)
+        delta_F = F_off - F_full
+        sigma_delta = math.sqrt(sigma_off**2 + sigma_full**2)
+        return ChannelContribution(
+            name="purcell",
+            group="active_loss",
+            delta_F=delta_F,
+            delta_F_uncertainty=sigma_delta,
+            description="Fidelity loss from Purcell-enhanced decay (g²κ/Δ²).",
+        )
+
+    if channel == "drive_amplitude":
+        perturbation = 0.05
+        drive_plus = replace(drive, amplitude=drive.amplitude * (1.0 + perturbation))
+        drive_minus = replace(drive, amplitude=drive.amplitude * (1.0 - perturbation))
+        F_plus, sigma_plus = _F_at(device, drive_plus, window, n_shots)
+        F_minus, sigma_minus = _F_at(device, drive_minus, window, n_shots)
+        delta_F = 0.5 * (abs(F_full - F_plus) + abs(F_full - F_minus))
+        # Asymmetry error bar
+        err = 0.5 * abs(F_plus - F_minus)
+        return ChannelContribution(
+            name="drive_amplitude",
+            group="calibration_sensitivity",
+            delta_F=delta_F,
+            delta_F_uncertainty=err,
+            description="Fidelity loss under ±5% drive amplitude miscalibration.",
+            perturbation_description="amplitude ±5% of nominal ε₀",
+        )
+
+    if channel == "drive_detuning":
+        kappa = device.resonator.kappa
+        perturbation = kappa / 4.0
+        drive_plus = replace(drive, detuning=drive.detuning + perturbation)
+        drive_minus = replace(drive, detuning=drive.detuning - perturbation)
+        F_plus, sigma_plus = _F_at(device, drive_plus, window, n_shots)
+        F_minus, sigma_minus = _F_at(device, drive_minus, window, n_shots)
+        delta_F = 0.5 * (abs(F_full - F_plus) + abs(F_full - F_minus))
+        err = 0.5 * abs(F_plus - F_minus)
+        return ChannelContribution(
+            name="drive_detuning",
+            group="calibration_sensitivity",
+            delta_F=delta_F,
+            delta_F_uncertainty=err,
+            description="Fidelity loss under ±κ/4 drive detuning error.",
+            perturbation_description="detuning ±κ/4 about nominal ω_d = ω_r",
+        )
+
     raise NotImplementedError(f"Channel {channel!r} not yet implemented.")
