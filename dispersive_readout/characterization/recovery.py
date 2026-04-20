@@ -61,11 +61,26 @@ class CoverageReport:
     bias_uncertainty: float
 
 
-def _binomial_2sigma_ci(p: float, n: int) -> tuple[float, float]:
+def _binomial_2sigma_ci(p: float, n: int, z: float = 2.0) -> tuple[float, float]:
+    """Wilson score interval at level z·σ.
+
+    Wald (p ± z·√(p(1−p)/n)) collapses to [1, 1] when observed p=1 (k=n),
+    making the gate "includes 95%" vacuously false at perfect-coverage
+    boundary cases where the true binomial sampling interval is [~0.93, 1].
+    Wilson handles p ∈ {0, 1} correctly.
+
+    Formula: for k successes out of n trials, observed rate p̂ = k/n,
+        center = (p̂ + z²/2n) / (1 + z²/n)
+        radius = z/(1+z²/n) · √(p̂(1−p̂)/n + z²/(4n²))
+    Returns (center − radius, center + radius), clipped to [0, 1].
+    """
     if n <= 0:
         return 0.0, 1.0
-    se = math.sqrt(max(p * (1.0 - p), 0.0) / n)
-    return max(0.0, p - 2.0 * se), min(1.0, p + 2.0 * se)
+    z2_n = z * z / n
+    denom = 1.0 + z2_n
+    center = (p + z2_n / 2.0) / denom
+    margin = (z / denom) * math.sqrt(max(p * (1.0 - p) / n + z2_n / (4.0 * n), 0.0))
+    return max(0.0, center - margin), min(1.0, center + margin)
 
 
 def _make_recovery_result(param_name: str, truth: float, fp: FittedParameter) -> RecoveryResult:

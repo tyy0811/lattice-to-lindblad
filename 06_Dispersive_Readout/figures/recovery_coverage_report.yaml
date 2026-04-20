@@ -6,9 +6,9 @@ coverage:
     n_devices: 50
     coverage_1_sigma: 0.74
     coverage_2_sigma: 1.0
-    coverage_1_sigma_ci_low: 0.6159355006458334
-    coverage_1_sigma_ci_high: 0.8640644993541666
-    coverage_2_sigma_ci_low: 1.0
+    coverage_1_sigma_ci_low: 0.6015246612088865
+    coverage_1_sigma_ci_high: 0.8429197832355579
+    coverage_2_sigma_ci_low: 0.9259259259259258
     coverage_2_sigma_ci_high: 1.0
     bias: -1.76256856067754e-07
     bias_uncertainty: 1.3887094436739367e-07
@@ -17,9 +17,9 @@ coverage:
     n_devices: 50
     coverage_1_sigma: 0.68
     coverage_2_sigma: 1.0
-    coverage_1_sigma_ci_low: 0.5480606199802349
-    coverage_1_sigma_ci_high: 0.8119393800197652
-    coverage_2_sigma_ci_low: 1.0
+    coverage_1_sigma_ci_low: 0.5390097189658216
+    coverage_1_sigma_ci_high: 0.7943236143675119
+    coverage_2_sigma_ci_low: 0.9259259259259258
     coverage_2_sigma_ci_high: 1.0
     bias: -1.9435602399074506e-08
     bias_uncertainty: 1.1220655544835493e-07
@@ -28,9 +28,9 @@ coverage:
     n_devices: 50
     coverage_1_sigma: 0.58
     coverage_2_sigma: 1.0
-    coverage_1_sigma_ci_low: 0.4404005730670788
-    coverage_1_sigma_ci_high: 0.7195994269329211
-    coverage_2_sigma_ci_low: 1.0
+    coverage_1_sigma_ci_low: 0.4396138158468789
+    coverage_1_sigma_ci_high: 0.7085343323012692
+    coverage_2_sigma_ci_low: 0.9259259259259258
     coverage_2_sigma_ci_high: 1.0
     bias: 4823.848513336182
     bias_uncertainty: 2641.1288679567188
@@ -39,10 +39,10 @@ coverage:
     n_devices: 50
     coverage_1_sigma: 0.68
     coverage_2_sigma: 0.9
-    coverage_1_sigma_ci_low: 0.5480606199802349
-    coverage_1_sigma_ci_high: 0.8119393800197652
-    coverage_2_sigma_ci_low: 0.8151471862576143
-    coverage_2_sigma_ci_high: 0.9848528137423858
+    coverage_1_sigma_ci_low: 0.5390097189658216
+    coverage_1_sigma_ci_high: 0.7943236143675119
+    coverage_2_sigma_ci_low: 0.7835108192625291
+    coverage_2_sigma_ci_high: 0.9572299214782116
     bias: 3844066.1312455726
     bias_uncertainty: 2562430.168887423
 devices:

@@ -543,6 +543,41 @@ def test_C6b_t1_with_elevated_thermal_no_downward_bias():
     assert rel < 0.10
 
 
+def test_readout_asymmetric_true_fails_loudly_not_silently_symmetric():
+    """NoiseModelParams(readout_asymmetric=True) must cause the generator to
+    raise NotImplementedError, not silently produce symmetric traces (Codex
+    adversarial finding #2)."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import (
+        generate_rabi_trace, generate_ramsey_trace,
+        generate_t1_trace, generate_t2_echo_trace,
+    )
+    noise = NoiseModelParams(n_shots_per_point=1000, drift_amplitude_Hz=0.0,
+                             readout_asymmetric=True)
+    with pytest.raises(NotImplementedError, match="symmetric"):
+        generate_rabi_trace(2 * math.pi * 50e6, 2 * math.pi * 4.5e9, noise, seed=0)
+    with pytest.raises(NotImplementedError, match="symmetric"):
+        generate_ramsey_trace(2 * math.pi * 4.5e9, T_2_star=20e-6, noise=noise, seed=0)
+    with pytest.raises(NotImplementedError, match="symmetric"):
+        generate_t1_trace(30e-6, noise, seed=0)
+    with pytest.raises(NotImplementedError, match="symmetric"):
+        generate_t2_echo_trace(40e-6, noise, seed=0)
+
+
+def test_binomial_ci_at_perfect_coverage_does_not_collapse_to_unit_interval():
+    """Wilson CI at n=50, k=50 (p=1) must produce a lower bound below 0.95,
+    so "2σ CI includes 95%" is a meaningful gate at the boundary.
+    Wald CI trivially gave [1, 1] here; Wilson gives roughly [0.93, 1]."""
+    from dispersive_readout.characterization.recovery import _binomial_2sigma_ci
+    lo, hi = _binomial_2sigma_ci(1.0, 50)
+    assert hi <= 1.0 + 1e-12
+    assert lo < 0.95, f"Wilson lower bound at p=1, n=50 is {lo:.3f}, should be < 0.95"
+    assert lo > 0.85, f"Wilson lower bound at p=1, n=50 is {lo:.3f}, should be > 0.85"
+    lo0, hi0 = _binomial_2sigma_ci(0.0, 50)
+    assert lo0 >= -1e-12
+    assert hi0 > 0.05, f"Wilson upper bound at p=0, n=50 is {hi0:.3f}, should be > 0.05"
+
+
 def test_C6c_rabi_amplitude_span_too_small_fits_but_flags_via_redchi():
     """A Rabi trace with only half an oscillation produces a high χ²/dof; we don't
     hard-reject at generator level (kept simple), but the fit should still return
