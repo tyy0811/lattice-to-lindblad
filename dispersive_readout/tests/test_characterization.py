@@ -578,10 +578,13 @@ def test_binomial_ci_at_perfect_coverage_does_not_collapse_to_unit_interval():
     assert hi0 > 0.05, f"Wilson upper bound at p=0, n=50 is {hi0:.3f}, should be > 0.05"
 
 
-def test_C6c_rabi_amplitude_span_too_small_fits_but_flags_via_redchi():
-    """A Rabi trace with only half an oscillation produces a high χ²/dof; we don't
-    hard-reject at generator level (kept simple), but the fit should still return
-    a value and the caller can check goodness_of_fit > threshold."""
+def test_C6c_rabi_amplitude_span_too_small_sets_reject_flag():
+    """Spec §1.1: <1.5 visible oscillations → reject_flag set.
+
+    Under-sampled Rabi (0 → 0.6·ε_π, half an oscillation) must land a
+    fit but set ``reject_flag='insufficient_oscillations'`` so downstream
+    coverage aggregation excludes it (Codex F3 follow-up).
+    """
     from dispersive_readout.characterization.noise import NoiseModelParams
     from dispersive_readout.characterization.protocols import generate_rabi_trace
     from dispersive_readout.characterization.fitting import fit_rabi
@@ -590,3 +593,61 @@ def test_C6c_rabi_amplitude_span_too_small_fits_but_flags_via_redchi():
     trace = generate_rabi_trace(eps_pi_truth, 2 * math.pi * 4.5e9, noise, seed=8, amplitude_span_mult=(0.0, 0.6))
     fp = fit_rabi(trace, bootstrap_samples=0, seed=42)
     assert fp.goodness_of_fit >= 0
+    assert fp.reject_flag == "insufficient_oscillations", (
+        f"expected reject_flag='insufficient_oscillations', got {fp.reject_flag!r}"
+    )
+
+
+def test_rabi_full_span_does_not_trigger_reject_flag():
+    """Sanity: the default 2.5·ε_π span (2.5 oscillations) must NOT flag."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_rabi_trace
+    from dispersive_readout.characterization.fitting import fit_rabi
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0, drive_amplitude_uncertainty=0.0)
+    eps_pi_truth = 2 * math.pi * 50e6
+    trace = generate_rabi_trace(eps_pi_truth, 2 * math.pi * 4.5e9, noise, seed=8)
+    fp = fit_rabi(trace, bootstrap_samples=0, seed=42)
+    assert fp.reject_flag is None
+
+
+def test_coverage_report_tallies_rejects_and_excludes_from_on_accepted():
+    """Inject a reject-flagged RecoveryResult directly and verify
+    CoverageReport.coverage_{1,2}_sigma_on_accepted excludes it while
+    raw coverage still includes it (for comparison)."""
+    from dispersive_readout.characterization.recovery import (
+        CoverageReport, RecoveryResult, _binomial_2sigma_ci,
+    )
+    records = [
+        RecoveryResult("epsilon_pi", 1.0, 1.0, 0.01, 0.0, True, True, reject_flag=None),
+        RecoveryResult("epsilon_pi", 1.0, 1.0, 0.01, 0.0, True, True, reject_flag=None),
+        # Flagged fit: huge bogus uncertainty → trivially "within 1σ"
+        RecoveryResult("epsilon_pi", 1.0, 10.0, 1000.0, 0.009, True, True,
+                       reject_flag="insufficient_oscillations"),
+    ]
+    n = len(records)
+    cov1 = sum(r.within_1_sigma for r in records) / n
+    accepted = [r for r in records if r.reject_flag is None]
+    cov1_acc = sum(r.within_1_sigma for r in accepted) / len(accepted)
+    c1_lo, c1_hi = _binomial_2sigma_ci(cov1, n)
+    rep = CoverageReport(
+        parameter_name="epsilon_pi", n_devices=n,
+        coverage_1_sigma=cov1, coverage_2_sigma=cov1,
+        coverage_1_sigma_ci_low=c1_lo, coverage_1_sigma_ci_high=c1_hi,
+        coverage_2_sigma_ci_low=c1_lo, coverage_2_sigma_ci_high=c1_hi,
+        bias=0.0, bias_uncertainty=0.0,
+        n_rejected=1, coverage_1_sigma_on_accepted=cov1_acc,
+        coverage_2_sigma_on_accepted=cov1_acc,
+    )
+    assert rep.n_rejected == 1
+    assert rep.coverage_1_sigma == 1.0  # raw includes the flagged one
+    assert rep.coverage_1_sigma_on_accepted == 1.0  # 2/2 accepted
+    # Contrast with a case where the flagged fit legitimately misses:
+    records2 = list(records[:2]) + [
+        RecoveryResult("epsilon_pi", 1.0, 5.0, 0.001, 4000.0, False, False,
+                       reject_flag="insufficient_oscillations"),
+    ]
+    cov1_raw = sum(r.within_1_sigma for r in records2) / len(records2)
+    acc2 = [r for r in records2 if r.reject_flag is None]
+    cov1_on_acc = sum(r.within_1_sigma for r in acc2) / len(acc2)
+    assert cov1_raw == 2 / 3
+    assert cov1_on_acc == 1.0

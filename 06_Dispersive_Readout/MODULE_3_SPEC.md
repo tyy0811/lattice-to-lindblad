@@ -153,7 +153,7 @@ def load_reference_F_full() -> float:
     return float(budget["F_full"])
 ```
 
-Asymmetric readout errors with `P(0|1) ≠ P(1|0)` are available as an option (`readout_asymmetric=True`) but default to symmetric.
+Asymmetric readout errors with `P(0|1) ≠ P(1|0)` remain in the `NoiseModelParams` API surface but are **V1-scope deferred**: setting `readout_asymmetric=True` raises `NotImplementedError` at trace generation (all four generators propagate the flag through `apply_readout_errors`, which is the gate that rejects it). This was a post-implementation tightening driven by the Codex adversarial review (finding #2, 2026-04-20): the original wording "available as an option" was ambiguous enough that generators could silently produce symmetric traces under an asymmetric config. V1's contract is now explicit — symmetric-only until V2, with an audible failure on misuse. Implementing asymmetric is a small V2 extension (two extra parameters `P_01`, `P_10` on `NoiseModelParams`, plumbed through `apply_readout_errors` + generators + bootstrap) but was not justified against visa-deadline constraints, and does not affect the recovery numbers at the reference operating point.
 
 ### 2.4 Amplitude calibration uncertainty
 

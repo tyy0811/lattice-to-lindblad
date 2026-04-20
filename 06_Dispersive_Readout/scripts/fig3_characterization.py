@@ -99,7 +99,10 @@ def _panel_recovery(fig, gs_slot):
     for d in devices:
         sub_seed = int(rng.integers(2**31 - 1))
         for r in fit_one_device(d, noise, seed=sub_seed):
-            pairs[r.parameter_name].append((r.ground_truth, r.fitted_value, r.fitted_uncertainty, r.within_1_sigma))
+            pairs[r.parameter_name].append((
+                r.ground_truth, r.fitted_value, r.fitted_uncertainty,
+                r.within_1_sigma, r.reject_flag,
+            ))
     param_order = ["T_1", "T_2_echo", "omega_q", "epsilon_pi"]
     units = {"T_1": ("µs", 1e6), "T_2_echo": ("µs", 1e6),
              "omega_q": ("GHz", 1.0 / (2 * math.pi * 1e9)),
@@ -111,14 +114,31 @@ def _panel_recovery(fig, gs_slot):
         y = np.array([p[1] * scale for p in pairs[name]])
         yerr = np.array([p[2] * scale for p in pairs[name]])
         cov1 = np.array([p[3] for p in pairs[name]])
-        ax.errorbar(x[cov1], y[cov1], yerr=yerr[cov1], fmt="o", ms=3, color="tab:blue", label="|z|≤1", capsize=0, alpha=0.6)
-        ax.errorbar(x[~cov1], y[~cov1], yerr=yerr[~cov1], fmt="x", ms=4, color="tab:orange", label="|z|>1", capsize=0, alpha=0.7)
+        rej = np.array([p[4] is not None for p in pairs[name]])
+        accepted = ~rej
+        # Accepted & covered
+        m_acc_cov = accepted & cov1
+        m_acc_out = accepted & ~cov1
+        ax.errorbar(x[m_acc_cov], y[m_acc_cov], yerr=yerr[m_acc_cov], fmt="o", ms=3,
+                    color="tab:blue", label="|z|≤1", capsize=0, alpha=0.6)
+        ax.errorbar(x[m_acc_out], y[m_acc_out], yerr=yerr[m_acc_out], fmt="x", ms=4,
+                    color="tab:orange", label="|z|>1", capsize=0, alpha=0.7)
+        # Rejected traces (spec §1.1 reject_flag set) — distinct marker
+        if rej.any():
+            ax.errorbar(x[rej], y[rej], yerr=yerr[rej], fmt="D", ms=5,
+                        color="tab:red", mfc="none", label="rejected",
+                        capsize=0, alpha=0.9)
         lo = min(x.min(), y.min())
         hi = max(x.max(), y.max())
         ax.plot([lo, hi], [lo, hi], "--", color="gray", linewidth=0.8)
-        cov2 = obs_reports[name].coverage_2_sigma
-        ci = (obs_reports[name].coverage_2_sigma_ci_low, obs_reports[name].coverage_2_sigma_ci_high)
-        ax.set_title(rf"{name}: 2$\sigma$={cov2:.0%} [{ci[0]:.0%},{ci[1]:.0%}]", fontsize=8)
+        rep = obs_reports[name]
+        cov2 = rep.coverage_2_sigma
+        cov2_acc = rep.coverage_2_sigma_on_accepted
+        ci = (rep.coverage_2_sigma_ci_low, rep.coverage_2_sigma_ci_high)
+        title = rf"{name}: 2$\sigma$={cov2:.0%} [{ci[0]:.0%},{ci[1]:.0%}]"
+        if rep.n_rejected > 0:
+            title += f"; acc={cov2_acc:.0%} (n_rej={rep.n_rejected})"
+        ax.set_title(title, fontsize=8)
         ax.set_xlabel(f"truth ({lab})", fontsize=8)
         ax.set_ylabel(f"fit ({lab})", fontsize=8)
         ax.tick_params(labelsize=7)

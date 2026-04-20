@@ -17,7 +17,15 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class FittedParameter(BaseModel):
-    """One fitted device parameter with bootstrap uncertainty."""
+    """One fitted device parameter with bootstrap uncertainty.
+
+    ``reject_flag`` is a post-fit diagnostic: when set, the fit ran to
+    completion but a structural check (e.g. spec §1.1's 1.5-oscillation
+    requirement for Rabi) marked the trace as insufficient to trust.
+    Downstream consumers treat ``reject_flag is not None`` as "don't use
+    this value for aggregate statistics" — see ``CoverageReport``'s
+    ``coverage_*_on_accepted`` fields and the ``n_rejected`` counter.
+    """
     name: Literal["T_1", "T_2_echo", "T_2_star", "omega_q", "epsilon_pi"]
     value: float
     uncertainty: float
@@ -25,6 +33,7 @@ class FittedParameter(BaseModel):
     protocol_source: Literal["rabi", "ramsey", "t1", "t2_echo"]
     goodness_of_fit: float = Field(ge=0.0)
     n_bootstrap: int = Field(ge=0)
+    reject_flag: str | None = None
 
     @field_validator("uncertainty")
     @classmethod
@@ -105,8 +114,42 @@ class ExtractedParameterPack(BaseModel):
 
 import numpy as np  # noqa: E402
 import lmfit  # noqa: E402
+from scipy.signal import find_peaks, savgol_filter  # noqa: E402
 
 from .protocols import TraceData  # noqa: E402
+
+
+def _count_rabi_oscillations(
+    P1: np.ndarray,
+    window_length: int = 11,
+    polyorder: int = 3,
+    prominence_rel: float = 0.1,
+) -> float:
+    """Count visible Rabi turning points on a Savitzky-Golay-smoothed trace
+    (spec §1.1 literal). Returns the summed count of interior peaks + troughs;
+    spec's 1.5-oscillation threshold is enforced by the caller as ≥ 1.5.
+
+    An interior peak + an interior trough = 2 turning points = "full cycle
+    visible", which cleanly rejects under-sampled traces (<1 trough visible
+    → count=0 or 1, below threshold). Endpoint peaks (ε=0 in the A+B·cos
+    form) are not counted — spec's peak-counting rule is on interior
+    extrema, and this is the conservative behavior.
+
+    ``prominence_rel`` filters noise: a turning point counts only if it
+    clears ``prominence_rel * (max − min)`` of the smoothed signal.
+    """
+    n = len(P1)
+    win = min(window_length, n if n % 2 == 1 else n - 1)
+    win = max(win, polyorder + 2 if (polyorder + 2) % 2 == 1 else polyorder + 3)
+    if win > n:
+        smooth = P1.astype(float)
+    else:
+        smooth = savgol_filter(P1, window_length=win, polyorder=min(polyorder, win - 1))
+    span = float(smooth.max() - smooth.min())
+    prom = max(prominence_rel * span, 1e-6)
+    peaks, _ = find_peaks(smooth, prominence=prom)
+    troughs, _ = find_peaks(-smooth, prominence=prom)
+    return float(len(peaks) + len(troughs))
 
 
 # --- Initial-guess helpers --------------------------------------------------
@@ -202,10 +245,15 @@ def fit_rabi(
         )
         unc = max(float(np.std(boot["epsilon_pi"])), 1e-30)
         n_bs = bootstrap_samples
+    # Spec §1.1 reject: <1.5 visible oscillations → flag as structurally
+    # unreliable. Fit still returns a best-effort value; downstream code
+    # must check reject_flag before aggregating.
+    n_osc = _count_rabi_oscillations(trace.P1)
+    reject_flag = "insufficient_oscillations" if n_osc < 1.5 else None
     return FittedParameter(
         name="epsilon_pi", value=value, uncertainty=unc, unit="rad/s",
         protocol_source="rabi", goodness_of_fit=float(result.redchi),
-        n_bootstrap=n_bs,
+        n_bootstrap=n_bs, reject_flag=reject_flag,
     )
 
 

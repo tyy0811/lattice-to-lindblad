@@ -115,6 +115,15 @@ def _mode_recovery(args: argparse.Namespace) -> int:
     )
     save_coverage_report(reports, devices, args.output, seed=args.seed)
     print(f"Recovery harness wrote: {args.output}")
+    rej = sum(r.n_rejected for r in reports.values())
+    if rej:
+        print(f"Rejections (spec §1.1 reject_flag set): total {rej} across all parameters")
+        for name, r in reports.items():
+            if r.n_rejected:
+                print(f"  {name}: {r.n_rejected}/{r.n_devices} rejected — "
+                      f"accepted 2σ cov {r.coverage_2_sigma_on_accepted:.1%}")
+    else:
+        print("Rejections: 0 (no devices triggered the 1.5-oscillation flag)")
     return 0
 
 

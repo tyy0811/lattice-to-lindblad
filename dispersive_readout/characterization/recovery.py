@@ -45,10 +45,20 @@ class RecoveryResult:
     z_score: float
     within_1_sigma: bool
     within_2_sigma: bool
+    reject_flag: str | None = None
 
 
 @dataclass(frozen=True)
 class CoverageReport:
+    """Coverage statistics for one parameter across the device family.
+
+    ``coverage_{1,2}_sigma`` aggregate ALL devices, including any with
+    ``reject_flag`` set — these inflate σ so they trivially "cover" and
+    bias the number optimistically. ``coverage_{1,2}_sigma_on_accepted``
+    excludes flagged fits; use these for publication claims. ``n_rejected``
+    is the count of devices whose fit set ``reject_flag`` for this
+    parameter (per spec §1.1 / Codex F3 follow-up).
+    """
     parameter_name: str
     n_devices: int
     coverage_1_sigma: float
@@ -59,6 +69,9 @@ class CoverageReport:
     coverage_2_sigma_ci_high: float
     bias: float
     bias_uncertainty: float
+    n_rejected: int = 0
+    coverage_1_sigma_on_accepted: float = 0.0
+    coverage_2_sigma_on_accepted: float = 0.0
 
 
 def _binomial_2sigma_ci(p: float, n: int, z: float = 2.0) -> tuple[float, float]:
@@ -94,6 +107,7 @@ def _make_recovery_result(param_name: str, truth: float, fp: FittedParameter) ->
         z_score=float(z),
         within_1_sigma=abs(z) <= 1.0,
         within_2_sigma=abs(z) <= 2.0,
+        reject_flag=fp.reject_flag,
     )
 
 
@@ -208,6 +222,13 @@ def run_recovery_harness(
         diffs = np.array([r.fitted_value - r.ground_truth for r in records])
         bias = float(diffs.mean())
         bias_unc = float(diffs.std(ddof=1) / math.sqrt(n))
+        accepted = [r for r in records if r.reject_flag is None]
+        n_rejected = n - len(accepted)
+        if len(accepted) > 0:
+            cov1_acc = sum(r.within_1_sigma for r in accepted) / len(accepted)
+            cov2_acc = sum(r.within_2_sigma for r in accepted) / len(accepted)
+        else:
+            cov1_acc = cov2_acc = 0.0
         reports[name] = CoverageReport(
             parameter_name=name,
             n_devices=n,
@@ -219,6 +240,9 @@ def run_recovery_harness(
             coverage_2_sigma_ci_high=c2_hi,
             bias=bias,
             bias_uncertainty=bias_unc,
+            n_rejected=n_rejected,
+            coverage_1_sigma_on_accepted=cov1_acc,
+            coverage_2_sigma_on_accepted=cov2_acc,
         )
     return reports, devices
 
@@ -251,8 +275,8 @@ def load_committed_coverage_report(path: str | Path) -> dict[str, CoverageReport
 
 def format_recovery_table(reports: dict[str, CoverageReport]) -> str:
     lines = [
-        "| Parameter | Cov 1σ (target 68%) | 2σ CI | Cov 2σ (target 95%) | 2σ CI | Bias |",
-        "|---|---|---|---|---|---|",
+        "| Parameter | Cov 1σ (target 68%) | 2σ CI | Cov 2σ (target 95%) | 2σ CI | On-Accepted 2σ | n_rej | Bias |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for name, r in reports.items():
         lines.append(
@@ -260,6 +284,8 @@ def format_recovery_table(reports: dict[str, CoverageReport]) -> str:
             f"[{r.coverage_1_sigma_ci_low:.1%}, {r.coverage_1_sigma_ci_high:.1%}] | "
             f"{r.coverage_2_sigma:.1%} | "
             f"[{r.coverage_2_sigma_ci_low:.1%}, {r.coverage_2_sigma_ci_high:.1%}] | "
+            f"{r.coverage_2_sigma_on_accepted:.1%} | "
+            f"{r.n_rejected} | "
             f"{r.bias:+.3e} ± {r.bias_uncertainty:.1e} |"
         )
     return "\n".join(lines)
