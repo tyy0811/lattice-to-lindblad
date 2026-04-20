@@ -15,6 +15,9 @@ coverage:
     n_rejected: 0
     coverage_1_sigma_on_accepted: 0.74
     coverage_2_sigma_on_accepted: 1.0
+    n_stretched: 0
+    stretch_exponent_mean: null
+    stretch_exponent_std: null
   T_2_echo:
     parameter_name: T_2_echo
     n_devices: 50
@@ -29,20 +32,26 @@ coverage:
     n_rejected: 0
     coverage_1_sigma_on_accepted: 0.68
     coverage_2_sigma_on_accepted: 1.0
+    n_stretched: 0
+    stretch_exponent_mean: null
+    stretch_exponent_std: null
   omega_q:
     parameter_name: omega_q
     n_devices: 50
     coverage_1_sigma: 0.58
-    coverage_2_sigma: 1.0
+    coverage_2_sigma: 0.98
     coverage_1_sigma_ci_low: 0.4396138158468789
     coverage_1_sigma_ci_high: 0.7085343323012692
-    coverage_2_sigma_ci_low: 0.9259259259259258
-    coverage_2_sigma_ci_high: 1.0
-    bias: 4823.848513336182
-    bias_uncertainty: 2641.1288679567188
+    coverage_2_sigma_ci_low: 0.8923287137797397
+    coverage_2_sigma_ci_high: 0.9965601751091492
+    bias: 4854.163482513428
+    bias_uncertainty: 2653.4570881889385
     n_rejected: 0
     coverage_1_sigma_on_accepted: 0.58
-    coverage_2_sigma_on_accepted: 1.0
+    coverage_2_sigma_on_accepted: 0.98
+    n_stretched: 6
+    stretch_exponent_mean: 0.9979587811439163
+    stretch_exponent_std: 0.08078261063059358
   epsilon_pi:
     parameter_name: epsilon_pi
     n_devices: 50
@@ -57,6 +66,9 @@ coverage:
     n_rejected: 3
     coverage_1_sigma_on_accepted: 0.723404255319149
     coverage_2_sigma_on_accepted: 0.9574468085106383
+    n_stretched: 0
+    stretch_exponent_mean: null
+    stretch_exponent_std: null
 devices:
 - T_1: 3.0e-05
   T_2_echo: 4.0e-05
