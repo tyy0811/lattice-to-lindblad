@@ -6,6 +6,7 @@ from .noise import (
     generate_1f_drift,
     load_reference_F_full,
 )
+from .fitting import ExtractedParameterPack, FittedParameter
 from .protocols import (
     TraceData,
     generate_rabi_trace,
@@ -17,6 +18,8 @@ from .protocols import (
 )
 
 __all__ = [
+    "ExtractedParameterPack",
+    "FittedParameter",
     "NoiseModelParams",
     "TraceData",
     "apply_readout_errors",

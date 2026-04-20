@@ -207,3 +207,120 @@ def test_load_trace_bundle_rejects_missing_metadata(tmp_path):
     )
     with pytest.raises(ValueError, match="metadata"):
         load_trace_bundle(str(path))
+
+
+# -- C4: Pydantic schema + to_device_config ---------------------------------
+
+def test_C4a_fitted_parameter_requires_positive_uncertainty():
+    from dispersive_readout.characterization.fitting import FittedParameter
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        FittedParameter(
+            name="T_1", value=30e-6, uncertainty=-1e-6, unit="s",
+            protocol_source="t1", goodness_of_fit=1.0, n_bootstrap=200,
+        )
+
+
+def test_C4b_extracted_parameter_pack_yaml_round_trip(tmp_path):
+    """Serialize to YAML and re-load — round-trip preserves all fields."""
+    from dispersive_readout.characterization.fitting import ExtractedParameterPack, FittedParameter
+    import yaml
+    pack = ExtractedParameterPack(
+        fitted_parameters=[
+            FittedParameter(name="T_1", value=30e-6, uncertainty=1e-6, unit="s",
+                            protocol_source="t1", goodness_of_fit=1.2, n_bootstrap=200),
+            FittedParameter(name="omega_q", value=2 * math.pi * 4.5e9,
+                            uncertainty=2 * math.pi * 1e3, unit="rad/s",
+                            protocol_source="ramsey", goodness_of_fit=0.95, n_bootstrap=200),
+        ],
+        trace_file="example.npz",
+        timestamp="2026-04-22T10:00:00+00:00",
+        stage_06_version="abc123",
+    )
+    path = tmp_path / "pack.yaml"
+    with open(path, "w") as f:
+        yaml.safe_dump(pack.model_dump(), f)
+    with open(path) as f:
+        reloaded = ExtractedParameterPack.model_validate(yaml.safe_load(f))
+    assert reloaded == pack
+
+
+def test_C4c_to_device_config_produces_simulator_consumable():
+    """to_device_config() → simulate_readout() runs without error."""
+    from dispersive_readout.characterization.fitting import ExtractedParameterPack, FittedParameter
+    from dispersive_readout.physics.config import DriveParams
+    from dispersive_readout.physics.readout_model import simulate_readout
+    pack = ExtractedParameterPack(
+        fitted_parameters=[
+            FittedParameter(name="T_1", value=30e-6, uncertainty=1e-6, unit="s",
+                            protocol_source="t1", goodness_of_fit=1.0, n_bootstrap=200),
+            FittedParameter(name="T_2_echo", value=40e-6, uncertainty=2e-6, unit="s",
+                            protocol_source="t2_echo", goodness_of_fit=1.0, n_bootstrap=200),
+            FittedParameter(name="omega_q", value=2 * math.pi * 4.5e9,
+                            uncertainty=2 * math.pi * 1e3, unit="rad/s",
+                            protocol_source="ramsey", goodness_of_fit=1.0, n_bootstrap=200),
+            FittedParameter(name="epsilon_pi", value=2 * math.pi * 50e6,
+                            uncertainty=2 * math.pi * 1e6, unit="rad/s",
+                            protocol_source="rabi", goodness_of_fit=1.0, n_bootstrap=200),
+        ],
+        trace_file="example.npz",
+        timestamp="2026-04-22T10:00:00+00:00",
+        stage_06_version="abc123",
+    )
+    device = pack.to_device_config()
+    drive = DriveParams(amplitude=2 * math.pi * 2e6, duration=500e-9, detuning=0.0)
+    t_list = np.linspace(0.0, drive.duration, 101)
+    _ = simulate_readout(device, drive, initial_qubit_state=0, t_list=t_list)
+
+
+# -- C7: to_device_config physics consistency (amendment 5) ------------------
+
+def test_C7a_to_device_config_back_solves_E_J_from_omega_q():
+    """E_J = (ω_q + E_C)² / (8·E_C) per Koch 2007."""
+    from dispersive_readout.characterization.fitting import ExtractedParameterPack, FittedParameter
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    omega_q_target = 2 * math.pi * 4.5e9
+    pack = ExtractedParameterPack(
+        fitted_parameters=[
+            FittedParameter(name="omega_q", value=omega_q_target,
+                            uncertainty=2 * math.pi * 1e3, unit="rad/s",
+                            protocol_source="ramsey", goodness_of_fit=1.0, n_bootstrap=200),
+            FittedParameter(name="T_1", value=30e-6, uncertainty=1e-6, unit="s",
+                            protocol_source="t1", goodness_of_fit=1.0, n_bootstrap=200),
+            FittedParameter(name="T_2_echo", value=40e-6, uncertainty=2e-6, unit="s",
+                            protocol_source="t2_echo", goodness_of_fit=1.0, n_bootstrap=200),
+            FittedParameter(name="epsilon_pi", value=2 * math.pi * 50e6,
+                            uncertainty=2 * math.pi * 1e6, unit="rad/s",
+                            protocol_source="rabi", goodness_of_fit=1.0, n_bootstrap=200),
+        ],
+        trace_file="x.npz", timestamp="now", stage_06_version="x",
+    )
+    E_C = REFERENCE_DEVICE.transmon.E_C
+    device = pack.to_device_config()
+    expected_E_J = (omega_q_target + E_C) ** 2 / (8.0 * E_C)
+    assert abs(device.transmon.E_J - expected_E_J) / expected_E_J < 1e-10
+
+
+def test_C7b_to_device_config_warns_on_E_J_drift_over_30pct():
+    """Large-drift ω_q → derived E_J > 30% off REFERENCE's E_J → UserWarning."""
+    from dispersive_readout.characterization.fitting import ExtractedParameterPack, FittedParameter
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    E_C = REFERENCE_DEVICE.transmon.E_C
+    omega_q_target = 2 * math.pi * 6.5e9
+    pack = ExtractedParameterPack(
+        fitted_parameters=[
+            FittedParameter(name="omega_q", value=omega_q_target,
+                            uncertainty=2 * math.pi * 1e3, unit="rad/s",
+                            protocol_source="ramsey", goodness_of_fit=1.0, n_bootstrap=200),
+            FittedParameter(name="T_1", value=30e-6, uncertainty=1e-6, unit="s",
+                            protocol_source="t1", goodness_of_fit=1.0, n_bootstrap=200),
+            FittedParameter(name="T_2_echo", value=40e-6, uncertainty=2e-6, unit="s",
+                            protocol_source="t2_echo", goodness_of_fit=1.0, n_bootstrap=200),
+            FittedParameter(name="epsilon_pi", value=2 * math.pi * 50e6,
+                            uncertainty=2 * math.pi * 1e6, unit="rad/s",
+                            protocol_source="rabi", goodness_of_fit=1.0, n_bootstrap=200),
+        ],
+        trace_file="x.npz", timestamp="now", stage_06_version="x",
+    )
+    with pytest.warns(UserWarning, match="E_J"):
+        pack.to_device_config()
