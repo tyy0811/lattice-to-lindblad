@@ -127,3 +127,26 @@ def test_C1b_ramsey_round_trip():
     omega_q_est = omega_q_truth - omega_drive_offset + delta_omega_est
     rel = abs(omega_q_est - omega_q_truth) / omega_q_truth
     assert rel < 1e-3, f"Ramsey ω_q naive FFT estimate off: rel={rel:.3e}"
+
+
+def test_C1c_t1_round_trip():
+    """Closed-form T1 → simple exponential-fit estimator recovers T1 within 5%.
+
+    Uses delay_range=(0, 200e-6) ≈ 6.7·T_1 so the trailing 10 points have
+    decayed below readout floor and the naïve "average last 10" estimate of
+    the asymptote isn't biased. The default (0, 100e-6) is fine for the
+    real lmfit fitter (Task 8) but not for this naive estimator.
+    """
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_t1_trace
+    T_1_truth = 30e-6
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0)
+    trace = generate_t1_trace(T_1_truth, noise, seed=2, delay_range=(0.0, 200e-6))
+    delays = trace.sweep_values
+    P1 = trace.P1
+    floor = float(P1[-10:].mean())
+    mask = (P1 - floor) > 0.02
+    coef = np.polyfit(delays[mask], np.log(P1[mask] - floor), 1)
+    T_1_est = -1.0 / coef[0]
+    rel = abs(T_1_est - T_1_truth) / T_1_truth
+    assert rel < 0.05, f"T1 round-trip rel={rel:.3%}"

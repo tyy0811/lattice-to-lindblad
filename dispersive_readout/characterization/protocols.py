@@ -191,3 +191,43 @@ def generate_ramsey_trace(
             "drift_seed": drift_seed,
         },
     )
+
+
+def generate_t1_trace(
+    T_1: float,
+    noise: NoiseModelParams,
+    n_points: int = 51,
+    delay_range: tuple[float, float] = (0.0, 100e-6),
+    thermal_offset: float = 0.0,
+    seed: int | None = None,
+) -> TraceData:
+    """Closed-form T1 decay: P₁(τ) = A + (1 − A)·exp(−τ/T_1).
+
+    `thermal_offset` = A represents the steady-state thermal population; 0.08
+    is the elevated-thermal edge case in the recovery harness. Rabi/Ramsey-
+    style 1/f drift does NOT enter at leading order; this is a relaxation-only
+    protocol.
+    """
+    rng = np.random.default_rng(seed)
+    F_assign = load_reference_F_full()
+    delays = np.linspace(delay_range[0], delay_range[1], n_points)
+    P_true = thermal_offset + (1.0 - thermal_offset) * np.exp(-delays / T_1)
+    P_after_readout = apply_readout_errors(P_true, F_assign)
+    P_observed = apply_shot_noise(P_after_readout, noise.n_shots_per_point, rng)
+    P_ro_c = np.clip(P_after_readout, 1e-12, 1 - 1e-12)
+    P_se = np.sqrt(P_ro_c * (1 - P_ro_c) / noise.n_shots_per_point)
+    return TraceData(
+        protocol="t1",
+        sweep_axis="delay",
+        sweep_values=delays,
+        P1=P_observed,
+        P1_uncertainty=P_se,
+        metadata={
+            "ground_truth": {"T_1": T_1, "thermal_offset": thermal_offset},
+            "noise": {
+                "n_shots_per_point": noise.n_shots_per_point,
+                "F_assign": F_assign,
+            },
+            "seed": seed,
+        },
+    )

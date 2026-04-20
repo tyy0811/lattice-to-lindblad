@@ -10,6 +10,7 @@ from .protocols import (
     TraceData,
     generate_rabi_trace,
     generate_ramsey_trace,
+    generate_t1_trace,
     load_trace_bundle,
     save_trace_bundle,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "generate_1f_drift",
     "generate_rabi_trace",
     "generate_ramsey_trace",
+    "generate_t1_trace",
     "load_reference_F_full",
     "load_trace_bundle",
     "save_trace_bundle",
