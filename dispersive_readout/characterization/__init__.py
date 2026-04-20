@@ -9,10 +9,12 @@ from .noise import (
 from .fitting import (
     ExtractedParameterPack,
     FittedParameter,
+    fit_all,
     fit_rabi,
     fit_ramsey,
     fit_t1,
     fit_t2_echo,
+    parametric_bootstrap,
 )
 from .protocols import (
     TraceData,
@@ -28,10 +30,12 @@ __all__ = [
     "ExtractedParameterPack",
     "FittedParameter",
     "NoiseModelParams",
+    "fit_all",
     "fit_rabi",
     "fit_ramsey",
     "fit_t1",
     "fit_t2_echo",
+    "parametric_bootstrap",
     "TraceData",
     "apply_readout_errors",
     "apply_shot_noise",

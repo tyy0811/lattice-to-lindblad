@@ -378,3 +378,22 @@ def test_fit_t2_echo_point_estimate_recovers_T2_within_5pct():
     fp = fit_t2_echo(trace, bootstrap_samples=0, seed=42)
     rel = abs(fp.value - T_2_truth) / T_2_truth
     assert rel < 0.05
+
+
+def test_parametric_bootstrap_produces_nonzero_uncertainty_on_noisy_trace():
+    """With non-zero drift + shot noise, bootstrap uncertainty must be > 0 and
+    larger than the covariance-matrix SE by at least a factor of 1.5 (the
+    gap amendment 3 is designed to reveal)."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_ramsey_trace
+    from dispersive_readout.characterization.fitting import fit_ramsey
+    omega_q_truth = 2 * math.pi * 4.5e9
+    noise = NoiseModelParams(n_shots_per_point=2000, drift_amplitude_Hz=1e4)
+    trace = generate_ramsey_trace(omega_q_truth, T_2_star=20e-6, noise=noise, seed=20)
+    fp_omega_pe, _ = fit_ramsey(trace, bootstrap_samples=0, seed=42)
+    fp_omega_bs, _ = fit_ramsey(trace, bootstrap_samples=50, seed=42)
+    assert fp_omega_bs.n_bootstrap == 50
+    assert fp_omega_bs.uncertainty > 0
+    assert fp_omega_bs.uncertainty > 1.5 * fp_omega_pe.uncertainty, (
+        f"bootstrap SE {fp_omega_bs.uncertainty:.3e} not > 1.5× covariance SE {fp_omega_pe.uncertainty:.3e}"
+    )

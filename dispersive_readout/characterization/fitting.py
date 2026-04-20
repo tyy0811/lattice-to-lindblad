@@ -191,10 +191,21 @@ def fit_rabi(
     value = float(result.params["epsilon_pi"].value)
     stderr = result.params["epsilon_pi"].stderr
     unc = float(stderr) if stderr is not None and stderr > 0 else value * 0.01
+    n_bs = 0
+    if bootstrap_samples > 0:
+        boot_noise = _noise_from_trace_metadata(trace)
+        boot = parametric_bootstrap(
+            "rabi",
+            {"epsilon_pi": value,
+             "omega_q": float(trace.metadata.get("ground_truth", {}).get("omega_q", 2 * math.pi * 4.5e9))},
+            noise=boot_noise, n_bootstrap=bootstrap_samples, seed=seed or 0,
+        )
+        unc = max(float(np.std(boot["epsilon_pi"])), 1e-30)
+        n_bs = bootstrap_samples
     return FittedParameter(
         name="epsilon_pi", value=value, uncertainty=unc, unit="rad/s",
         protocol_source="rabi", goodness_of_fit=float(result.redchi),
-        n_bootstrap=0,
+        n_bootstrap=n_bs,
     )
 
 
@@ -259,6 +270,22 @@ def fit_ramsey(
         unit="s", protocol_source="ramsey",
         goodness_of_fit=float(result.redchi), n_bootstrap=0,
     )
+    if bootstrap_samples > 0:
+        boot_noise = _noise_from_trace_metadata(trace)
+        boot = parametric_bootstrap(
+            "ramsey",
+            {"omega_q": omega_q_fit, "T_2_star": T_2_fit,
+             "omega_drive_offset": float(gt.get("omega_drive_offset", 2 * math.pi * 1e6))},
+            noise=boot_noise, n_bootstrap=bootstrap_samples, seed=seed or 0,
+        )
+        fp_omega = fp_omega.model_copy(update={
+            "uncertainty": max(float(np.std(boot["omega_q"])), 1e-30),
+            "n_bootstrap": bootstrap_samples,
+        })
+        fp_T2 = fp_T2.model_copy(update={
+            "uncertainty": max(float(np.std(boot["T_2_star"])), 1e-30),
+            "n_bootstrap": bootstrap_samples,
+        })
     return fp_omega, fp_T2
 
 
@@ -277,9 +304,18 @@ def fit_t1(
     result = _fit_point(model, params, trace.sweep_values, trace.P1, trace.P1_uncertainty)
     tau = float(result.params["tau"].value)
     tau_err = result.params["tau"].stderr or tau * 0.1
+    n_bs = 0
+    if bootstrap_samples > 0:
+        boot_noise = _noise_from_trace_metadata(trace)
+        boot = parametric_bootstrap(
+            "t1", {"T_1": tau}, noise=boot_noise,
+            n_bootstrap=bootstrap_samples, seed=seed or 0,
+        )
+        tau_err = max(float(np.std(boot["T_1"])), 1e-30)
+        n_bs = bootstrap_samples
     return FittedParameter(
         name="T_1", value=tau, uncertainty=float(tau_err), unit="s",
-        protocol_source="t1", goodness_of_fit=float(result.redchi), n_bootstrap=0,
+        protocol_source="t1", goodness_of_fit=float(result.redchi), n_bootstrap=n_bs,
     )
 
 
@@ -313,7 +349,121 @@ def fit_t2_echo(
 
     tau = float(result.params["tau"].value)
     tau_err = result.params["tau"].stderr or tau * 0.1
+    n_bs = 0
+    if bootstrap_samples > 0:
+        boot_noise = _noise_from_trace_metadata(trace)
+        boot = parametric_bootstrap(
+            "t2_echo", {"T_2_echo": tau}, noise=boot_noise,
+            n_bootstrap=bootstrap_samples, seed=seed or 0,
+        )
+        tau_err = max(float(np.std(boot["T_2_echo"])), 1e-30)
+        n_bs = bootstrap_samples
     return FittedParameter(
         name="T_2_echo", value=tau, uncertainty=float(tau_err), unit="s",
-        protocol_source="t2_echo", goodness_of_fit=float(result.redchi), n_bootstrap=0,
+        protocol_source="t2_echo", goodness_of_fit=float(result.redchi), n_bootstrap=n_bs,
+    )
+
+
+# -- Parametric bootstrap (amendment 3) -------------------------------------
+
+from .protocols import (  # noqa: E402
+    generate_rabi_trace, generate_ramsey_trace,
+    generate_t1_trace, generate_t2_echo_trace,
+)
+from .noise import NoiseModelParams  # noqa: E402
+
+
+def _noise_from_trace_metadata(trace: TraceData) -> NoiseModelParams:
+    meta_noise = trace.metadata.get("noise", {})
+    return NoiseModelParams(
+        n_shots_per_point=int(meta_noise.get("n_shots_per_point", 2000)),
+        drift_amplitude_Hz=float(meta_noise.get("drift_amplitude_Hz", 0.0)),
+        drift_alpha=float(meta_noise.get("drift_alpha", 1.0)),
+        drive_amplitude_uncertainty=float(meta_noise.get("drive_amplitude_uncertainty", 0.0)),
+    )
+
+
+def parametric_bootstrap(
+    protocol: Literal["rabi", "ramsey", "t1", "t2_echo"],
+    best_fit_values: dict[str, float],
+    noise: NoiseModelParams,
+    n_bootstrap: int,
+    seed: int,
+) -> dict[str, np.ndarray]:
+    """Parametric bootstrap per amendment 3.
+
+    For k in 1..n_bootstrap:
+        Regenerate a fresh trace from `best_fit_values` + fresh noise realization
+          (seed_k drawn from the master seed).
+        Point-estimate fit the fresh trace.
+        Record the fitted parameters.
+    Return {param_name: ndarray of length n_bootstrap}.
+    """
+    rng = np.random.default_rng(seed)
+    boot: dict[str, list[float]] = {}
+
+    for _ in range(n_bootstrap):
+        sub_seed = int(rng.integers(2**31 - 1))
+        if protocol == "rabi":
+            trace_k = generate_rabi_trace(
+                best_fit_values["epsilon_pi"], best_fit_values.get("omega_q", 2 * math.pi * 4.5e9),
+                noise, seed=sub_seed,
+            )
+            fp = fit_rabi(trace_k, bootstrap_samples=0, seed=sub_seed)
+            boot.setdefault("epsilon_pi", []).append(fp.value)
+        elif protocol == "ramsey":
+            trace_k = generate_ramsey_trace(
+                best_fit_values["omega_q"], T_2_star=best_fit_values["T_2_star"],
+                noise=noise,
+                omega_drive_offset=best_fit_values.get("omega_drive_offset", 2 * math.pi * 1e6),
+                seed=sub_seed,
+            )
+            fp_o, fp_t = fit_ramsey(trace_k, bootstrap_samples=0, seed=sub_seed)
+            boot.setdefault("omega_q", []).append(fp_o.value)
+            boot.setdefault("T_2_star", []).append(fp_t.value)
+        elif protocol == "t1":
+            trace_k = generate_t1_trace(best_fit_values["T_1"], noise, seed=sub_seed)
+            fp = fit_t1(trace_k, bootstrap_samples=0, seed=sub_seed)
+            boot.setdefault("T_1", []).append(fp.value)
+        elif protocol == "t2_echo":
+            trace_k = generate_t2_echo_trace(best_fit_values["T_2_echo"], noise, seed=sub_seed)
+            fp = fit_t2_echo(trace_k, bootstrap_samples=0, seed=sub_seed)
+            boot.setdefault("T_2_echo", []).append(fp.value)
+        else:
+            raise ValueError(f"Unknown protocol: {protocol}")
+
+    return {name: np.array(values, dtype=float) for name, values in boot.items()}
+
+
+def fit_all(
+    traces: list[TraceData],
+    bootstrap_samples: int = 200,
+    seed: int | None = None,
+    trace_file: str = "",
+) -> ExtractedParameterPack:
+    """Fit every trace in a bundle; return a Module-1-compatible parameter pack."""
+    from datetime import datetime, timezone
+    import subprocess
+    fitted: list[FittedParameter] = []
+    for t in traces:
+        if t.protocol == "rabi":
+            fitted.append(fit_rabi(t, bootstrap_samples=bootstrap_samples, seed=seed))
+        elif t.protocol == "ramsey":
+            o, ts = fit_ramsey(t, bootstrap_samples=bootstrap_samples, seed=seed)
+            fitted.extend([o, ts])
+        elif t.protocol == "t1":
+            fitted.append(fit_t1(t, bootstrap_samples=bootstrap_samples, seed=seed))
+        elif t.protocol == "t2_echo":
+            fitted.append(fit_t2_echo(t, bootstrap_samples=bootstrap_samples, seed=seed))
+        else:
+            raise ValueError(f"Unknown protocol: {t.protocol}")
+    try:
+        sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    except Exception:
+        sha = "unknown"
+    return ExtractedParameterPack(
+        fitted_parameters=fitted,
+        trace_file=trace_file,
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        stage_06_version=sha,
     )
