@@ -324,3 +324,57 @@ def test_C7b_to_device_config_warns_on_E_J_drift_over_30pct():
     )
     with pytest.warns(UserWarning, match="E_J"):
         pack.to_device_config()
+
+
+# -- Point-estimate fit tests (full bootstrap uncertainty lives in Task 9) ---
+
+def test_fit_rabi_point_estimate_recovers_epsilon_pi_within_3pct():
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_rabi_trace
+    from dispersive_readout.characterization.fitting import fit_rabi
+    eps_pi_truth = 2 * math.pi * 50e6
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0, drive_amplitude_uncertainty=0.0)
+    trace = generate_rabi_trace(eps_pi_truth, 2 * math.pi * 4.5e9, noise, seed=10)
+    fp = fit_rabi(trace, bootstrap_samples=0, seed=42)
+    rel = abs(fp.value - eps_pi_truth) / eps_pi_truth
+    assert rel < 0.03, f"fit_rabi rel={rel:.3%}"
+    assert fp.name == "epsilon_pi"
+
+
+def test_fit_ramsey_point_estimate_recovers_omega_q_within_0_1pct():
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_ramsey_trace
+    from dispersive_readout.characterization.fitting import fit_ramsey
+    omega_q_truth = 2 * math.pi * 4.5e9
+    T_2_star_truth = 20e-6
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0)
+    trace = generate_ramsey_trace(omega_q_truth, T_2_star=T_2_star_truth, noise=noise, seed=11)
+    fp_omega, fp_T2star = fit_ramsey(trace, bootstrap_samples=0, seed=42)
+    rel = abs(fp_omega.value - omega_q_truth) / omega_q_truth
+    assert rel < 1e-3, f"fit_ramsey omega_q rel={rel:.3e}"
+    rel_T2 = abs(fp_T2star.value - T_2_star_truth) / T_2_star_truth
+    assert rel_T2 < 0.15
+
+
+def test_fit_t1_point_estimate_recovers_T1_within_5pct():
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_t1_trace
+    from dispersive_readout.characterization.fitting import fit_t1
+    T_1_truth = 30e-6
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0)
+    trace = generate_t1_trace(T_1_truth, noise, seed=12)
+    fp = fit_t1(trace, bootstrap_samples=0, seed=42)
+    rel = abs(fp.value - T_1_truth) / T_1_truth
+    assert rel < 0.05
+
+
+def test_fit_t2_echo_point_estimate_recovers_T2_within_5pct():
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_t2_echo_trace
+    from dispersive_readout.characterization.fitting import fit_t2_echo
+    T_2_truth = 40e-6
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0)
+    trace = generate_t2_echo_trace(T_2_truth, noise, seed=13)
+    fp = fit_t2_echo(trace, bootstrap_samples=0, seed=42)
+    rel = abs(fp.value - T_2_truth) / T_2_truth
+    assert rel < 0.05

@@ -6,7 +6,14 @@ from .noise import (
     generate_1f_drift,
     load_reference_F_full,
 )
-from .fitting import ExtractedParameterPack, FittedParameter
+from .fitting import (
+    ExtractedParameterPack,
+    FittedParameter,
+    fit_rabi,
+    fit_ramsey,
+    fit_t1,
+    fit_t2_echo,
+)
 from .protocols import (
     TraceData,
     generate_rabi_trace,
@@ -21,6 +28,10 @@ __all__ = [
     "ExtractedParameterPack",
     "FittedParameter",
     "NoiseModelParams",
+    "fit_rabi",
+    "fit_ramsey",
+    "fit_t1",
+    "fit_t2_echo",
     "TraceData",
     "apply_readout_errors",
     "apply_shot_noise",
