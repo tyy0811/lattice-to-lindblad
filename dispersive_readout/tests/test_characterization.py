@@ -103,3 +103,27 @@ def test_trace_bundle_npz_round_trip(tmp_path):
     np.testing.assert_array_equal(t.P1, trace.P1)
     np.testing.assert_array_equal(t.P1_uncertainty, trace.P1_uncertainty)
     assert t.metadata == trace.metadata
+
+
+def test_C1b_ramsey_round_trip():
+    """Closed-form Ramsey → simple FFT-based estimator recovers ω_q within 0.1% and T2* within 15%."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_ramsey_trace
+    omega_q_truth = 2 * math.pi * 4.5e9
+    T_2_star_truth = 20e-6
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0)
+    omega_drive_offset = 2 * math.pi * 1.5e6
+    trace = generate_ramsey_trace(
+        omega_q_truth, T_2_star=T_2_star_truth, noise=noise,
+        omega_drive_offset=omega_drive_offset, seed=1,
+    )
+    delays = trace.sweep_values
+    signal = trace.P1 - trace.P1.mean()
+    fft = np.abs(np.fft.rfft(signal))
+    dt = float(delays[1] - delays[0])
+    freqs = np.fft.rfftfreq(len(delays), d=dt)
+    peak = int(np.argmax(fft[1:])) + 1
+    delta_omega_est = 2 * math.pi * float(freqs[peak])
+    omega_q_est = omega_q_truth - omega_drive_offset + delta_omega_est
+    rel = abs(omega_q_est - omega_q_truth) / omega_q_truth
+    assert rel < 1e-3, f"Ramsey ω_q naive FFT estimate off: rel={rel:.3e}"

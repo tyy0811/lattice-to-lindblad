@@ -20,6 +20,7 @@ from .noise import (
     NoiseModelParams,
     apply_readout_errors,
     apply_shot_noise,
+    generate_1f_drift,
     load_reference_F_full,
 )
 
@@ -133,3 +134,60 @@ def load_trace_bundle(path: str | Path) -> list[TraceData]:
             metadata=json.loads(str(raw[f"traces/{i}/metadata_json"])),
         ))
     return out
+
+
+def generate_ramsey_trace(
+    omega_q: float,
+    T_2_star: float,
+    noise: NoiseModelParams,
+    omega_drive_offset: float = 2.0 * np.pi * 1e6,
+    n_points: int = 101,
+    delay_range: tuple[float, float] = (0.0, 40e-6),
+    seed: int | None = None,
+) -> TraceData:
+    """Closed-form Ramsey with correlated 1/f qubit-frequency drift.
+
+    Form: P₁(τ) = 0.5 − 0.5·exp(−τ/T_2*)·cos(Δω_nom·τ + φ_drift(τ))
+      where φ_drift(τ_k) = ∫₀^τ_k δω_1f(t) dt is approximated by the
+      cumulative sum of the drift realization. This is the correlated-drift
+      effect: a single realization of `generate_1f_drift` samples the
+      trajectory of δω across the sweep, so bootstrap residuals are NOT iid
+      (amendment 3).
+    """
+    rng = np.random.default_rng(seed)
+    F_assign = load_reference_F_full()
+    delays = np.linspace(delay_range[0], delay_range[1], n_points)
+    delta_omega_nominal = omega_drive_offset
+    drift_seed = int(rng.integers(2**31 - 1))
+    delta_omega_drift = 2.0 * np.pi * generate_1f_drift(
+        n_points, amplitude_Hz=noise.drift_amplitude_Hz, alpha=noise.drift_alpha, seed=drift_seed,
+    )
+    dt = float(delays[1] - delays[0]) if len(delays) > 1 else 0.0
+    phi_drift = np.cumsum(delta_omega_drift) * dt
+    envelope = np.exp(-delays / T_2_star)
+    P_true = 0.5 - 0.5 * envelope * np.cos(delta_omega_nominal * delays + phi_drift)
+    P_after_readout = apply_readout_errors(P_true, F_assign)
+    P_observed = apply_shot_noise(P_after_readout, noise.n_shots_per_point, rng)
+    P_ro_c = np.clip(P_after_readout, 1e-12, 1 - 1e-12)
+    P_se = np.sqrt(P_ro_c * (1 - P_ro_c) / noise.n_shots_per_point)
+    return TraceData(
+        protocol="ramsey",
+        sweep_axis="delay",
+        sweep_values=delays,
+        P1=P_observed,
+        P1_uncertainty=P_se,
+        metadata={
+            "ground_truth": {
+                "omega_q": omega_q, "T_2_star": T_2_star,
+                "omega_drive_offset": omega_drive_offset,
+            },
+            "noise": {
+                "n_shots_per_point": noise.n_shots_per_point,
+                "drift_amplitude_Hz": noise.drift_amplitude_Hz,
+                "drift_alpha": noise.drift_alpha,
+                "F_assign": F_assign,
+            },
+            "seed": seed,
+            "drift_seed": drift_seed,
+        },
+    )
