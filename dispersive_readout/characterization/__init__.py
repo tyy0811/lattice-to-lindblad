@@ -1,11 +1,4 @@
-"""Stage 06 Module 3 — parameter characterization protocols.
-
-Public API (post-Task 1):
-    - NoiseModelParams
-    - generate_1f_drift, apply_shot_noise, apply_readout_errors, load_reference_F_full
-
-Additional exports land as subsequent tasks (protocols, fitting, recovery, CLI).
-"""
+"""Stage 06 Module 3 — parameter characterization protocols."""
 from .noise import (
     NoiseModelParams,
     apply_readout_errors,
@@ -13,11 +6,21 @@ from .noise import (
     generate_1f_drift,
     load_reference_F_full,
 )
+from .protocols import (
+    TraceData,
+    generate_rabi_trace,
+    load_trace_bundle,
+    save_trace_bundle,
+)
 
 __all__ = [
     "NoiseModelParams",
+    "TraceData",
     "apply_readout_errors",
     "apply_shot_noise",
     "generate_1f_drift",
+    "generate_rabi_trace",
     "load_reference_F_full",
+    "load_trace_bundle",
+    "save_trace_bundle",
 ]

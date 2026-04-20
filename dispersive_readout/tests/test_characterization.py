@@ -53,3 +53,53 @@ def test_C2c_load_reference_F_full_matches_yaml():
     with open("06_Dispersive_Readout/figures/fig2_data.yaml") as f:
         budget = yaml.safe_load(f)
     assert abs(load_reference_F_full() - float(budget["F_full"])) < 1e-12
+
+
+# -- C1a: Rabi round-trip ----------------------------------------------------
+
+def test_C1a_rabi_round_trip():
+    """Closed-form Rabi trace → fit pipeline (point-estimate only) recovers ε_π within 3%.
+
+    Point-estimate sanity check; full uncertainty testing is in C3. Uses a
+    light noise config (n_shots=5000, no drift, no amp uncertainty) so the
+    round-trip is tight.
+    """
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_rabi_trace
+    noise = NoiseModelParams(
+        n_shots_per_point=5000,
+        drift_amplitude_Hz=0.0,
+        drive_amplitude_uncertainty=0.0,
+    )
+    epsilon_pi_truth = 2 * math.pi * 50e6
+    omega_q = 2 * math.pi * 4.5e9
+    trace = generate_rabi_trace(epsilon_pi_truth, omega_q, noise, seed=0)
+    P1 = trace.P1
+    eps = trace.sweep_values
+    idx_min = int(np.argmin(P1))
+    eps_estimate = float(eps[idx_min])
+    rel = abs(eps_estimate - epsilon_pi_truth) / epsilon_pi_truth
+    assert rel < 0.03, f"Rabi round-trip: eps_est={eps_estimate:.3e}, truth={epsilon_pi_truth:.3e}, rel={rel:.3%}"
+
+
+# -- Bundle round-trip (preps for schema validation in Task 6) ---------------
+
+def test_trace_bundle_npz_round_trip(tmp_path):
+    """save_trace_bundle → load_trace_bundle preserves all fields exactly."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import (
+        generate_rabi_trace, save_trace_bundle, load_trace_bundle, TraceData,
+    )
+    noise = NoiseModelParams(n_shots_per_point=1000, drift_amplitude_Hz=0.0)
+    trace = generate_rabi_trace(2 * math.pi * 30e6, 2 * math.pi * 4.8e9, noise, seed=123)
+    path = tmp_path / "bundle.npz"
+    save_trace_bundle([trace], str(path))
+    loaded = load_trace_bundle(str(path))
+    assert len(loaded) == 1
+    t = loaded[0]
+    assert t.protocol == trace.protocol
+    assert t.sweep_axis == trace.sweep_axis
+    np.testing.assert_array_equal(t.sweep_values, trace.sweep_values)
+    np.testing.assert_array_equal(t.P1, trace.P1)
+    np.testing.assert_array_equal(t.P1_uncertainty, trace.P1_uncertainty)
+    assert t.metadata == trace.metadata
