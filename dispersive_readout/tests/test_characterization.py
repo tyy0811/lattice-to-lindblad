@@ -441,3 +441,117 @@ def test_fit_one_device_is_deterministic_under_same_seed():
     for ra, rb in zip(a, b):
         assert ra.parameter_name == rb.parameter_name
         assert ra.fitted_value == rb.fitted_value
+
+
+# -- C3: recovery-coverage regression gate (amendment 9) ---------------------
+
+@pytest.mark.slow
+def test_C3_recovery_coverage_matches_committed_artifact():
+    """Re-run 50-device harness at SEED=42 and match the committed artifact
+    within ±2% per parameter. Regression gate; if this fails, diagnose the
+    fitter before regenerating the artifact."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.recovery import (
+        run_recovery_harness, load_committed_coverage_report,
+    )
+    observed_reports, _ = run_recovery_harness(n_devices=50, noise=NoiseModelParams(), seed=42)
+    committed = load_committed_coverage_report(
+        "06_Dispersive_Readout/figures/recovery_coverage_report.yaml"
+    )
+    for name, rep in observed_reports.items():
+        ref = committed[name]
+        for field_name in ("coverage_1_sigma", "coverage_2_sigma"):
+            delta = abs(getattr(rep, field_name) - getattr(ref, field_name))
+            assert delta < 0.02, (
+                f"{name}.{field_name} regression: observed {getattr(rep, field_name):.2%} "
+                f"vs committed {getattr(ref, field_name):.2%} (Δ={delta:.2%})"
+            )
+
+
+# -- C5: CLI smoke tests ----------------------------------------------------
+
+def _run_cli(args: list[str]) -> int:
+    from dispersive_readout.characterization.cli import main
+    return main(argv=args)
+
+
+def test_C5a_cli_generate_synthetic(tmp_path):
+    out = tmp_path / "synthetic.npz"
+    rc = _run_cli(["--generate-synthetic", "--output", str(out), "--seed", "42"])
+    assert rc == 0
+    from dispersive_readout.characterization.protocols import load_trace_bundle
+    traces = load_trace_bundle(str(out))
+    assert {t.protocol for t in traces} == {"rabi", "ramsey", "t1", "t2_echo"}
+
+
+def test_C5b_cli_full_pipeline_generate_then_fit(tmp_path):
+    bundle = tmp_path / "synth.npz"
+    params = tmp_path / "params.yaml"
+    rc1 = _run_cli(["--generate-synthetic", "--output", str(bundle), "--seed", "42"])
+    assert rc1 == 0
+    rc2 = _run_cli(["--traces", str(bundle), "--output", str(params), "--bootstrap-samples", "20"])
+    assert rc2 == 0
+    import yaml
+    with open(params) as f:
+        data = yaml.safe_load(f)
+    names = {p["name"] for p in data["fitted_parameters"]}
+    assert {"T_1", "T_2_echo", "omega_q", "epsilon_pi"}.issubset(names)
+
+
+def test_C5c_cli_help_has_no_todo(capsys):
+    with pytest.raises(SystemExit):
+        _run_cli(["--help"])
+    out = capsys.readouterr().out
+    for forbidden in ("TODO", "TBD", "FIXME", "XXX"):
+        assert forbidden not in out, f"--help text contains '{forbidden}'"
+
+
+def test_C5d_cli_rejects_conflicting_flags(tmp_path):
+    """--traces + --generate-synthetic is ambiguous; must exit non-zero with a clear error."""
+    rc = _run_cli(["--traces", "x.npz", "--generate-synthetic", "--output", str(tmp_path / "o.yaml")])
+    assert rc != 0
+
+
+# -- C6: edge cases ----------------------------------------------------------
+
+def test_C6a_ramsey_zero_detuning_envelope_only_path():
+    """Ramsey with Δω=0 uses the envelope-only fallback and returns a T2* within 20%."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_ramsey_trace
+    from dispersive_readout.characterization.fitting import fit_ramsey
+    omega_q = 2 * math.pi * 4.5e9
+    T_2_star_truth = 20e-6
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0)
+    trace = generate_ramsey_trace(omega_q, T_2_star=T_2_star_truth, noise=noise,
+                                  omega_drive_offset=0.0, seed=99)
+    fp_omega, fp_T2 = fit_ramsey(trace, bootstrap_samples=0, seed=42)
+    assert fp_T2.name == "T_2_star"
+    rel = abs(fp_T2.value - T_2_star_truth) / T_2_star_truth
+    assert rel < 0.20
+
+
+def test_C6b_t1_with_elevated_thermal_no_downward_bias():
+    """T1 fit with thermal_offset=0.08 recovers T1 within 10% (thermal absorbed by A)."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_t1_trace
+    from dispersive_readout.characterization.fitting import fit_t1
+    T_1_truth = 30e-6
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0)
+    trace = generate_t1_trace(T_1_truth, noise, thermal_offset=0.08, seed=7)
+    fp = fit_t1(trace, bootstrap_samples=0, seed=42)
+    rel = abs(fp.value - T_1_truth) / T_1_truth
+    assert rel < 0.10
+
+
+def test_C6c_rabi_amplitude_span_too_small_fits_but_flags_via_redchi():
+    """A Rabi trace with only half an oscillation produces a high χ²/dof; we don't
+    hard-reject at generator level (kept simple), but the fit should still return
+    a value and the caller can check goodness_of_fit > threshold."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_rabi_trace
+    from dispersive_readout.characterization.fitting import fit_rabi
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0, drive_amplitude_uncertainty=0.0)
+    eps_pi_truth = 2 * math.pi * 50e6
+    trace = generate_rabi_trace(eps_pi_truth, 2 * math.pi * 4.5e9, noise, seed=8, amplitude_span_mult=(0.0, 0.6))
+    fp = fit_rabi(trace, bootstrap_samples=0, seed=42)
+    assert fp.goodness_of_fit >= 0

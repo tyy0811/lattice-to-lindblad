@@ -30,7 +30,11 @@ from .recovery import (
     DeviceGroundTruth,
     RecoveryResult,
     fit_one_device,
+    format_recovery_table,
     generate_synthetic_device_family,
+    load_committed_coverage_report,
+    run_recovery_harness,
+    save_coverage_report,
 )
 
 __all__ = [
@@ -41,7 +45,11 @@ __all__ = [
     "NoiseModelParams",
     "RecoveryResult",
     "fit_one_device",
+    "format_recovery_table",
     "generate_synthetic_device_family",
+    "load_committed_coverage_report",
+    "run_recovery_harness",
+    "save_coverage_report",
     "fit_all",
     "fit_rabi",
     "fit_ramsey",

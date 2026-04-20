@@ -160,3 +160,91 @@ def generate_synthetic_device_family(n_devices: int, seed: int) -> list[DeviceGr
             ramsey_detuning=2 * math.pi * 1e6,
         ))
     return out
+
+
+import yaml  # noqa: E402
+
+
+def run_recovery_harness(
+    n_devices: int = 50,
+    noise: NoiseModelParams | None = None,
+    seed: int = 42,
+) -> tuple[dict[str, CoverageReport], list[DeviceGroundTruth]]:
+    """Run the full harness at the given seed; return (reports, devices)."""
+    if noise is None:
+        noise = NoiseModelParams()
+    devices = generate_synthetic_device_family(n_devices=n_devices, seed=seed)
+    rng = np.random.default_rng(seed)
+    results_by_param: dict[str, list[RecoveryResult]] = {
+        "T_1": [], "T_2_echo": [], "omega_q": [], "epsilon_pi": [],
+    }
+    for d in devices:
+        sub_seed = int(rng.integers(2**31 - 1))
+        for r in fit_one_device(d, noise, seed=sub_seed):
+            results_by_param[r.parameter_name].append(r)
+
+    reports: dict[str, CoverageReport] = {}
+    for name, records in results_by_param.items():
+        n = len(records)
+        cov1 = sum(r.within_1_sigma for r in records) / n
+        cov2 = sum(r.within_2_sigma for r in records) / n
+        c1_lo, c1_hi = _binomial_2sigma_ci(cov1, n)
+        c2_lo, c2_hi = _binomial_2sigma_ci(cov2, n)
+        diffs = np.array([r.fitted_value - r.ground_truth for r in records])
+        bias = float(diffs.mean())
+        bias_unc = float(diffs.std(ddof=1) / math.sqrt(n))
+        reports[name] = CoverageReport(
+            parameter_name=name,
+            n_devices=n,
+            coverage_1_sigma=cov1,
+            coverage_2_sigma=cov2,
+            coverage_1_sigma_ci_low=c1_lo,
+            coverage_1_sigma_ci_high=c1_hi,
+            coverage_2_sigma_ci_low=c2_lo,
+            coverage_2_sigma_ci_high=c2_hi,
+            bias=bias,
+            bias_uncertainty=bias_unc,
+        )
+    return reports, devices
+
+
+def save_coverage_report(
+    reports: dict[str, CoverageReport],
+    devices: list[DeviceGroundTruth],
+    path: str | Path,
+    seed: int,
+) -> None:
+    """Serialize the coverage report + device list (for RNG stability)."""
+    payload = {
+        "seed": seed,
+        "n_devices": len(devices),
+        "coverage": {name: asdict(rep) for name, rep in reports.items()},
+        "devices": [asdict(d) for d in devices],
+    }
+    with open(path, "w") as f:
+        yaml.safe_dump(payload, f, sort_keys=False)
+
+
+def load_committed_coverage_report(path: str | Path) -> dict[str, CoverageReport]:
+    with open(path) as f:
+        data = yaml.safe_load(f)
+    return {
+        name: CoverageReport(**rec)
+        for name, rec in data["coverage"].items()
+    }
+
+
+def format_recovery_table(reports: dict[str, CoverageReport]) -> str:
+    lines = [
+        "| Parameter | Cov 1σ (target 68%) | 2σ CI | Cov 2σ (target 95%) | 2σ CI | Bias |",
+        "|---|---|---|---|---|---|",
+    ]
+    for name, r in reports.items():
+        lines.append(
+            f"| `{name}` | {r.coverage_1_sigma:.1%} | "
+            f"[{r.coverage_1_sigma_ci_low:.1%}, {r.coverage_1_sigma_ci_high:.1%}] | "
+            f"{r.coverage_2_sigma:.1%} | "
+            f"[{r.coverage_2_sigma_ci_low:.1%}, {r.coverage_2_sigma_ci_high:.1%}] | "
+            f"{r.bias:+.3e} ± {r.bias_uncertainty:.1e} |"
+        )
+    return "\n".join(lines)
