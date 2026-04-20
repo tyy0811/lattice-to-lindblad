@@ -12,6 +12,9 @@ coverage:
     coverage_2_sigma_ci_high: 1.0
     bias: -1.76256856067754e-07
     bias_uncertainty: 1.3887094436739367e-07
+    n_rejected: 0
+    coverage_1_sigma_on_accepted: 0.74
+    coverage_2_sigma_on_accepted: 1.0
   T_2_echo:
     parameter_name: T_2_echo
     n_devices: 50
@@ -23,6 +26,9 @@ coverage:
     coverage_2_sigma_ci_high: 1.0
     bias: -1.9435602399074506e-08
     bias_uncertainty: 1.1220655544835493e-07
+    n_rejected: 0
+    coverage_1_sigma_on_accepted: 0.68
+    coverage_2_sigma_on_accepted: 1.0
   omega_q:
     parameter_name: omega_q
     n_devices: 50
@@ -34,6 +40,9 @@ coverage:
     coverage_2_sigma_ci_high: 1.0
     bias: 4823.848513336182
     bias_uncertainty: 2641.1288679567188
+    n_rejected: 0
+    coverage_1_sigma_on_accepted: 0.58
+    coverage_2_sigma_on_accepted: 1.0
   epsilon_pi:
     parameter_name: epsilon_pi
     n_devices: 50
@@ -45,6 +54,9 @@ coverage:
     coverage_2_sigma_ci_high: 0.9572299214782116
     bias: 3844066.1312455726
     bias_uncertainty: 2562430.168887423
+    n_rejected: 3
+    coverage_1_sigma_on_accepted: 0.723404255319149
+    coverage_2_sigma_on_accepted: 0.9574468085106383
 devices:
 - T_1: 3.0e-05
   T_2_echo: 4.0e-05
