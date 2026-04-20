@@ -167,3 +167,43 @@ def test_C1d_t2_echo_round_trip():
     T_2_est = -1.0 / coef[0]
     rel = abs(T_2_est - T_2_truth) / T_2_truth
     assert rel < 0.10, f"T2-echo round-trip rel={rel:.3%}"
+
+
+# -- Schema validation for load_trace_bundle (§8 flag #5) --------------------
+
+def test_load_trace_bundle_rejects_missing_field(tmp_path):
+    """A .npz that lacks a required field (e.g., P1_uncertainty) raises ValueError."""
+    from dispersive_readout.characterization.protocols import load_trace_bundle
+    path = tmp_path / "missing_field.npz"
+    np.savez(
+        str(path),
+        n_traces=np.array(1),
+        **{
+            "traces/0/protocol": np.array("rabi"),
+            "traces/0/sweep_axis": np.array("drive_amplitude"),
+            "traces/0/sweep_values": np.array([0.0, 1.0, 2.0]),
+            "traces/0/P1": np.array([0.5, 0.5, 0.5]),
+            "traces/0/metadata_json": np.array("{}"),
+        },
+    )
+    with pytest.raises(ValueError, match="P1_uncertainty"):
+        load_trace_bundle(str(path))
+
+
+def test_load_trace_bundle_rejects_missing_metadata(tmp_path):
+    """A bundle missing metadata_json on any entry raises ValueError."""
+    from dispersive_readout.characterization.protocols import load_trace_bundle
+    path = tmp_path / "missing_meta.npz"
+    np.savez(
+        str(path),
+        n_traces=np.array(1),
+        **{
+            "traces/0/protocol": np.array("rabi"),
+            "traces/0/sweep_axis": np.array("drive_amplitude"),
+            "traces/0/sweep_values": np.array([0.0, 1.0, 2.0]),
+            "traces/0/P1": np.array([0.5, 0.5, 0.5]),
+            "traces/0/P1_uncertainty": np.array([0.01, 0.01, 0.01]),
+        },
+    )
+    with pytest.raises(ValueError, match="metadata"):
+        load_trace_bundle(str(path))
