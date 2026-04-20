@@ -610,6 +610,95 @@ def test_rabi_full_span_does_not_trigger_reject_flag():
     assert fp.reject_flag is None
 
 
+def test_ramsey_auto_escalates_to_stretched_on_gaussian_envelope():
+    """F1: synthetic trace with true Gaussian envelope (n=2) — the
+    auto-escalator must fire and recover n within ±0.3 of 2.
+
+    Built manually (generate_ramsey_trace only produces plain-exp envelope)
+    to validate the fitter's stretched-exp capability independently of
+    whether spec-default 1/f drift produces envelope mismatch in practice.
+    """
+    from dispersive_readout.characterization.fitting import fit_ramsey
+    from dispersive_readout.characterization.protocols import TraceData
+    omega_q = 2 * math.pi * 4.5e9
+    omega_drive_offset = 2 * math.pi * 1e6
+    T_2_true = 20e-6
+    n_true = 2.0
+    delays = np.linspace(0.0, 40e-6, 101)
+    envelope = np.exp(-((delays / T_2_true) ** n_true))
+    P_true = 0.5 - 0.5 * envelope * np.cos(omega_drive_offset * delays)
+    rng = np.random.default_rng(42)
+    n_shots = 5000
+    k = rng.binomial(n_shots, np.clip(P_true, 0.0, 1.0))
+    P_obs = k / n_shots
+    P_se = np.sqrt(np.clip(P_true, 1e-12, 1 - 1e-12) * (1 - np.clip(P_true, 1e-12, 1 - 1e-12)) / n_shots)
+    trace = TraceData(
+        protocol="ramsey", sweep_axis="delay",
+        sweep_values=delays, P1=P_obs, P1_uncertainty=P_se,
+        metadata={
+            "ground_truth": {"omega_q": omega_q, "T_2_star": T_2_true,
+                             "omega_drive_offset": omega_drive_offset},
+            "noise": {"n_shots_per_point": n_shots},
+            "seed": 42,
+        },
+    )
+    fp_o, fp_t = fit_ramsey(trace, bootstrap_samples=0, seed=42)
+    assert fp_t.envelope_model == "stretched", (
+        f"expected stretched on Gaussian-envelope trace, got {fp_t.envelope_model}"
+    )
+    assert fp_t.stretch_exponent is not None
+    assert abs(fp_t.stretch_exponent - 2.0) < 0.3, (
+        f"recovered n = {fp_t.stretch_exponent:.3f}, expected 2.0 ± 0.3"
+    )
+
+
+def test_ramsey_clean_trace_does_not_escalate():
+    """F1: a clean Ramsey trace (plain exp envelope, no drift) must NOT
+    trigger the stretched escalation."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_ramsey_trace
+    from dispersive_readout.characterization.fitting import fit_ramsey
+    # Zero drift + high shot count → redchi ~ 1, escalation should not fire.
+    noise = NoiseModelParams(n_shots_per_point=10000, drift_amplitude_Hz=0.0)
+    trace = generate_ramsey_trace(2 * math.pi * 4.5e9, T_2_star=20e-6, noise=noise, seed=99)
+    fp_o, fp_t = fit_ramsey(trace, bootstrap_samples=0, seed=42)
+    assert fp_t.envelope_model == "exponential"
+    assert fp_t.stretch_exponent is None
+    assert fp_t.goodness_of_fit < 3.0, (
+        f"clean-trace redchi = {fp_t.goodness_of_fit:.2f}, expected < 3"
+    )
+
+
+def test_ramsey_fig3_seed_escalation_evaluated_but_rejected():
+    """F1 null finding: on the fig3 seed (SEED=42, spec-default noise with
+    10 kHz 1/f drift), the stretched fit is evaluated but does NOT beat
+    plain — residual structure under 1/f drift is phase-jitter, not
+    envelope-shape mismatch. Locking this as a regression: if this test
+    starts returning 'stretched', the noise model or fitter changed."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_ramsey_trace
+    from dispersive_readout.characterization.fitting import fit_ramsey
+    noise = NoiseModelParams()
+    trace = generate_ramsey_trace(2 * math.pi * 4.5e9, T_2_star=20e-6, noise=noise, seed=42)
+    fp_o, fp_t = fit_ramsey(trace, bootstrap_samples=0, seed=42)
+    assert fp_t.envelope_model == "exponential"
+    assert fp_t.goodness_of_fit > 3.0  # (auto-gate WAS evaluated)
+
+
+def test_fit_t2_echo_force_stretched_returns_stretched():
+    """F1.2: force_stretched=True bypasses the redchi gate for testing."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_t2_echo_trace
+    from dispersive_readout.characterization.fitting import fit_t2_echo
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0)
+    trace = generate_t2_echo_trace(40e-6, noise, seed=3)
+    fp = fit_t2_echo(trace, force_stretched=True, bootstrap_samples=0, seed=42)
+    assert fp.envelope_model == "stretched"
+    assert fp.stretch_exponent is not None
+    # n should land near 1 since the ground-truth envelope IS plain exp.
+    assert 0.5 < fp.stretch_exponent < 1.5
+
+
 def test_coverage_report_tallies_rejects_and_excludes_from_on_accepted():
     """Inject a reject-flagged RecoveryResult directly and verify
     CoverageReport.coverage_{1,2}_sigma_on_accepted excludes it while

@@ -46,6 +46,8 @@ class RecoveryResult:
     within_1_sigma: bool
     within_2_sigma: bool
     reject_flag: str | None = None
+    envelope_model: str = "exponential"
+    stretch_exponent: float | None = None
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,14 @@ class CoverageReport:
     n_rejected: int = 0
     coverage_1_sigma_on_accepted: float = 0.0
     coverage_2_sigma_on_accepted: float = 0.0
+    # F1 envelope-escalation stats: populated for protocols where fit_{ramsey,
+    # t2_echo} evaluated the stretched fallback. n_stretched counts how many
+    # of the n_devices fits ended up on the stretched branch; stretch_mean /
+    # stretch_std aggregate n across those. For protocols that don't
+    # escalate (T1, Rabi) the fields stay at 0 / NaN.
+    n_stretched: int = 0
+    stretch_exponent_mean: float | None = None
+    stretch_exponent_std: float | None = None
 
 
 def _binomial_2sigma_ci(p: float, n: int, z: float = 2.0) -> tuple[float, float]:
@@ -108,6 +118,8 @@ def _make_recovery_result(param_name: str, truth: float, fp: FittedParameter) ->
         within_1_sigma=abs(z) <= 1.0,
         within_2_sigma=abs(z) <= 2.0,
         reject_flag=fp.reject_flag,
+        envelope_model=fp.envelope_model,
+        stretch_exponent=fp.stretch_exponent,
     )
 
 
@@ -229,6 +241,15 @@ def run_recovery_harness(
             cov2_acc = sum(r.within_2_sigma for r in accepted) / len(accepted)
         else:
             cov1_acc = cov2_acc = 0.0
+        stretched = [r for r in records if r.envelope_model == "stretched"]
+        n_stretched = len(stretched)
+        if n_stretched > 0:
+            ns = np.array([r.stretch_exponent for r in stretched if r.stretch_exponent is not None], dtype=float)
+            stretch_mean = float(ns.mean()) if ns.size else None
+            stretch_std = float(ns.std(ddof=1)) if ns.size > 1 else 0.0
+        else:
+            stretch_mean = None
+            stretch_std = None
         reports[name] = CoverageReport(
             parameter_name=name,
             n_devices=n,
@@ -243,6 +264,9 @@ def run_recovery_harness(
             n_rejected=n_rejected,
             coverage_1_sigma_on_accepted=cov1_acc,
             coverage_2_sigma_on_accepted=cov2_acc,
+            n_stretched=n_stretched,
+            stretch_exponent_mean=stretch_mean,
+            stretch_exponent_std=stretch_std,
         )
     return reports, devices
 

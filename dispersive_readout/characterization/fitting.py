@@ -34,6 +34,14 @@ class FittedParameter(BaseModel):
     goodness_of_fit: float = Field(ge=0.0)
     n_bootstrap: int = Field(ge=0)
     reject_flag: str | None = None
+    # Envelope-model escalation (F1): both Ramsey and T2-echo auto-escalate
+    # from plain exp to stretched exp(−(τ/T)^n) when the plain fit has
+    # reduced χ² > 3. For 1/f-dominated dephasing n ≈ 2 (Gaussian).
+    # "exponential" for fits that didn't escalate or weren't subject to
+    # escalation (Rabi, T1); stretch_exponent is None unless the fit
+    # landed on the stretched branch.
+    envelope_model: Literal["exponential", "stretched"] = "exponential"
+    stretch_exponent: float | None = None
 
     @field_validator("uncertainty")
     @classmethod
@@ -261,23 +269,45 @@ def fit_ramsey(
     trace: TraceData,
     bootstrap_samples: int = 200,
     seed: int | None = None,
+    force_stretched: bool = False,
 ) -> tuple[FittedParameter, FittedParameter]:
     """Fit Ramsey: P₁(τ) = A + B·exp(−τ/T_2*)·cos(Δω·τ + φ). Returns (omega_q, T_2_star).
 
+    Auto-escalates to stretched envelope exp(−(τ/T_2*)^n) with n ∈ [0.5, 3]
+    when the plain fit's reduced χ² > 3 (F1). 1/f-dominated dephasing
+    predicts n ≈ 2 (Gaussian envelope); free n with wide bounds lets the
+    harness report the distribution as an independent cross-check on which
+    noise regime dominates.
+
     Edge case (amendment 2 / §5 test C6a): if initial FFT guess shows < 1
-    oscillation over the sweep, pin Δω=0 and fit the envelope only.
+    oscillation over the sweep, pin Δω=0 and fit the envelope only. The
+    same escalation applies to the envelope-only branch.
     """
     g = _initial_guess_ramsey(trace.sweep_values, trace.P1)
     span = float(trace.sweep_values.max() - trace.sweep_values.min())
     oscillations = g["delta_omega"] * span / (2 * math.pi)
 
     if oscillations < 1.0:
-        def _env_model(x, A, B, T_2_star):
+        def _env_plain(x, A, B, T_2_star):
             return A + B * np.exp(-x / T_2_star)
-        model = lmfit.Model(_env_model)
+        def _env_stretched(x, A, B, T_2_star, n):
+            return A + B * np.exp(-((x / T_2_star) ** n))
+        model = lmfit.Model(_env_plain)
         params = model.make_params(A=g["A"], B=g["B"], T_2_star=g["T_2_star"])
         params["T_2_star"].set(min=1e-7, max=1e-3)
         result = _fit_point(model, params, trace.sweep_values, trace.P1, trace.P1_uncertainty)
+        envelope_model: Literal["exponential", "stretched"] = "exponential"
+        stretch_exponent: float | None = None
+        if force_stretched or float(result.redchi) > 3.0:
+            model_s = lmfit.Model(_env_stretched)
+            ps = model_s.make_params(A=g["A"], B=g["B"], T_2_star=g["T_2_star"], n=2.0)
+            ps["T_2_star"].set(min=1e-7, max=1e-3)
+            ps["n"].set(min=0.5, max=3.0)
+            result_s = _fit_point(model_s, ps, trace.sweep_values, trace.P1, trace.P1_uncertainty)
+            if force_stretched or float(result_s.redchi) < float(result.redchi):
+                result = result_s
+                envelope_model = "stretched"
+                stretch_exponent = float(result.params["n"].value)
         T_2 = float(result.params["T_2_star"].value)
         T_2_err = result.params["T_2_star"].stderr or T_2 * 0.1
         omega_q_meta = float(trace.metadata.get("ground_truth", {}).get("omega_q", 2 * math.pi * 4.5e9))
@@ -285,21 +315,40 @@ def fit_ramsey(
             name="omega_q", value=omega_q_meta, uncertainty=2 * math.pi * 1e3,
             unit="rad/s", protocol_source="ramsey",
             goodness_of_fit=float(result.redchi), n_bootstrap=0,
+            envelope_model=envelope_model, stretch_exponent=stretch_exponent,
         )
         fp_T2 = FittedParameter(
             name="T_2_star", value=T_2, uncertainty=float(T_2_err),
             unit="s", protocol_source="ramsey",
             goodness_of_fit=float(result.redchi), n_bootstrap=0,
+            envelope_model=envelope_model, stretch_exponent=stretch_exponent,
         )
         return fp_omega, fp_T2
 
-    def _model(x, A, B, delta_omega, T_2_star, phi):
+    def _plain(x, A, B, delta_omega, T_2_star, phi):
         return A + B * np.exp(-x / T_2_star) * np.cos(delta_omega * x + phi)
-    model = lmfit.Model(_model)
+    def _stretched(x, A, B, delta_omega, T_2_star, phi, n):
+        return A + B * np.exp(-((x / T_2_star) ** n)) * np.cos(delta_omega * x + phi)
+    model = lmfit.Model(_plain)
     params = model.make_params(**g)
     params["T_2_star"].set(min=1e-7, max=1e-3)
     params["delta_omega"].set(min=2 * math.pi * 1e3, max=2 * math.pi * 1e9)
     result = _fit_point(model, params, trace.sweep_values, trace.P1, trace.P1_uncertainty)
+
+    envelope_model = "exponential"
+    stretch_exponent = None
+    if force_stretched or float(result.redchi) > 3.0:
+        model_s = lmfit.Model(_stretched)
+        ps = model_s.make_params(**{**g, "n": 2.0})
+        ps["T_2_star"].set(min=1e-7, max=1e-3)
+        ps["delta_omega"].set(min=2 * math.pi * 1e3, max=2 * math.pi * 1e9)
+        ps["n"].set(min=0.5, max=3.0)
+        result_s = _fit_point(model_s, ps, trace.sweep_values, trace.P1, trace.P1_uncertainty)
+        if force_stretched or float(result_s.redchi) < float(result.redchi):
+            result = result_s
+            envelope_model = "stretched"
+            stretch_exponent = float(result.params["n"].value)
+
     delta_omega_fit = float(result.params["delta_omega"].value)
     T_2_fit = float(result.params["T_2_star"].value)
     d_omega_err = result.params["delta_omega"].stderr or abs(delta_omega_fit) * 0.01
@@ -312,11 +361,13 @@ def fit_ramsey(
         name="omega_q", value=omega_q_fit, uncertainty=float(d_omega_err),
         unit="rad/s", protocol_source="ramsey",
         goodness_of_fit=float(result.redchi), n_bootstrap=0,
+        envelope_model=envelope_model, stretch_exponent=stretch_exponent,
     )
     fp_T2 = FittedParameter(
         name="T_2_star", value=T_2_fit, uncertainty=float(T_2_err),
         unit="s", protocol_source="ramsey",
         goodness_of_fit=float(result.redchi), n_bootstrap=0,
+        envelope_model=envelope_model, stretch_exponent=stretch_exponent,
     )
     if bootstrap_samples > 0:
         boot_noise = _noise_from_trace_metadata(trace)
@@ -369,11 +420,14 @@ def fit_t1(
 
 def fit_t2_echo(
     trace: TraceData,
-    use_stretched_exponential: bool = False,
+    force_stretched: bool = False,
     bootstrap_samples: int = 200,
     seed: int | None = None,
 ) -> FittedParameter:
-    """Fit Hahn echo: P₁(τ) = A + B·exp(−τ/T_2). Stretched fallback if redchi > 3."""
+    """Fit Hahn echo: P₁(τ) = A + B·exp(−τ/T_2). Auto-escalates to stretched
+    exp(−(τ/T_2)^n) with n ∈ [0.5, 3] when plain fit has reduced χ² > 3 —
+    matches the spec §1.4 fallback policy and the new Ramsey escalation
+    (F1). ``force_stretched`` overrides the auto-gate for testing."""
     def _plain(x, A, B, tau):
         return A + B * np.exp(-x / tau)
     def _stretched(x, A, B, tau, n):
@@ -388,12 +442,18 @@ def fit_t2_echo(
     params["tau"].set(min=1e-7, max=1e-3)
     result = _fit_point(model, params, trace.sweep_values, trace.P1, trace.P1_uncertainty)
 
-    if use_stretched_exponential or float(result.redchi) > 3.0:
+    envelope_model: Literal["exponential", "stretched"] = "exponential"
+    stretch_exponent: float | None = None
+    if force_stretched or float(result.redchi) > 3.0:
         model_s = lmfit.Model(_stretched)
-        ps = model_s.make_params(**{**g, "n": 1.0})
+        ps = model_s.make_params(**{**g, "n": 2.0})
         ps["tau"].set(min=1e-7, max=1e-3)
-        ps["n"].set(min=0.3, max=3.0)
-        result = _fit_point(model_s, ps, trace.sweep_values, trace.P1, trace.P1_uncertainty)
+        ps["n"].set(min=0.5, max=3.0)
+        result_s = _fit_point(model_s, ps, trace.sweep_values, trace.P1, trace.P1_uncertainty)
+        if force_stretched or float(result_s.redchi) < float(result.redchi):
+            result = result_s
+            envelope_model = "stretched"
+            stretch_exponent = float(result.params["n"].value)
 
     tau = float(result.params["tau"].value)
     tau_err = result.params["tau"].stderr or tau * 0.1
@@ -409,6 +469,7 @@ def fit_t2_echo(
     return FittedParameter(
         name="T_2_echo", value=tau, uncertainty=float(tau_err), unit="s",
         protocol_source="t2_echo", goodness_of_fit=float(result.redchi), n_bootstrap=n_bs,
+        envelope_model=envelope_model, stretch_exponent=stretch_exponent,
     )
 
 

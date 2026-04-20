@@ -65,7 +65,8 @@ def _panel_ramsey(ax_fit, ax_res):
     model_P = 0.5 - 0.5 * np.exp(-delays / fp_t.value) * np.cos(delta_omega * delays)
     ax_fit.plot(delays * 1e6, model_P, "-", linewidth=1.5, color="crimson")
     ax_fit.set_ylabel(r"$P_1$")
-    ax_fit.set_title(rf"(b) Ramsey — $\omega_q/2\pi$={fp_o.value/(2*math.pi*1e9):.4f} GHz, $T_2^*$={fp_t.value*1e6:.1f} $\pm$ {fp_t.uncertainty*1e6:.1f} µs")
+    env_tag = " [stretched n={:.2f}]".format(fp_t.stretch_exponent) if fp_t.envelope_model == "stretched" else ""
+    ax_fit.set_title(rf"(b) Ramsey — $\omega_q/2\pi$={fp_o.value/(2*math.pi*1e9):.4f} GHz, $T_2^*$={fp_t.value*1e6:.1f} $\pm$ {fp_t.uncertainty*1e6:.1f} µs, $\chi^2_\nu$={fp_t.goodness_of_fit:.2f}{env_tag}")
     ax_res.errorbar(delays * 1e6, trace.P1 - model_P, yerr=trace.P1_uncertainty, fmt="o", ms=2, capsize=0, alpha=0.5)
     ax_res.axhline(0, color="gray", linewidth=0.5)
     ax_res.set_xlabel(r"$\tau$ (µs)")

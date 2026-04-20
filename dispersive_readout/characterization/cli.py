@@ -124,6 +124,15 @@ def _mode_recovery(args: argparse.Namespace) -> int:
                       f"accepted 2σ cov {r.coverage_2_sigma_on_accepted:.1%}")
     else:
         print("Rejections: 0 (no devices triggered the 1.5-oscillation flag)")
+    stretched_any = any(r.n_stretched > 0 for r in reports.values())
+    if stretched_any:
+        print("Envelope-escalation (F1 stretched-exp auto-gate):")
+        for name, r in reports.items():
+            if r.n_stretched:
+                print(f"  {name}: {r.n_stretched}/{r.n_devices} stretched, "
+                      f"n={r.stretch_exponent_mean:.2f} ± {r.stretch_exponent_std:.2f}")
+    else:
+        print("Envelope escalation: 0 (all fits stayed plain-exponential)")
     return 0
 
 
