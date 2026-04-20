@@ -150,3 +150,20 @@ def test_C1c_t1_round_trip():
     T_1_est = -1.0 / coef[0]
     rel = abs(T_1_est - T_1_truth) / T_1_truth
     assert rel < 0.05, f"T1 round-trip rel={rel:.3%}"
+
+
+def test_C1d_t2_echo_round_trip():
+    """Closed-form T2-echo → simple exponential fit recovers T2 within 10%."""
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.protocols import generate_t2_echo_trace
+    T_2_truth = 40e-6
+    noise = NoiseModelParams(n_shots_per_point=5000, drift_amplitude_Hz=0.0)
+    trace = generate_t2_echo_trace(T_2_truth, noise, seed=3)
+    delays = trace.sweep_values
+    P1 = trace.P1
+    signal = 1.0 - 2.0 * P1
+    mask = signal > 0.02
+    coef = np.polyfit(delays[mask], np.log(signal[mask]), 1)
+    T_2_est = -1.0 / coef[0]
+    rel = abs(T_2_est - T_2_truth) / T_2_truth
+    assert rel < 0.10, f"T2-echo round-trip rel={rel:.3%}"

@@ -231,3 +231,40 @@ def generate_t1_trace(
             "seed": seed,
         },
     )
+
+
+def generate_t2_echo_trace(
+    T_2: float,
+    noise: NoiseModelParams,
+    n_points: int = 51,
+    delay_range: tuple[float, float] = (0.0, 120e-6),
+    seed: int | None = None,
+) -> TraceData:
+    """Closed-form Hahn echo: P₁(τ) = 0.5 − 0.5·exp(−τ/T_2).
+
+    The echo π-pulse refocuses low-frequency drift, so 1/f drift is NOT
+    applied at leading order (Sank 2024 §III.B).
+    """
+    rng = np.random.default_rng(seed)
+    F_assign = load_reference_F_full()
+    delays = np.linspace(delay_range[0], delay_range[1], n_points)
+    P_true = 0.5 - 0.5 * np.exp(-delays / T_2)
+    P_after_readout = apply_readout_errors(P_true, F_assign)
+    P_observed = apply_shot_noise(P_after_readout, noise.n_shots_per_point, rng)
+    P_ro_c = np.clip(P_after_readout, 1e-12, 1 - 1e-12)
+    P_se = np.sqrt(P_ro_c * (1 - P_ro_c) / noise.n_shots_per_point)
+    return TraceData(
+        protocol="t2_echo",
+        sweep_axis="delay",
+        sweep_values=delays,
+        P1=P_observed,
+        P1_uncertainty=P_se,
+        metadata={
+            "ground_truth": {"T_2": T_2},
+            "noise": {
+                "n_shots_per_point": noise.n_shots_per_point,
+                "F_assign": F_assign,
+            },
+            "seed": seed,
+        },
+    )

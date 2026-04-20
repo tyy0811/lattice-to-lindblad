@@ -11,6 +11,7 @@ from .protocols import (
     generate_rabi_trace,
     generate_ramsey_trace,
     generate_t1_trace,
+    generate_t2_echo_trace,
     load_trace_bundle,
     save_trace_bundle,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "generate_rabi_trace",
     "generate_ramsey_trace",
     "generate_t1_trace",
+    "generate_t2_echo_trace",
     "load_reference_F_full",
     "load_trace_bundle",
     "save_trace_bundle",
