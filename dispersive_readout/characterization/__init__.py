@@ -25,11 +25,23 @@ from .protocols import (
     load_trace_bundle,
     save_trace_bundle,
 )
+from .recovery import (
+    CoverageReport,
+    DeviceGroundTruth,
+    RecoveryResult,
+    fit_one_device,
+    generate_synthetic_device_family,
+)
 
 __all__ = [
+    "CoverageReport",
+    "DeviceGroundTruth",
     "ExtractedParameterPack",
     "FittedParameter",
     "NoiseModelParams",
+    "RecoveryResult",
+    "fit_one_device",
+    "generate_synthetic_device_family",
     "fit_all",
     "fit_rabi",
     "fit_ramsey",

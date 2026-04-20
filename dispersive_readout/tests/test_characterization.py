@@ -397,3 +397,47 @@ def test_parametric_bootstrap_produces_nonzero_uncertainty_on_noisy_trace():
     assert fp_omega_bs.uncertainty > 1.5 * fp_omega_pe.uncertainty, (
         f"bootstrap SE {fp_omega_bs.uncertainty:.3e} not > 1.5× covariance SE {fp_omega_pe.uncertainty:.3e}"
     )
+
+
+# -- Recovery harness --------------------------------------------------------
+
+def test_fit_one_device_returns_four_RecoveryResults():
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.recovery import DeviceGroundTruth, fit_one_device
+    d = DeviceGroundTruth(
+        T_1=30e-6, T_2_echo=40e-6, omega_q=2 * math.pi * 4.5e9,
+        epsilon_pi=2 * math.pi * 50e6, thermal_offset=0.0,
+        ramsey_detuning=2 * math.pi * 1e6,
+    )
+    noise = NoiseModelParams(n_shots_per_point=2000, drift_amplitude_Hz=1e4)
+    out = fit_one_device(d, noise, seed=42)
+    assert len(out) == 4
+    names = {r.parameter_name for r in out}
+    assert names == {"T_1", "T_2_echo", "omega_q", "epsilon_pi"}
+
+
+def test_generate_synthetic_device_family_rejects_T2_gt_2T1():
+    from dispersive_readout.characterization.recovery import generate_synthetic_device_family
+    devices = generate_synthetic_device_family(n_devices=50, seed=42)
+    assert len(devices) == 50
+    for d in devices[2:]:
+        assert d.T_2_echo <= 2.0 * d.T_1 * 0.95 + 1e-18, (
+            f"Device with T_2={d.T_2_echo:.2e} exceeds 2·T_1·0.95={2 * d.T_1 * 0.95:.2e}"
+        )
+    assert devices[0].ramsey_detuning == 0.0
+    assert devices[1].thermal_offset == 0.08
+
+
+def test_fit_one_device_is_deterministic_under_same_seed():
+    from dispersive_readout.characterization.noise import NoiseModelParams
+    from dispersive_readout.characterization.recovery import DeviceGroundTruth, fit_one_device
+    d = DeviceGroundTruth(
+        T_1=30e-6, T_2_echo=40e-6, omega_q=2 * math.pi * 4.5e9,
+        epsilon_pi=2 * math.pi * 50e6,
+    )
+    noise = NoiseModelParams(n_shots_per_point=2000, drift_amplitude_Hz=1e4)
+    a = fit_one_device(d, noise, seed=123)
+    b = fit_one_device(d, noise, seed=123)
+    for ra, rb in zip(a, b):
+        assert ra.parameter_name == rb.parameter_name
+        assert ra.fitted_value == rb.fitted_value
