@@ -15,10 +15,14 @@ from .sensitivity import (
     SENSITIVITY_FD_STEP,
     SENSITIVITY_RENDER_BAR_THRESHOLD,
     SENSITIVITY_WARNING_THRESHOLD,
+    ParameterName,
+    SensitivityResult,
 )
 
 __all__ = [
     "SENSITIVITY_FD_STEP",
     "SENSITIVITY_RENDER_BAR_THRESHOLD",
     "SENSITIVITY_WARNING_THRESHOLD",
+    "ParameterName",
+    "SensitivityResult",
 ]
