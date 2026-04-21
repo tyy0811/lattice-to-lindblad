@@ -68,6 +68,7 @@ def simulate_readout(
     initial_resonator_state: str = "vacuum",
     t_list: np.ndarray | None = None,
     solver_options: dict | None = None,
+    chi_scale: float = 1.0,
 ) -> ReadoutResult:
     """Integrate the Lindblad ME for the transmon-resonator system under a pulsed drive.
 
@@ -83,7 +84,7 @@ def simulate_readout(
     Nq = tr.N_transmon
     Nr = tr.N_resonator
 
-    H0, drive_spec = build_hamiltonian(device, drive_params, frame="rotating")
+    H0, drive_spec = build_hamiltonian(device, drive_params, frame="rotating", chi_scale=chi_scale)
     c_ops = build_collapse_operators(device, Nq, Nr)
 
     psi0 = qt.tensor(qt.basis(Nq, initial_qubit_state), qt.basis(Nr, 0))

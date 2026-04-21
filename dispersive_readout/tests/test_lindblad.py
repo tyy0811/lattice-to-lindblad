@@ -120,3 +120,47 @@ def test_purcell_disabled_removes_purcell_collapse_operators():
 
     # Purcell adds Nq-1 operators (|j> -> |j-1> for j=1..Nq-1)
     assert len(c_ops_on) - len(c_ops_off) == Nq - 1
+
+
+def test_chi_scale_default_bit_exact():
+    """chi_scale=1.0 (default) must reproduce the un-threaded Hamiltonian bit-exactly."""
+    from dispersive_readout.physics.config import REFERENCE_DEVICE, DriveParams
+    from dispersive_readout.physics.lindblad import build_hamiltonian
+
+    drive = DriveParams(amplitude=1e7, duration=500e-9, detuning=0.0)
+    H0_default, _ = build_hamiltonian(REFERENCE_DEVICE, drive)
+    H0_explicit, _ = build_hamiltonian(REFERENCE_DEVICE, drive, chi_scale=1.0)
+    # Frobenius norm of the difference should be exactly 0.
+    diff = (H0_default - H0_explicit).norm()
+    assert diff == 0.0, f"chi_scale=1.0 default not bit-exact: norm(diff) = {diff}"
+
+
+def test_chi_scale_rescales_dispersive_term():
+    """chi_scale=2.0 must double the chi·n_photon diagonal contribution."""
+    from dispersive_readout.physics.config import REFERENCE_DEVICE, DriveParams
+    from dispersive_readout.physics.lindblad import build_hamiltonian
+
+    drive = DriveParams(amplitude=1e7, duration=500e-9, detuning=0.0)
+    H0_one, _ = build_hamiltonian(REFERENCE_DEVICE, drive, chi_scale=1.0)
+    H0_two, _ = build_hamiltonian(REFERENCE_DEVICE, drive, chi_scale=2.0)
+    # The difference is exactly chi_per_level (at scale 1) tensored with n_photon.
+    # So H0_two - H0_one equals H_chi (at scale 1). For a REFERENCE with nonzero
+    # chi, the operator norm of the difference must be strictly positive.
+    diff_norm = (H0_two - H0_one).norm()
+    assert diff_norm > 0.0, "chi_scale=2.0 produced no change in Hamiltonian"
+
+
+def test_chi_scale_threads_through_simulate_readout():
+    """chi_scale must propagate from simulate_readout to build_hamiltonian."""
+    from dispersive_readout.physics.config import REFERENCE_DEVICE, DriveParams
+    from dispersive_readout.physics.readout_model import simulate_readout
+
+    drive = DriveParams(amplitude=1e7, duration=200e-9, detuning=0.0)
+    r_default = simulate_readout(REFERENCE_DEVICE, drive, initial_qubit_state=0)
+    r_scaled = simulate_readout(
+        REFERENCE_DEVICE, drive, initial_qubit_state=0, chi_scale=1.5
+    )
+    # Integrated IQ over a short window should differ between chi_scale=1.0 and 1.5.
+    c_default = r_default.integrated_iq((50e-9, 150e-9))
+    c_scaled = r_scaled.integrated_iq((50e-9, 150e-9))
+    assert abs(c_default - c_scaled) > 0.0, "chi_scale did not thread through simulate_readout"
