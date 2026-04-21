@@ -309,13 +309,18 @@ def test_O1b_log_near_zero_sensitivities(_reference_all_sensitivities):
         f"Rendering threshold = {SENSITIVITY_RENDER_BAR_THRESHOLD}.",
         f"F_reference = {results[0].F_reference:.6f}",
         "",
-        f"{'parameter':<12}  {'S':>10}  {'sigma(S)':>10}  {'|S|/sigma':>9}",
+        f"{'parameter':<12}  {'S':>10}  {'sigma(S)':>10}  {'|S|/sigma':>9}  note",
     ]
     for r in near_zero:
         ratio = abs(r.sensitivity) / r.sensitivity_uncertainty if r.sensitivity_uncertainty > 0 else float("inf")
+        # S = 0.0 exactly (not "measured zero") indicates float-precision
+        # underflow in (log F_plus - log F_minus) — the ΔF from the ±5%
+        # perturbation fell below np.log precision at F ≈ 0.99. Annotate so
+        # readers don't interpret 0.0 as "exactly measured zero."
+        note = "(float underflow, see spec §3.1 note)" if r.sensitivity == 0.0 else ""
         lines.append(
             f"{r.parameter:<12}  {r.sensitivity:+10.5f}  "
-            f"{r.sensitivity_uncertainty:10.5f}  {ratio:9.2f}"
+            f"{r.sensitivity_uncertainty:10.5f}  {ratio:9.2f}  {note}"
         )
     lines.append("")
     lines.append(
@@ -323,7 +328,12 @@ def test_O1b_log_near_zero_sensitivities(_reference_all_sensitivities):
         "peaks at chi_scale ~ 0.85 under the SW-2 simulator; REFERENCE sits "
         "~18% past the peak so |S_chi| is near-zero. S_gamma_1 and S_n_th are "
         "near-zero because T_1 and thermal contribute <= 3% of REFERENCE's "
-        "error budget (Purcell dominates, per Module 2 fig2_data.yaml)."
+        "error budget (Purcell dominates, per Module 2 fig2_data.yaml). "
+        "S_gamma_phi = 0.0 exactly is a float-precision underflow (not "
+        "physics zero) — T_2_echo ~ 2*T_1 at REFERENCE puts gamma_phi at "
+        "the pure-dephasing-free limit, and a 5% perturbation produces |ΔF| "
+        "below np.log precision at F ~ 0.99. Spec-amended: pure dephasing "
+        "is not a meaningful error-budget contributor at this REFERENCE."
     )
     out.write_text("\n".join(lines) + "\n")
     # No sign assertion — log-only.
