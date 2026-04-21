@@ -57,6 +57,7 @@ _ACTIVE_CHANNEL_LABEL: dict[str, str] = {
 def _bar_or_point(
     ax, x, value_milli, err_milli, color,
     bar_width=0.7, force_point=False, annotate=True,
+    near_zero_as_tilde=False,
 ):
     """Filled bar if value > 1σ above zero; else point-with-errorbar.
 
@@ -69,6 +70,12 @@ def _bar_or_point(
     value/uncertainty ratio. Used for the residual bar, where a filled
     rectangle invites over-interpretation ("model is missing something")
     even when |R| sits within the shot-noise propagation of the identity.
+
+    near_zero_as_tilde=True replaces the numeric annotation with "~0"
+    when rendered as a point AND |value| < err. Used for active-loss
+    channels so e.g. a dephasing excursion to ΔF = −0.3×10⁻³ at a
+    shot-noise floor of σ ≈ 0.44×10⁻³ does not read as "dephasing
+    improves fidelity". Signed values stay in the YAML.
     """
     is_bar = (not force_point) and (value_milli > err_milli) and (value_milli > 0)
     if is_bar:
@@ -90,15 +97,22 @@ def _bar_or_point(
         )
 
     if annotate:
-        # Place the numeric annotation just above the upper error-bar cap so
-        # even negative values get a readable label. Format at 0.1 resolution
-        # which is appropriate for ×10⁻³ scale where channels sit at 0.1–30.
+        # Place annotation above the upper error-bar cap with a small padding
+        # offset (3 points) so the label does not sit on top of the cap tick.
         top = value_milli + err_milli if err_milli > 0 else value_milli
-        text = f"{value_milli:+.1f}" if value_milli < 0 else f"{value_milli:.1f}"
-        ax.text(
-            x, top, text,
-            ha="center", va="bottom", fontsize=7,
-            clip_on=False,
+        near_zero = abs(value_milli) < err_milli
+        if near_zero_as_tilde and not is_bar and near_zero:
+            text = "~0"
+        else:
+            text = f"{value_milli:+.1f}" if value_milli < 0 else f"{value_milli:.1f}"
+        ax.annotate(
+            text,
+            xy=(x, top),
+            xytext=(0, 3),  # 3 pt padding above the cap
+            textcoords="offset points",
+            ha="center", va="bottom",
+            fontsize=7,
+            annotation_clip=False,
         )
 
 
@@ -161,6 +175,7 @@ def _render_two_panel(budget: ErrorBudget, path: Path) -> None:
         _bar_or_point(
             ax_A, i, val * 1e3, err * 1e3, col,
             force_point=is_residual,
+            near_zero_as_tilde=True,       # "~0" for active-loss points at the shot-noise floor
         )
 
     ax_A.axhline(0.0, color="gray", linewidth=0.5)
