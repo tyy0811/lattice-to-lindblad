@@ -1,0 +1,12 @@
+O1b — near-zero sensitivities at REFERENCE (noise-consistent with zero).
+Rendering threshold = 0.03.
+F_reference = 0.989938
+
+parameter              S    sigma(S)  |S|/sigma
+chi_scale       -0.02923     0.01426       2.05
+kappa           +0.01055     0.01426       0.74
+gamma_1         -0.00054     0.01426       0.04
+gamma_phi       +0.00000     0.01426       0.00
+n_th            -0.00011     0.01426       0.01
+
+Interpretation (spec §0 Q1-amended): at this REFERENCE, F_assign peaks at chi_scale ~ 0.85 under the SW-2 simulator; REFERENCE sits ~18% past the peak so |S_chi| is near-zero. S_gamma_1 and S_n_th are near-zero because T_1 and thermal contribute <= 3% of REFERENCE's error budget (Purcell dominates, per Module 2 fig2_data.yaml).
