@@ -18,7 +18,7 @@ Nine substantive decisions were surfaced during adversarial brainstorming (Q1–
 
 | # | Amendment | Driver |
 |---|---|---|
-| 1 | χ-sensitivity implemented via `chi_scale: float = 1.0` kwarg on `build_hamiltonian` (`dispersive_readout/physics/lindblad.py:191`, one-line multiplicative rescale of `chi_per_level` array) and threaded through `simulate_readout`. Not via perturbing `coupling.g`. A Day-10 cross-check computes `S_g` via ±5% perturbation of `g` (re-deriving γ_Purcell) and compares to `2 · S_χ`; the numerical `|S_g − 2·S_χ|` is logged into the Figure 4 caption. | Q1 — Orthogonality: perturbing `g` simultaneously moves `γ_Purcell` (which is part of total `γ_1`), so `S_χ`-via-g-bumping silently carries a Purcell component that also appears in `S_{γ_1}`. The two tornado axes would overlap, destroying the "independent lever" interpretation. Standard sensitivity-analysis practice treats effective parameters as independent axes via partial derivatives; `chi_scale` makes that explicit in the Hamiltonian. |
+| 1 | χ-sensitivity implemented via `chi_scale: float = 1.0` kwarg on `build_hamiltonian` (`dispersive_readout/physics/lindblad.py:191`, one-line multiplicative rescale of `chi_per_level` array) and threaded through `simulate_readout`. Not via perturbing `coupling.g`. A Day-10 cross-check computes `S_g` via ±5% perturbation of `g` (re-deriving γ_Purcell) and compares to `2 · S_χ`; the numerical `abs(S_g − 2·S_χ)` is logged into the Figure 4 caption. | Q1 — Orthogonality: perturbing `g` simultaneously moves `γ_Purcell` (which is part of total `γ_1`), so `S_χ`-via-g-bumping silently carries a Purcell component that also appears in `S_gamma_1`. The two tornado axes would overlap, destroying the "independent lever" interpretation. Standard sensitivity-analysis practice treats effective parameters as independent axes via partial derivatives; `chi_scale` makes that explicit in the Hamiltonian. |
 | 2 | Pareto frontier parallelized via Modal `pareto_one_tuple.map(...)` reusing Module 3's `.map()` scaffolding. Pareto compute is 3 parameter-anchored device variants × 10 τ_max values (locked, not the original spec's "3–5" range). Modal image pre-warm task on Day 11 afternoon ensures qutip+scipy deps are baked before Day 12's Pareto run. | Q2 — Iteration velocity on Day 12: serial Pareto at ~50 min wall-clock burns one of four effective working hours per attempt; Modal collapses that to ~5 min, preserving capacity for fix-cycles. Modal infrastructure is already shipped in Module 3, so this is a copy-paste-refactor rather than a new infrastructure dependency. |
 | 3 | Regime map (Panel b) is a closed-form analytic surface from the dispersive-SNR formula (Bengtsson 2024 PRL §II, cross-checked against Blais RMP 2021 §V.B), not a Lindblad-simulated grid. Marxer Q1 annotated with `F_sim = {F_ref:.4f}` computed once from the Module 1 simulator at REFERENCE. A 2-point Lindblad-vs-analytic validation at (Marxer Q1, χ/κ=1·γ₁τ=0.01) runs on Day 11; the maximum observed deviation is printed in the caption. | Q3 — A `chi_scale` sweep over 100× range at REFERENCE-everything-else produces a synthetic Hamiltonian (rescaled χ while Lamb shifts and Purcell stay at original-g values) that doesn't correspond to any real device at the extrema. The published-device overlays on a simulated grid would also be apples-to-oranges: the grid is REFERENCE-derived, the markers are at foreign full-parameter sets. Closed-form analytic sidesteps both issues and matches the publishable genre of this plot (Bengtsson 2024, Sank 2024). |
 | 4 | Closed-loop scope narrowed: `recommend_from_fitted_parameters` accepts fitted (T₁, T₂, ω_q) but inherits REFERENCE values for (`κ`, `g`, `ω_r`, truncation) because Module 3's four protocols don't constrain those. `RecommendationReport` adds `sensitivity_warnings: list[str]` that fires when `abs(S_θ) > 2.0` (threshold in `SENSITIVITY_WARNING_THRESHOLD` policy constant), signalling boundary-proximate devices where linearized sensitivity is locally unreliable. Demo device for the closed-loop arrow is picked on Day 13 from `recovery_coverage_report.yaml` (SEED=42 stable), selecting whichever hard-recovery-harness device shifts the Pareto optimum most visibly from REFERENCE's. | Q4 — `to_device_config` inherits REFERENCE resonator/coupling/truncation because Module 3 only fits decoherence + frequency. Claiming "closed-loop recommendation on the fitted device" without scope narrowing overclaims — reviewer asks "where's the fitted κ?" and the answer is "it wasn't fit." Picking a non-REFERENCE demo device ensures the arrow demonstrates responsiveness, not just drive re-optimization around REFERENCE. |
@@ -67,8 +67,10 @@ Seven parameters, each treated as an independent axis for sensitivity analysis (
 
 - E_C, E_J, E_J/E_C ratio, n_g (transmon parameters);
 - drive detuning (assumed calibrated to optimum from Module 2 characterization);
-- `edge_sigma` (Gaussian-edge width — varied only in the contingent autodiff add-on per §3.5);
+- `edge_sigma` (Gaussian-edge width on `DriveParams` — held fixed in the baseline Pareto and sensitivity sweeps; varied only in the contingent autodiff add-on per §3.5);
 - truncation dimensions.
+
+Note: Module 1's pulse envelope is a Gaussian-edged square parameterized by `(amplitude, duration, edge_sigma, detuning)` — there is no independent "plateau duration" field on `DriveParams`. The plateau length is derived as `duration − 6·edge_sigma` from the erf-difference envelope (`dispersive_readout/physics/lindblad.py:239`). Consequently, the autodiff add-on's pulse-shape DoFs are `(edge_sigma)` with `duration` held at the Pareto-converged `τ_opt` — not a distinct plateau parameter. See §3.5.
 
 ### 2.2 Objective function
 
@@ -155,11 +157,13 @@ Linear decoherence-envelope `(1 − γ₁τ/2)^(1/2)` is within 1% of the expone
 
 **Grid.** χ/κ axis log-spaced from 0.1 to 10 (20 points); γ₁·τ_readout axis log-spaced from 1e-4 to 1e-1 (20 points); 400 analytic evaluations (no simulator calls, sub-second total).
 
-**Analytic boundaries** drawn on the map (grey dashed):
+**Analytic boundaries** drawn on the map (grey dashed). The grid has only two degrees of freedom (χ/κ, γ₁·τ_readout); all other device parameters are held at REFERENCE values to render the boundary curves well-defined. Each boundary is parameterized as:
 
-1. **Purcell limit** — locus where γ_Purcell · τ_readout ≥ 0.1 at REFERENCE-family `(g, Δ)`. Below the line, Purcell dominates.
-2. **Dispersive breakdown** — locus where χ · τ_readout ≥ 2π, i.e., phase accumulation per κ half-time exceeds one dispersive cycle. Above the line, the pulse is too selective.
-3. **Resonator-too-slow** — locus where κ · τ_readout ≤ 1. To the left of the line, the resonator doesn't fully respond within the pulse.
+1. **Purcell limit** — locus where `γ_Purcell · τ_readout = 0.1`. Under the 2nd-order SW dispersive formula `γ_Purcell = κ · (g/Δ)²`, holding `(g, Δ)` at REFERENCE gives `γ_Purcell` as a function of `κ` alone. Holding χ at REFERENCE's dispersive-computed value fixes `κ(x) = χ_REF / x` along the x-axis. Substituting `τ_readout(x) = 0.1 / γ_Purcell(x)` and `γ_1_REF` yields the y-axis coordinate: `y_Purcell(x) = γ_1_REF · 0.1 / γ_Purcell(x)`. Below the line, Purcell dominates intrinsic T₁.
+2. **Dispersive breakdown** — locus where `χ · τ_readout = 2π`, i.e., the drive phase accumulates a full cycle within one dispersive period. With `χ = x · κ_REF` (holding κ at REFERENCE to resolve x-axis) and `τ_readout = 2π / χ(x)`, the y-axis coordinate is `y_disp(x) = γ_1_REF · 2π / (x · κ_REF)`. Above the line, the pulse is too selective and the dispersive approximation is self-inconsistent.
+3. **Resonator-too-slow** — locus where `κ · τ_readout = 1`, i.e., the resonator cannot complete one response period within the pulse. With `κ = κ_REF` held at REFERENCE, `τ_readout = 1 / κ_REF`, giving `y_slow = γ_1_REF / κ_REF` as a horizontal line in (x, y) space.
+
+All three are closed-form functions of x ∈ [0.1, 10] at fixed REFERENCE values of `(κ, g, Δ, γ_1)`. `regime_map.py`'s boundary functions take no arguments — REFERENCE values are sourced from `REFERENCE_DEVICE` at module import time.
 
 **Lindblad-vs-analytic validation (Q3 Refinement 2).** On Day 11, evaluate F_assign at two points with the full Module 1 Lindblad simulator:
 
@@ -277,7 +281,7 @@ Not an LLM, not an agentic recommender, not an orchestration layer. Template-ren
 - No unresolved blockers in Modules 1–3.
 - Modal image pre-warm task (Day 11 afternoon) has succeeded.
 
-**Target.** Gradient-based refinement of the two Gaussian-edge parameters (`edge_sigma`, `pulse_plateau_duration`), held fixed everywhere else in Module 4. Compares autodiff-optimized F_assign to the grid-search result at the same τ_max constraint.
+**Target.** Gradient-based refinement of `edge_sigma` (the only pulse-shape DoF held fixed in the baseline — see §2.1 note on why there is no independent `pulse_plateau_duration` parameter). `duration` is held at the Pareto-converged `τ_opt` for the variant being refined, so autodiff explores pulse *shape* orthogonally to the baseline `(ε_0, τ)` optimization. Compares autodiff-refined F_assign to the grid-search result at the same `(τ_max, ε_0_opt)`.
 
 **Abort signals (Q9a lock).** Any one trips → immediate revert:
 
@@ -316,9 +320,9 @@ dispersive_readout/                            (existing package root)
 │   ├── modal_pareto.py                        # §5.4  (public, not _underscored; Q-note)
 │   ├── recommend.py                           # §5.5
 │   └── autodiff_addon.py                      # §5.6 (CONTINGENT)
-├── physics/
-│   └── lindblad.py                            # +1 line: chi_scale kwarg on build_hamiltonian
-├── physics/readout_model.py                   # +1 line: thread chi_scale through simulate_readout
+├── physics/                                   (existing; two one-line additions)
+│   ├── lindblad.py                            # +1 line: chi_scale kwarg on build_hamiltonian (line 191)
+│   └── readout_model.py                       # +1 line: thread chi_scale through simulate_readout
 └── tests/
     └── test_optimization.py                   # O1–O24 (28–29 tests total)
 
@@ -677,7 +681,30 @@ def export_recommendation_to_yaml(report: RecommendationReport, path: str) -> No
 
 
 def generate_narrative(report: RecommendationReport) -> str:
-    """IQM-table rounding + metrology σ convention (Q9b)."""
+    """IQM-table rounding + metrology σ convention (Q9b).
+
+    Delegates per-value formatting to _format_value_with_sigma (below) so the
+    metrology σ convention is applied consistently across all fields with
+    uncertainty, rather than reinvented per f-string token.
+    """
+    ...
+
+
+def _format_value_with_sigma(
+    value: float,
+    sigma: float,
+    unit_exponent: int = 0,       # e.g., -6 for µs display, 6 for MHz, 9 for GHz
+    sigma_lo: float | None = None,  # for asymmetric CIs from FittedParameter
+    sigma_hi: float | None = None,
+) -> tuple[str, str]:
+    """Return (value_str, sigma_str) with:
+      - σ rounded UP to 1 significant figure;
+      - value rounded to the same decimal position as σ's last digit
+        (metrology standard; eliminates "0.0002 vs 0.00022" ambiguity);
+      - asymmetric form `value +σ_hi / −σ_lo` when sigma_lo/sigma_hi given
+        (Module 3 `FittedParameter` schema may expose these; checked by
+        Day-13 preflight grep).
+    """
     ...
 ```
 
