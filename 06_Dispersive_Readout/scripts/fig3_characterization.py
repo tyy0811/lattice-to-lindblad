@@ -127,7 +127,7 @@ def _panel_recovery(fig, gs_slot):
         # Rejected traces (spec §1.1 reject_flag set) — distinct marker
         if rej.any():
             ax.errorbar(x[rej], y[rej], yerr=yerr[rej], fmt="D", ms=5,
-                        color="tab:red", mfc="none", label="rejected",
+                        color="tab:red", mfc="none", label="rejected (§1.1)",
                         capsize=0, alpha=0.9)
         lo = min(x.min(), y.min())
         hi = max(x.max(), y.max())
@@ -136,13 +136,24 @@ def _panel_recovery(fig, gs_slot):
         cov2 = rep.coverage_2_sigma
         cov2_acc = rep.coverage_2_sigma_on_accepted
         ci = (rep.coverage_2_sigma_ci_low, rep.coverage_2_sigma_ci_high)
-        title = rf"{name}: 2$\sigma$={cov2:.0%} [{ci[0]:.0%},{ci[1]:.0%}]"
-        if rep.n_rejected > 0:
-            title += f"; acc={cov2_acc:.0%} (n_rej={rep.n_rejected})"
-        ax.set_title(title, fontsize=8)
+        # Title: parameter name only — keeps the bottom row readable at
+        # the small sub-panel size. Stats move into an in-axes text box.
+        ax.set_title(name, fontsize=9)
         ax.set_xlabel(f"truth ({lab})", fontsize=8)
         ax.set_ylabel(f"fit ({lab})", fontsize=8)
         ax.tick_params(labelsize=7)
+        stat_lines = [rf"2$\sigma$: {cov2:.0%}",
+                      f"CI: [{ci[0]:.0%}, {ci[1]:.0%}]"]
+        if rep.n_rejected > 0:
+            stat_lines.append(f"acc: {cov2_acc:.0%} (n_rej={rep.n_rejected})")
+        ax.text(0.03, 0.97, "\n".join(stat_lines), transform=ax.transAxes,
+                fontsize=6.5, verticalalignment="top",
+                bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
+                          edgecolor="lightgray", alpha=0.85))
+        # Legend only on the ε_π panel — it's the only one with rejected
+        # markers and the one readers will interrogate most.
+        if name == "epsilon_pi":
+            ax.legend(loc="lower right", fontsize=6, framealpha=0.9)
 
 
 def main() -> None:
@@ -155,7 +166,7 @@ def main() -> None:
     gc = outer[1, 0].subgridspec(2, 1, height_ratios=[3, 1], hspace=0.05)
     _panel_t1(fig.add_subplot(gc[0]), fig.add_subplot(gc[1]))
     _panel_recovery(fig, outer[1, 1])
-    fig.suptitle("Figure 3 — Characterization pipeline + 50-device parameter recovery (SEED=42)", fontsize=11)
+    fig.suptitle("Figure 3 — Synthetic characterization pipeline + 50-device parameter recovery (SEED=42)", fontsize=11)
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(_OUT, bbox_inches="tight", dpi=150)
     print(f"Wrote {_OUT}")
