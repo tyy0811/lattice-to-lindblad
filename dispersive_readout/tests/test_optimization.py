@@ -368,3 +368,65 @@ def test_O12_O18_per_parameter_sensitivity_finite_and_typed(parameter):
     assert math.isfinite(r.sensitivity_uncertainty)
     assert r.sensitivity_uncertainty > 0.0
     assert 0.0 < r.F_reference <= 1.0
+
+
+# ────────────────────────────────────────────────────────────────────
+# O2 — step-independence: S at h=0.05 vs h=0.025 within 10%
+# ────────────────────────────────────────────────────────────────────
+
+def test_O2_step_independence_epsilon_0():
+    """S_epsilon_0 at h=0.05 and h=0.025 must agree to within 10%.
+
+    Per spec §6.1 O2. Original plan targeted chi_scale but S_chi sits at
+    the noise floor at REFERENCE (see O1b log + spec §0 Q1-amended). Use
+    epsilon_0 as the step-independence anchor: it renders as a filled bar
+    (|S| ≈ 0.05, ~3.5σ above zero) so the comparison tests FD-truncation
+    error rather than shot-noise floor artifacts.
+    """
+    from dispersive_readout.analysis.operating_point import get_reference_operating_point
+    from dispersive_readout.optimization.sensitivity import compute_log_sensitivity
+
+    op = get_reference_operating_point(n_shots=10_000)
+    s_coarse = compute_log_sensitivity(op, "epsilon_0", step_size=0.05)
+    s_fine = compute_log_sensitivity(op, "epsilon_0", step_size=0.025)
+    rel_diff = abs(s_fine.sensitivity - s_coarse.sensitivity) / abs(s_coarse.sensitivity)
+    assert rel_diff < 0.10, (
+        f"S_epsilon_0 at h=0.025 ({s_fine.sensitivity:.4f}) differs from h=0.05 "
+        f"({s_coarse.sensitivity:.4f}) by {rel_diff*100:.1f}% (> 10%). "
+        "Reduce Lindblad solver rtol, or investigate FD-truncation error."
+    )
+
+
+def test_compute_all_sensitivities_returns_seven():
+    from dispersive_readout.analysis.operating_point import get_reference_operating_point
+    from dispersive_readout.optimization.sensitivity import compute_all_sensitivities
+
+    op = get_reference_operating_point(n_shots=10_000)
+    results = compute_all_sensitivities(op)
+    assert len(results) == 7
+    params = {r.parameter for r in results}
+    assert params == {
+        "chi_scale", "kappa", "gamma_1", "gamma_phi", "n_th", "epsilon_0", "tau",
+    }
+
+
+def test_rank_sensitivities_sorts_by_absolute_magnitude_desc():
+    from dispersive_readout.optimization.sensitivity import (
+        SensitivityResult, rank_sensitivities,
+    )
+    inputs = [
+        SensitivityResult(
+            parameter="chi_scale", reference_value=1.0, reference_unit="",
+            sensitivity=0.1, sensitivity_uncertainty=0.01, F_reference=0.99,
+        ),
+        SensitivityResult(
+            parameter="gamma_1", reference_value=1e4, reference_unit="1/s",
+            sensitivity=-0.5, sensitivity_uncertainty=0.02, F_reference=0.99,
+        ),
+        SensitivityResult(
+            parameter="kappa", reference_value=3e7, reference_unit="rad/s",
+            sensitivity=0.3, sensitivity_uncertainty=0.01, F_reference=0.99,
+        ),
+    ]
+    ranked = rank_sensitivities(inputs)
+    assert [r.parameter for r in ranked] == ["gamma_1", "kappa", "chi_scale"]

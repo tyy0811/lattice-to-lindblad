@@ -221,3 +221,36 @@ def compute_log_sensitivity(
         step_size_used=step_size,
         method="finite_diff",
     )
+
+
+_ALL_PARAMETER_NAMES: tuple[ParameterName, ...] = (
+    "chi_scale", "kappa", "gamma_1", "gamma_phi", "n_th", "epsilon_0", "tau",
+)
+
+
+def compute_all_sensitivities(
+    operating_point: OperatingPoint,
+    parameters: list[ParameterName] | None = None,
+    step_size: float = SENSITIVITY_FD_STEP,
+) -> list[SensitivityResult]:
+    """Compute sensitivities for all 7 parameters (default) at the operating point.
+
+    Parameters
+    ----------
+    operating_point : OperatingPoint
+        Device + drive + integration window + n_shots.
+    parameters : list[ParameterName] | None
+        Subset to compute. Default (None) → all 7.
+    step_size : float
+        Fractional perturbation per parameter; defaults to SENSITIVITY_FD_STEP.
+    """
+    params = parameters if parameters is not None else list(_ALL_PARAMETER_NAMES)
+    return [compute_log_sensitivity(operating_point, p, step_size=step_size) for p in params]
+
+
+def rank_sensitivities(results: list[SensitivityResult]) -> list[SensitivityResult]:
+    """Sort by |sensitivity|, descending. Stable sort (ties preserve input order).
+
+    Used for tornado-plot ordering per spec §7 Panel (a).
+    """
+    return sorted(results, key=lambda r: abs(r.sensitivity), reverse=True)

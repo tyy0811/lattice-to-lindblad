@@ -17,6 +17,9 @@ from .sensitivity import (
     SENSITIVITY_WARNING_THRESHOLD,
     ParameterName,
     SensitivityResult,
+    compute_log_sensitivity,
+    compute_all_sensitivities,
+    rank_sensitivities,
 )
 
 __all__ = [
@@ -25,4 +28,7 @@ __all__ = [
     "SENSITIVITY_WARNING_THRESHOLD",
     "ParameterName",
     "SensitivityResult",
+    "compute_log_sensitivity",
+    "compute_all_sensitivities",
+    "rank_sensitivities",
 ]
