@@ -2,6 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Day-10 execution-time amendments (2026-04-22) — read before implementing Tasks 1-7:**
+>
+> Three amendments applied during Day-10 execution. See `MODULE_4_SPEC.md` §0.1 for full rationale and `docs/module4_diagnostics/` for the supporting diagnostic artifacts.
+>
+> - **Amendment 10 (Q1 S_χ sign):** Under the SW-2 simulator at REFERENCE, F_assign peaks at `chi_scale ≈ 0.85`; REFERENCE sits ~18% past the peak so `S_χ = −0.029 ± 0.014` (noise-consistent). **O1 is split into O1a (sign-assert for bar-rendered parameters) and O1b (log-only for near-zero parameters).** Step 4.1's `test_O1_sensitivity_signs_at_REFERENCE` is superseded by the O1a/O1b pair in the shipped code.
+> - **Amendment 11 (noise_model='analytic'):** Module 1's shipped `noise_model='ideal'` returns `F=1.0` unconditionally (zero-shot-noise limit, useless for FD). Added `noise_model='analytic'` returning `F = Φ(SNR/2)` as an additive extension. **All references in this plan to `noise_model='ideal'` inside sensitivity.py / pareto.py inner loops should be read as `noise_model='analytic'`.** Module 1 tests `test_assignment_fidelity_analytic_matches_phi_snr_over_2` and `test_assignment_fidelity_gaussian_converges_to_analytic_as_n_shots_grows` pin the new invariants. O8 contract strengthened from 1 to 3 tests per module (forbid `'gaussian'`, forbid `'ideal'`, require `'analytic'`).
+> - **Amendment 12 (threshold 2.0 → 0.3):** `SENSITIVITY_WARNING_THRESHOLD` recalibrated from 2.0 (unreachable under Lindblad simulator) to 0.3 (spec §2.1 dominance level). Verified via six independent checks. **Step 2.3's policy-constants code and Step 6.1's O11 probe device are superseded** — see shipped code: `SENSITIVITY_WARNING_THRESHOLD = 0.3` and O11 probes `ε/2π = 15 MHz` at REFERENCE T_1 (drive-stress regime) rather than `T_1 = 5 µs` at REFERENCE drive.
+>
+> Other plan-text references to `2.0` / `'ideal'` that do NOT appear inside inner loops (e.g., Module 1's shipped `'ideal'` mode in `compute_assignment_fidelity`) remain unamended.
+
 **Goal:** Implement the optimization layer for dispersive transmon readout — parameter sensitivity tornado, closed-form analytic regime map, Modal-parallelized Pareto frontier, and closed-loop recommendation from fitted parameters — rendered as Figure 4 and a YAML recommendation artifact.
 
 **Architecture:** Add a `dispersive_readout/optimization/` subpackage that consumes Module 1's public API (`simulate_readout`, `compute_assignment_fidelity`), Module 2's `OperatingPoint` / `ErrorBudget`, and Module 3's `ExtractedParameterPack.to_device_config()`. One surgical edit to Module 1 adds a `chi_scale: float = 1.0` kwarg on `build_hamiltonian` (threaded through `simulate_readout`) so sensitivity analysis can perturb χ orthogonally to `coupling.g` (Q1 orthogonality decision, spec §0 row 1). All finite-difference loops use `noise_model='ideal'` (Q8 contract). Pareto parallelizes via Modal `.map()`, reusing Module 3's pattern.
