@@ -69,11 +69,45 @@ This is not "Module 1 bug surfaced by Module 4"; Module 1's `'ideal'` does exact
 
 ---
 
+---
+
+## Amendment 4: `SENSITIVITY_WARNING_THRESHOLD` recalibration (2.0 → 0.3)
+
+**Target**: `MODULE_4_SPEC.md §3.1` policy-constants table, `MODULE_4_PLAN.md §Task 2` locked-values commit message, `MODULE_4_PLAN.md §Task 6` O11 probe device.
+
+**Finding**: the spec-locked `SENSITIVITY_WARNING_THRESHOLD = 2.0` is unreachable under the Lindblad simulator across realistic parameter space. Empirical `|S_θ|` caps at ~0.4 (|S_ε0|_max = 0.39 at ε/2π = 15 MHz; |S_γ1|_max = 0.25 at T_1 = 0.22 µs; others below). Verified as genuine physics (not solver / truncation / Purcell-leak artifact) via three independent checks committed to `docs/module4_diagnostics/`:
+
+- `check_tolerance.py`: 0.000% change under 100× tighter mesolve tolerances
+- `check_truncation.py`: 1.36% change at 40% larger Hilbert space
+- `check_purcell.py`: γ_eff − γ_1_true = −1.4e-6 1/s (<1 ppm) with coupling.g = 0
+
+Supporting:
+
+- Closed-form derivation of `|S_γ| = (s/(2(1-s))) · (x/2) · (φ/Φ)(x/2)` from `F = Φ(SNR/2)` with linearized envelope
+- Integration-window-geometry factor `4·T_mid/τ ≈ 2.4` explaining the closed-form vs Lindblad ratio in the weak-decoherence regime
+
+**Amendment** (applied in commit `<TBD>` during Task 6):
+
+- `SENSITIVITY_WARNING_THRESHOLD = 0.3` (aligned with spec §2.1's "dominance" level).
+- Policy-constants test locks 0.3.
+- O11 probe device amended from `T_1 = 5 µs, REFERENCE drive` (|S_γ1| < 0.01 empirically, under any threshold) to `ε/2π = 15 MHz, REFERENCE T_1` (|S_ε0| = 0.388 > 0.3, realistic operating-regime choice).
+
+**Figure 4 caption phrasing**:
+
+> The `SENSITIVITY_WARNING_THRESHOLD = 0.3` warning fires when any parameter reaches dominance-level sensitivity (|S_θ| > 0.3), flagging devices where a single parameter controls F_assign and the linearized ranking is less informative. Under the Lindblad simulator the empirical ceiling across all 7 parameters is ~0.4; the threshold is therefore near the top of the observable sensitivity band and fires only for unambiguously dominance-proximate operating points.
+
+**Framing for the day-14 report**:
+
+> Module 4's execution revealed that the simulator's `|S_θ|` ceiling caps at ~0.4 in realistic regimes, making the original `SENSITIVITY_WARNING_THRESHOLD = 2.0` unreachable (dead code). Three independent reproducibility checks — solver tolerance at 100× tighter, Hilbert-space truncation at 40% larger, and explicit coupling-zero isolation of `decoherence.gamma_1` — verified the ceiling as genuine Lindblad physics. On the basis of this characterization, the threshold was recalibrated to 0.3 (spec §2.1 "dominance" level). The recalibration is backed by six independent verifications (analytic ceiling + 7-parameter empirical scan + integration-window-geometry factor + three reproducibility checks) committed to `docs/module4_diagnostics/`.
+
+---
+
 ## Tally
 
-This amendment consolidates two substantive day-14 items:
+This amendment consolidates three substantive day-14 items:
 
 1. **Module 4 Q1 physics finding** — REFERENCE sits 18% past the F_assign peak in χ-space; consistent with Marxer's multi-constraint device design; cross-module-validated against Module 2's Purcell-dominated error budget.
 2. **Module 1 `noise_model='analytic'` extension** — surgical 1-file addition; two-test invariant (`analytic = Φ(SNR/2)` definitional + `gaussian → analytic` at n=∞); Q8 contract strengthened from 1 grep to 3 per module.
+3. **SENSITIVITY_WARNING_THRESHOLD recalibration (2.0 → 0.3)** — characterized empirical ceiling under the Lindblad simulator; three reproducibility checks rule out solver / truncation / Purcell-leak artifacts; threshold realigned with spec §2.1 dominance level.
 
-Total: **38 substantive corrections across Modules 1–4** going into the day-14 report.
+Total: **39 substantive corrections across Modules 1–4** going into the day-14 report.

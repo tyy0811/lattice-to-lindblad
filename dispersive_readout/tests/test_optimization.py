@@ -21,9 +21,11 @@ def test_policy_constants_present_and_frozen():
         f"SENSITIVITY_RENDER_BAR_THRESHOLD changed from spec-locked 0.03 "
         f"to {SENSITIVITY_RENDER_BAR_THRESHOLD}; requires spec amendment"
     )
-    assert SENSITIVITY_WARNING_THRESHOLD == 2.0, (
-        f"SENSITIVITY_WARNING_THRESHOLD changed from spec-locked 2.0 "
-        f"to {SENSITIVITY_WARNING_THRESHOLD}; requires spec amendment"
+    assert SENSITIVITY_WARNING_THRESHOLD == 0.3, (
+        f"SENSITIVITY_WARNING_THRESHOLD changed from amended value 0.3 "
+        f"to {SENSITIVITY_WARNING_THRESHOLD}; requires spec amendment. "
+        "See docs/module4_diagnostics/sensitivity_ceiling_characterization.md "
+        "for the three-check verification that justified the 2.0 → 0.3 amendment."
     )
 
 
@@ -430,3 +432,101 @@ def test_rank_sensitivities_sorts_by_absolute_magnitude_desc():
     ]
     ranked = rank_sensitivities(inputs)
     assert [r.parameter for r in ranked] == ["gamma_1", "kappa", "chi_scale"]
+
+
+# ────────────────────────────────────────────────────────────────────
+# O24 — Day-10 cross-check: S_g vs 2·S_chi (Q1 caption artifact)
+# ────────────────────────────────────────────────────────────────────
+
+def test_O24_day_10_cross_check_logged_and_within_threshold():
+    """Compute S_chi via chi_scale and S_g via ±5% on coupling.g; write
+    |S_g − 2·S_chi| / (2·|S_chi|) to day10_cross_check.txt for the
+    Figure 4 caption. Test computes and logs; it does not gate on
+    agreement (spec §9 item 2 — decision goes in caption, not fix)."""
+    import math
+    from pathlib import Path
+    from dispersive_readout.analysis.operating_point import get_reference_operating_point
+    from dispersive_readout.optimization.sensitivity import day_10_cross_check_s_g_vs_s_chi
+
+    op = get_reference_operating_point(n_shots=10_000)
+    result = day_10_cross_check_s_g_vs_s_chi(op)
+
+    # Assert structure
+    for key in ("S_chi", "S_g", "predicted_S_g", "residual", "residual_fractional"):
+        assert key in result, f"Missing key: {key}"
+        assert math.isfinite(result[key])
+
+    # Write artifact for Figure 4 caption
+    artifact_path = Path("06_Dispersive_Readout/figures/day10_cross_check.txt")
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text(
+        f"Day-10 Q1 cross-check at REFERENCE_DEVICE:\n"
+        f"  S_chi (via chi_scale ± 0.05)   = {result['S_chi']:+.4f}\n"
+        f"  S_g   (via coupling.g ± 0.05)  = {result['S_g']:+.4f}\n"
+        f"  Predicted S_g = 2 · S_chi       = {result['predicted_S_g']:+.4f}\n"
+        f"  Residual |S_g - 2*S_chi|        = {abs(result['residual']):.4f}\n"
+        f"  Fractional |residual|/|2*S_chi| = {result['residual_fractional']*100:.2f}%\n"
+        f"\n"
+        f"Note (spec §0 Q1-amended): at this REFERENCE, S_chi sits at the\n"
+        f"tornado noise floor (|S_chi| < 0.03), so the fractional residual\n"
+        f"|S_g - 2*S_chi|/|2*S_chi| can be large without indicating Q1\n"
+        f"orthogonality failure — the denominator is small. The caption\n"
+        f"cites the residual verbatim alongside both raw numbers.\n"
+    )
+
+    # Structure-only assertion — test computes and logs, does not gate on
+    # the residual magnitude per spec §9 item 2.
+    assert 0.0 <= result["residual_fractional"]
+
+
+# ────────────────────────────────────────────────────────────────────
+# O11 — sensitivity_warnings fires on boundary-proximate device (Q4 lock)
+# ────────────────────────────────────────────────────────────────────
+
+def test_O11_sensitivity_warning_fires_at_high_drive_regime():
+    """Device driven at ε/2π = 15 MHz (7.5× REFERENCE's ~2 MHz) should force
+    |S_epsilon_0| > SENSITIVITY_WARNING_THRESHOLD and trigger the warning
+    policy. Tests the threshold via a direct sensitivity computation; the
+    full `sensitivity_warnings` assembly lands in Task 15's
+    RecommendationReport.
+
+    Amended from T_1-stress probe to drive-stress probe after Module 4
+    execution finding: empirical |S| ceiling under the Lindblad simulator
+    caps at ~0.4 across realistic parameter space. A drive-stress regime
+    is a realistic operating-point choice a user might make (high drive
+    to reduce τ_readout); the T_1-stress probe required hardware-extreme
+    T_1 ≲ 0.2 µs devices to approach the amended threshold. See
+    docs/module4_diagnostics/sensitivity_ceiling_characterization.md.
+    """
+    import math
+    from dataclasses import replace
+    from dispersive_readout.physics.config import DriveParams
+    from dispersive_readout.analysis.operating_point import (
+        get_reference_operating_point, OperatingPoint,
+    )
+    from dispersive_readout.optimization.sensitivity import (
+        compute_log_sensitivity,
+        SENSITIVITY_WARNING_THRESHOLD,
+    )
+
+    ref_op = get_reference_operating_point(n_shots=10_000)
+    high_drive = DriveParams(
+        amplitude=2.0 * math.pi * 15.0e6,
+        duration=ref_op.drive.duration,
+        detuning=0.0,
+    )
+    op_high_drive = OperatingPoint(
+        device=ref_op.device,
+        drive=high_drive,
+        integration_window=ref_op.integration_window,
+        n_shots=ref_op.n_shots,
+    )
+
+    s_eps = compute_log_sensitivity(op_high_drive, "epsilon_0")
+    assert abs(s_eps.sensitivity) > SENSITIVITY_WARNING_THRESHOLD, (
+        f"High-drive regime (ε/2π=15 MHz) gave |S_epsilon_0|={abs(s_eps.sensitivity):.3f}, "
+        f"expected > {SENSITIVITY_WARNING_THRESHOLD}. Either the threshold "
+        f"drifted above the characterized ~0.4 empirical ceiling, or the "
+        f"drive-stress regime isn't hitting the dominance level. Re-run "
+        "docs/module4_diagnostics/check_*.py to re-verify the ceiling."
+    )

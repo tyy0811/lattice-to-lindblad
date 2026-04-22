@@ -24,9 +24,20 @@ SENSITIVITY_FD_STEP: float = 0.05
 SENSITIVITY_RENDER_BAR_THRESHOLD: float = 0.03
 
 # Above this, emit a boundary-proximity warning in RecommendationReport.
-# Rationale (Q4): signals devices where linearized sensitivity is locally
-# unreliable — regime-change boundary (Purcell, dispersive breakdown) is near.
-SENSITIVITY_WARNING_THRESHOLD: float = 2.0
+# Rationale (Q4, amended during Module 4 execution): signals devices where
+# one parameter reaches dominance-level sensitivity, flagging operating
+# points where a single parameter controls F_assign and the linearized
+# ranking is less informative.
+#
+# Amended 2.0 → 0.3 after three-check verification (docs/module4_diagnostics/):
+#   - Empirical |S| ceiling under the Lindblad simulator caps at ~0.4 across
+#     the realistic parameter space (|S_ε0|_max = 0.39 at ε/2π = 15 MHz;
+#     |S_γ1|_max = 0.25 at T_1 = 0.22 µs).
+#   - Ceiling verified as genuine Lindblad physics (not solver / truncation /
+#     Purcell-leak artifact) via three independent reproducibility checks.
+#   - 0.3 aligns with spec §2.1's "dominance" level.
+#   - Threshold 2.0 was unreachable under the simulator (dead code).
+SENSITIVITY_WARNING_THRESHOLD: float = 0.3
 
 
 from typing import Literal
@@ -254,3 +265,49 @@ def rank_sensitivities(results: list[SensitivityResult]) -> list[SensitivityResu
     Used for tornado-plot ordering per spec §7 Panel (a).
     """
     return sorted(results, key=lambda r: abs(r.sensitivity), reverse=True)
+
+
+def day_10_cross_check_s_g_vs_s_chi(
+    operating_point: OperatingPoint,
+    step_size: float = SENSITIVITY_FD_STEP,
+) -> dict:
+    """Day-10 Q1 cross-check: compute S_g via ±5% on coupling.g and compare
+    to 2·S_chi. Returns dict with keys S_chi, S_g, predicted_S_g, residual,
+    residual_fractional. The values feed the Figure 4 caption verbatim.
+
+    Under the transmon χ ≈ 2 g² α / (Δ(Δ+α)) at fixed (κ, α), S_g ≈ 2·S_chi
+    holds at leading order. Any deviation quantifies Purcell-coupling
+    contamination in an (A)-style χ-sensitivity (which is exactly why Q1
+    chose chi_scale as an orthogonal lever).
+    """
+    op = operating_point
+
+    # S_chi via chi_scale (Q1 locked path)
+    s_chi = compute_log_sensitivity(op, "chi_scale", step_size=step_size).sensitivity
+
+    # S_g via direct perturbation of coupling.g — re-derives γ_Purcell,
+    # so this deliberately carries the Purcell-coupling overlap Q1 is
+    # measuring against.
+    def _F_at_g(g_value: float) -> float:
+        new_coupling = replace(op.device.coupling, g=g_value)
+        new_device = replace(op.device, coupling=new_coupling)
+        return _evaluate_F_analytic(
+            new_device, op.drive, op.integration_window, op.n_shots, chi_scale=1.0,
+        )
+
+    g_ref = op.device.coupling.g
+    F_plus = _F_at_g(g_ref * (1.0 + step_size))
+    F_minus = _F_at_g(g_ref * (1.0 - step_size))
+    s_g = (math.log(F_plus) - math.log(F_minus)) / (2.0 * step_size)
+
+    predicted_s_g = 2.0 * s_chi
+    residual = s_g - predicted_s_g
+    residual_fractional = abs(residual) / max(abs(predicted_s_g), 1e-12)
+
+    return {
+        "S_chi": float(s_chi),
+        "S_g": float(s_g),
+        "predicted_S_g": float(predicted_s_g),
+        "residual": float(residual),
+        "residual_fractional": float(residual_fractional),
+    }
