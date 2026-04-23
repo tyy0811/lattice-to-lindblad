@@ -298,7 +298,17 @@ Rounding rules:
 
 Not an LLM, not an agentic recommender, not an orchestration layer. Template-rendered f-string.
 
-### 3.5 Day-12/13 autodiff add-on (CONTINGENT — 4-hour cap, three abort signals)
+### 3.5 Day-12/13 autodiff add-on — **CUT 2026-04-23 (Day 11 PM)**
+
+**Cut rationale.** Day-11 Task-10 execution surfaced a structural defect in the locked Q3 analytic regime-map formula: the spec assumed the textbook two-level antisymmetric dispersive-shift convention (`±χ/2` per state), but real transmons have asymmetric per-level shifts (REFERENCE `χ[0] ≈ +43.6 MHz`, `χ[1] ≈ +29.7 MHz`, ratio 1.47), making the closed-form analytic surface diverge from the Lindblad simulator by 22–27% at the validation points — far above the spec-locked 5% caption claim. Re-deriving from first principles with per-level `χ_j` inputs is a one-day cost. The autodiff contingent extension (this section, originally 4-hour-capped on Day 13) was the cut-able candidate per the spec's own discipline ("Three concrete deliverables, one composite figure ... A fourth deliverable is cut or pushed to post-submission" — §1 row 1). The trade is **one speculative extension (proof-of-concept gradient-based refinement) for one core-deliverable correctness item (regime map matches simulator to <5%)**. Pending the per-level derivation in §0.3 item 15.
+
+**No code shipped.** `optimization/autodiff_addon.py` was not created; no stub to remove. Plan Task 18 marked CUT. O7 (autodiff-vs-grid agreement) drops from the test catalog. Test count: 28 baseline (29 with O7) → 28 baseline (O7 cut). Test catalog §6.1 supersession: `O7 contingent` row drops; remaining O1–O6, O8–O24, O5a/O5b, O3a/O3b/O3c (per item 15 derivation), O9, O10, O11.
+
+**Day-14 narrative.** The autodiff cut is a priorities trade made under deadline pressure with explicit reasoning (correctness over speculative coverage). The day-14 report should document the cut as evidence of disciplined scope management, not as a deliverable shortfall.
+
+---
+
+#### Original §3.5 contents (preserved as historical record; not shipped)
 
 **Trigger.** Ship the add-on only if, at end of Day 11:
 
@@ -804,7 +814,7 @@ with `chi_scale: float = 1.0` added as a kwarg on `build_hamiltonian`. Threaded 
 | **O6.1** | Pydantic: SensitivityResult requires finite, uncertainty >= 0 | < 1 s |
 | **O6.2** | Pydantic: ParetoPoint.tau_opt <= tau_max (within solver tol) | < 1 s |
 | **O6.3** | Pydantic: RecommendationReport requires non-empty all_sensitivities | < 1 s |
-| **O7** | Autodiff-vs-grid agreement within 1% at same tau_max (CONTINGENT, per §3.5) | contingent |
+| ~~**O7**~~ | ~~Autodiff-vs-grid agreement within 1% at same tau_max (CONTINGENT, per §3.5)~~ — **CUT 2026-04-23** with §3.5 add-on | — |
 | **O8** | Q8 analytic-objective contract: `grep noise_model='gaussian'` returns empty inside `optimization/pareto.py` and `optimization/sensitivity.py` | < 1 s |
 | **O9** | Regression gate: regenerate fig4_data.yaml at SEED=42 and compare to committed artifact (±2% per sensitivity, ±2% per Pareto point) | moderate |
 | **O10** | Modal image smoke: `pareto_one_tuple.map([one_tuple])` returns valid `ParetoPoint` | < 30 s once pre-warmed |

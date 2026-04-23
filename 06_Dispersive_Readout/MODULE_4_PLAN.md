@@ -57,7 +57,7 @@ The `python -m pytest` form ensures the conda env's pytest is used (`/usr/local/
 | `dispersive_readout/optimization/pareto.py` | `ParetoPoint` Pydantic schema; `PARETO_DEVICE_VARIANTS` spec list (3 entries per spec §3.3 table); `build_variant` via `dataclasses.replace`; `find_pareto_point` (SLSQP + 5×5 warm-start, `noise_model='ideal'`); `compute_pareto_frontier` (Modal-dispatched or serial). |
 | `dispersive_readout/optimization/modal_pareto.py` | `stage_06_module4_image` Modal image spec (debian_slim + numpy + scipy + qutip + pydantic + pyyaml); `app = modal.App(...)`; `@app.function pareto_one_tuple(device, tau_max) -> ParetoPoint`. Public module (no underscore) per Q7/Q8 decision. |
 | `dispersive_readout/optimization/recommend.py` | `RecommendationReport` Pydantic schema; `_format_value_with_sigma` metrology helper; `recommend_from_fitted_parameters`; `generate_narrative`; `export_recommendation_to_yaml`. |
-| `dispersive_readout/optimization/autodiff_addon.py` | **CONTINGENT** — `autodiff_refine_pulse_edges` with 3 abort signals (90-min / 3-hr / 4-hr). Ships only if Day-11 end-of-day clean and Modal smoke passes. |
+| `dispersive_readout/optimization/autodiff_addon.py` | **CUT 2026-04-23** — Day-11 cut to absorb per-level analytic-formula re-derivation cost. See spec §3.5 cut amendment + Task 18 in this plan. Not created. |
 | `dispersive_readout/tests/test_optimization.py` | 28 tests (29 with contingent O7) per spec §6.1: O1–O24, O5 split as O5a/O5b. |
 | `06_Dispersive_Readout/scripts/fig4_optimization.py` | Composite 3-panel Figure 4 (tornado + analytic regime map + Pareto + closed-loop arrow); generates `fig4_optimization.png` and `fig4_data.yaml`. |
 | `06_Dispersive_Readout/figures/fig4_optimization.png` | Publication-quality composite (150 DPI, 1400 px wide). |
@@ -116,7 +116,7 @@ The `python -m pytest` form ensures the conda env's pytest is used (`/usr/local/
               │     ▼
               │   Task 17 (O5a + O5b closed-loop + demo-device pick)
               │
-              ├── Task 18 (autodiff_addon.py CONTINGENT, 3 abort signals)  [Day 13 AM]
+              ├── Task 18 (autodiff_addon.py — CUT 2026-04-23, day absorbed by item-15 re-derivation)
               │
               ├── Task 19 (fig4_optimization.py composite 3-panel)
               │     │
@@ -3792,7 +3792,15 @@ failure modes, independent diagnostics."
 
 ---
 
-## Task 18: `autodiff_addon.py` — CONTINGENT, 3 abort signals (Day-13 morning)
+## Task 18: `autodiff_addon.py` — **CUT 2026-04-23 (Day 11 PM)**
+
+**Cut rationale:** The contingent autodiff add-on was cut to absorb the one-day cost of the per-level analytic-formula re-derivation forced by the Day-11 Task-10 finding (spec §3.5 cut amendment + spec §0.3 item 15). Trade: one speculative gradient-based refinement extension for one core-deliverable correctness item (regime map matches Lindblad simulator to <5%). Per spec §1 row 1 ("a fourth deliverable is cut or pushed to post-submission") this trade is spec-faithful. **No code shipped** — `autodiff_addon.py` was never created. **No tests shipped** — O7 (autodiff-vs-grid) drops from the test catalog.
+
+The remaining task subsections below are preserved as historical record; **do not implement**. Skip directly from Task 17 to Task 19.
+
+---
+
+#### Original Task 18 contents (CUT — do not implement)
 
 **Rationale:** Spec §3.5 contingent add-on + §9 item 7 (abort means revert, not "30 more minutes"). Ships only if Day-11 smoke passed and baseline deliverables have no unresolved bugs at Day-13 09:00. Three abort signals are concrete: 90-min forward pass, 3-hr FD-vs-grad agreement, 4-hr baseline blocker.
 
