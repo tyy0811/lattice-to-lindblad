@@ -1010,3 +1010,56 @@ def test_O23_build_variant_v3_bengtsson_like():
     assert variant.decoherence.gamma_1 == pytest.approx(1.0 / 20e-6, rel=1e-9)
     assert variant.resonator.kappa == pytest.approx(2.0 * math.pi * 6e6, rel=1e-9)
     assert variant.coupling.g == REFERENCE_DEVICE.coupling.g
+
+
+# ────────────────────────────────────────────────────────────────────
+# O19–O21 — Pareto edge cases
+# ────────────────────────────────────────────────────────────────────
+
+@pytest.mark.slow
+def test_O19_pareto_at_lower_tau_max_boundary_feasible():
+    """τ_max = 100 ns must return a feasible ParetoPoint, possibly with
+    lower F_opt than at larger τ_max but still > 0.5."""
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    from dispersive_readout.optimization.pareto import find_pareto_point
+
+    p = find_pareto_point(REFERENCE_DEVICE, tau_max=100e-9)
+    assert p.solver_converged
+    assert p.F_assign_opt > 0.5
+    assert p.tau_opt <= p.tau_max * 1.001
+
+
+@pytest.mark.slow
+def test_O20_pareto_at_upper_tau_max_boundary_feasible():
+    """τ_max = 2 µs must return a feasible ParetoPoint. At this budget
+    REFERENCE achieves F >> 0.99."""
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    from dispersive_readout.optimization.pareto import find_pareto_point
+
+    p = find_pareto_point(REFERENCE_DEVICE, tau_max=2000e-9)
+    assert p.solver_converged
+    assert p.F_assign_opt > 0.99
+
+
+@pytest.mark.slow
+def test_O21_pareto_infeasibility_at_extreme_drive_bounds():
+    """If ε_0 bounds exclude all F > 0.5, find_pareto_point returns
+    solver_converged=False (or raises). Either signal is acceptable;
+    test that failure is surfaced, not silent."""
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    from dispersive_readout.optimization.pareto import find_pareto_point
+
+    # Extremely low drive amplitude bounds — F cannot exceed 0.5
+    try:
+        p = find_pareto_point(
+            REFERENCE_DEVICE,
+            tau_max=500e-9,
+            epsilon_0_bounds=(1.0, 1e3),  # 1–1000 rad/s is absurdly low
+        )
+    except RuntimeError:
+        return  # raised; also acceptable
+    # Otherwise: solver must flag non-convergence OR low F
+    assert (not p.solver_converged) or p.F_assign_opt < 0.6, (
+        f"Infeasible regime produced converged={p.solver_converged} "
+        f"F={p.F_assign_opt:.3f} — failure was not surfaced."
+    )
