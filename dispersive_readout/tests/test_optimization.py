@@ -1167,3 +1167,46 @@ def test_format_value_with_sigma_handles_asymmetric():
     # Accept ASCII hyphen or Unicode minus (U+2212), with or without space.
     assert "+5" in sig_s
     assert any(tok in sig_s for tok in ("−3", "-3", "− 3", "- 3"))
+
+
+# ────────────────────────────────────────────────────────────────────
+# Narrative round-trip: no raw format tokens leak into the output
+# ────────────────────────────────────────────────────────────────────
+
+def test_generate_narrative_contains_no_raw_format_tokens():
+    """If the template f-string is mis-populated, raw {placeholder}
+    tokens will appear. Spec §9 item 8 — fix the formatting, not the text."""
+    from dispersive_readout.optimization.recommend import (
+        RecommendationReport, generate_narrative,
+    )
+    from dispersive_readout.optimization.sensitivity import SensitivityResult
+
+    s = SensitivityResult(
+        parameter="chi_scale", reference_value=1.0, reference_unit="",
+        sensitivity=0.42, sensitivity_uncertainty=0.02, F_reference=0.99,
+    )
+    import math as _math
+    r = RecommendationReport(
+        device_parameters_fitted={
+            "T_1": {"value": 86e-6, "uncertainty": 2e-6},
+            "T_2_echo": {"value": 40e-6, "uncertainty": 1.5e-6},
+            "omega_q": {"value": 4.89e9 * 2 * _math.pi, "uncertainty": 5e6 * 2 * _math.pi},
+        },
+        optimal_drive={
+            "amplitude": 5e7, "duration": 480e-9, "detuning": 0.0, "edge_sigma": 2e-9,
+        },
+        predicted_F_assign=0.9984,
+        predicted_F_uncertainty=1.2e-3,
+        top_3_sensitivities=[s, s, s],
+        all_sensitivities=[s, s, s, s, s, s, s],
+        dominant_loss_channel="T1_intrinsic",
+        sensitivity_warnings=[],
+        recommendation_narrative="",
+    )
+    narrative = generate_narrative(r)
+    # No raw {...} tokens should remain
+    assert "{" not in narrative and "}" not in narrative, (
+        f"Narrative has unsubstituted format tokens: {narrative}"
+    )
+    # Dominant channel name should appear
+    assert "T1_intrinsic" in narrative

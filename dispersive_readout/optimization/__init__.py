@@ -41,7 +41,12 @@ from .pareto import (
     compute_pareto_frontier,
 )
 from .modal_pareto import app, pareto_one_tuple
-from .recommend import RecommendationReport
+from .recommend import (
+    RecommendationReport,
+    recommend_from_fitted_parameters,
+    generate_narrative,
+    export_recommendation_to_yaml,
+)
 
 __all__ = [
     "SENSITIVITY_FD_STEP",
@@ -70,4 +75,7 @@ __all__ = [
     "app",
     "pareto_one_tuple",
     "RecommendationReport",
+    "recommend_from_fitted_parameters",
+    "generate_narrative",
+    "export_recommendation_to_yaml",
 ]
