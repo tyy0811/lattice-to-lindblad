@@ -261,3 +261,59 @@ def find_pareto_point(
         dominant_loss_channel=str(dominant),
         solver_converged=bool(res.success),
     )
+
+
+# ────────────────────────────────────────────────────────────────────
+# Spec §3.3 — batch frontier computation with Modal dispatch
+# ────────────────────────────────────────────────────────────────────
+
+def compute_pareto_frontier(
+    device: DeviceConfig,
+    tau_max_values: np.ndarray | None = None,
+    device_label: str = "<unnamed>",
+    use_modal: bool = False,
+) -> list[ParetoPoint]:
+    """Trace one device's Pareto frontier across tau_max values.
+
+    Parameters
+    ----------
+    tau_max_values : np.ndarray, optional
+        Defaults to TAU_MAX_GRID_NS * 1e-9 (10 log-spaced points, 100 ns - 2 µs).
+    device_label : str
+        Human-readable label; stamped onto each ParetoPoint.device_label.
+    use_modal : bool
+        If True, dispatch via modal_pareto.pareto_one_tuple.map(...).
+        If False (default), run serial list(map(...)).
+
+    Returns
+    -------
+    list[ParetoPoint], ordered by tau_max ascending.
+    """
+    if tau_max_values is None:
+        tau_max_values = TAU_MAX_GRID_NS * 1e-9
+    tau_max_list = [float(t) for t in tau_max_values]
+
+    if use_modal:
+        from .modal_pareto import app, pareto_one_tuple
+        with app.run():
+            results = list(pareto_one_tuple.map(
+                [device] * len(tau_max_list), tau_max_list,
+            ))
+    else:
+        results = [find_pareto_point(device, t) for t in tau_max_list]
+
+    # Stamp the human-readable label
+    labeled = []
+    for p in results:
+        labeled.append(ParetoPoint(
+            device_id=p.device_id,
+            device_label=device_label,
+            tau_max=p.tau_max,
+            epsilon_0_opt=p.epsilon_0_opt,
+            tau_opt=p.tau_opt,
+            F_assign_opt=p.F_assign_opt,
+            F_assign_uncertainty=p.F_assign_uncertainty,
+            dominant_loss_channel=p.dominant_loss_channel,
+            solver_converged=p.solver_converged,
+        ))
+    return labeled

@@ -1,0 +1,273 @@
+"REFERENCE (\u2248 Marxer Q1)":
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 1.0000000000000001e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.0000000000000001e-07
+  F_assign_opt: 0.667924004613083
+  F_assign_uncertainty: 0.004709580965167764
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 1.3949507939624216e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.3949507939624216e-07
+  F_assign_opt: 0.7148407837818519
+  F_assign_uncertainty: 0.004514902408956361
+  dominant_loss_channel: pure_dephasing
+  solver_converged: true
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 1.945887717576388e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.945887717576388e-07
+  F_assign_opt: 0.7751347422246705
+  F_assign_uncertainty: 0.004174935611730606
+  dominant_loss_channel: thermal
+  solver_converged: true
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 2.714417616594907e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 2.714417616594907e-07
+  F_assign_opt: 0.8364863976117619
+  F_assign_uncertainty: 0.00369833616944511
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 3.786479009414649e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 3.786479009414649e-07
+  F_assign_opt: 0.891243718676037
+  F_assign_uncertainty: 0.003113331858259668
+  dominant_loss_channel: thermal
+  solver_converged: true
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 5.281951900505007e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 5.281951900505007e-07
+  F_assign_opt: 0.9351542783576152
+  F_assign_uncertainty: 0.0024625343454876547
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 7.368062997280775e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 7.368062997280775e-07
+  F_assign_opt: 0.9660132822137848
+  F_assign_uncertainty: 0.0018119498006383997
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 1.0278085328021956e-06
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.0278085328021956e-06
+  F_assign_opt: 0.9845725360462664
+  F_assign_uncertainty: 0.0012324551638777726
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 1.4337423288737741e-06
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.4337423288737741e-06
+  F_assign_opt: 0.9940916885424593
+  F_assign_uncertainty: 0.0007663813224016726
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 9ed300b4100f
+  device_label: "REFERENCE (\u2248 Marxer Q1)"
+  tau_max: 2.0000000000000003e-06
+  epsilon_0_opt: 250750000.0
+  tau_opt: 2.0000000000000003e-06
+  F_assign_opt: 0.9980708783064923
+  F_assign_uncertainty: 0.00043879382208496416
+  dominant_loss_channel: purcell
+  solver_converged: true
+"T_1 = 40 \xB5s (Garnet-like)":
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 1.0000000000000001e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.0000000000000001e-07
+  F_assign_opt: 0.6679789122498715
+  F_assign_uncertainty: 0.004709385151369019
+  dominant_loss_channel: unknown
+  solver_converged: true
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 1.3949507939624216e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.3949507939624216e-07
+  F_assign_opt: 0.7149301039029798
+  F_assign_uncertainty: 0.004514477272467481
+  dominant_loss_channel: thermal
+  solver_converged: true
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 1.945887717576388e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.945887717576388e-07
+  F_assign_opt: 0.7752848348159977
+  F_assign_uncertainty: 0.004173946091174739
+  dominant_loss_channel: T1_intrinsic
+  solver_converged: true
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 2.714417616594907e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 2.714417616594907e-07
+  F_assign_opt: 0.8367156284790934
+  F_assign_uncertainty: 0.003696249254824803
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 3.786479009414649e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 3.786479009414649e-07
+  F_assign_opt: 0.891558197909204
+  F_assign_uncertainty: 0.0031093757838205507
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 5.281951900505007e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 5.281951900505007e-07
+  F_assign_opt: 0.9355306982791892
+  F_assign_uncertainty: 0.002455870738789846
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 7.368062997280775e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 7.368062997280775e-07
+  F_assign_opt: 0.9663978061602639
+  F_assign_uncertainty: 0.001802029034419059
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 1.0278085328021956e-06
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.0278085328021956e-06
+  F_assign_opt: 0.9849025169054365
+  F_assign_uncertainty: 0.001219407606125731
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 1.4337423288737741e-06
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.4337423288737741e-06
+  F_assign_opt: 0.9943233646007158
+  F_assign_uncertainty: 0.0007512929661475472
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: 00c0db418fc4
+  device_label: "T_1 = 40 \xB5s (Garnet-like)"
+  tau_max: 2.0000000000000003e-06
+  epsilon_0_opt: 250750000.0
+  tau_opt: 2.0000000000000003e-06
+  F_assign_opt: 0.9982044213987796
+  F_assign_uncertainty: 0.0004233620789238463
+  dominant_loss_channel: purcell
+  solver_converged: true
+"T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)":
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 1.0000000000000001e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.0000000000000001e-07
+  F_assign_opt: 0.6875931153214148
+  F_assign_uncertainty: 0.0046347472755696876
+  dominant_loss_channel: unknown
+  solver_converged: true
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 1.3949507939624216e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.3949507939624216e-07
+  F_assign_opt: 0.743803339774535
+  F_assign_uncertainty: 0.004365317073418409
+  dominant_loss_channel: thermal
+  solver_converged: true
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 1.945887717576388e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.945887717576388e-07
+  F_assign_opt: 0.8055639660001026
+  F_assign_uncertainty: 0.003957659190510069
+  dominant_loss_channel: T1_intrinsic
+  solver_converged: true
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 2.714417616594907e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 2.714417616594907e-07
+  F_assign_opt: 0.8659967471089334
+  F_assign_uncertainty: 0.0034065581032132635
+  dominant_loss_channel: unknown
+  solver_converged: true
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 3.786479009414649e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 3.786479009414649e-07
+  F_assign_opt: 0.915905417729435
+  F_assign_uncertainty: 0.0027752960833630734
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 5.281951900505007e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 5.281951900505007e-07
+  F_assign_opt: 0.9531222437586626
+  F_assign_uncertainty: 0.0021137699073247103
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 7.368062997280775e-07
+  epsilon_0_opt: 250750000.0
+  tau_opt: 7.368062997280775e-07
+  F_assign_opt: 0.9772669855816207
+  F_assign_uncertainty: 0.0014905108008274556
+  dominant_loss_channel: thermal
+  solver_converged: true
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 1.0278085328021956e-06
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.0278085328021956e-06
+  F_assign_opt: 0.9904869192772885
+  F_assign_uncertainty: 0.0009706998515439612
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 1.4337423288737741e-06
+  epsilon_0_opt: 250750000.0
+  tau_opt: 1.4337423288737741e-06
+  F_assign_opt: 0.9966135502113
+  F_assign_uncertainty: 0.0005809459309203022
+  dominant_loss_channel: purcell
+  solver_converged: true
+- device_id: e9cc32ba7dc5
+  device_label: "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)"
+  tau_max: 2.0000000000000003e-06
+  epsilon_0_opt: 250750000.0
+  tau_opt: 2.0000000000000003e-06
+  F_assign_opt: 0.9989351501199715
+  F_assign_uncertainty: 0.00032614658893839933
+  dominant_loss_channel: purcell
+  solver_converged: true

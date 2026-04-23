@@ -32,15 +32,20 @@ stage_06_module4_image = (
 app = modal.App("stage06-module4-pareto", image=stage_06_module4_image)
 
 
-@app.function(cpu=2.0, memory=4096)
+@app.function(cpu=2.0, memory=4096, timeout=3600)
 def pareto_one_tuple(device, tau_max: float):
     """Single-tuple Pareto-point computation.
 
     Pure function: no global state, no filesystem side effects. Receives
     `device: DeviceConfig` and `tau_max: float`; returns a `ParetoPoint`.
     Delegates to `dispersive_readout.optimization.pareto.find_pareto_point`,
-    which currently ships as a placeholder stub (Task 11) and lands a real
-    SLSQP implementation in Task 13.
+    which ships the SLSQP + 5×5 warm-start implementation (Task 13).
+
+    Timeout: 3600s (60 min) per input. Calibrated from local instrumentation
+    (Task 14 Step 14.5): one REFERENCE Pareto point at tau_max=1552 ns
+    takes ~10 min locally with median per-eval cost ~22 s; Modal 2-CPU
+    workers run ~3× slower, so a worst-case 2-µs point lands near ~30 min.
+    The 3600s ceiling gives comfortable headroom above that.
     """
     from .pareto import find_pareto_point
     return find_pareto_point(device, tau_max)

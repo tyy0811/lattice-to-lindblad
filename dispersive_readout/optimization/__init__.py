@@ -32,7 +32,14 @@ from .regime_map import (
     compute_analytic_regime_map,
     validate_analytic_vs_lindblad,
 )
-from .pareto import ParetoPoint, find_pareto_point
+from .pareto import (
+    ParetoPoint,
+    PARETO_DEVICE_VARIANTS,
+    TAU_MAX_GRID_NS,
+    build_variant,
+    find_pareto_point,
+    compute_pareto_frontier,
+)
 from .modal_pareto import app, pareto_one_tuple
 
 __all__ = [
@@ -54,7 +61,11 @@ __all__ = [
     "compute_analytic_regime_map",
     "validate_analytic_vs_lindblad",
     "ParetoPoint",
+    "PARETO_DEVICE_VARIANTS",
+    "TAU_MAX_GRID_NS",
+    "build_variant",
     "find_pareto_point",
+    "compute_pareto_frontier",
     "app",
     "pareto_one_tuple",
 ]

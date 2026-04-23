@@ -1063,3 +1063,32 @@ def test_O21_pareto_infeasibility_at_extreme_drive_bounds():
         f"Infeasible regime produced converged={p.solver_converged} "
         f"F={p.F_assign_opt:.3f} — failure was not surfaced."
     )
+
+
+# ────────────────────────────────────────────────────────────────────
+# O4 — Pareto monotonicity in τ_max
+# ────────────────────────────────────────────────────────────────────
+
+@pytest.mark.slow
+def test_O4_pareto_monotonic_in_tau_max_for_reference():
+    """F_opt non-decreasing along REFERENCE's Pareto curve.
+
+    Relaxing τ_max cannot make F_opt worse; if it does, SLSQP is stuck
+    at a local minimum — spec §9 item 4 says increase warm_start grid
+    density before changing solvers."""
+    import numpy as np
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    from dispersive_readout.optimization.pareto import compute_pareto_frontier
+
+    curve = compute_pareto_frontier(
+        REFERENCE_DEVICE,
+        tau_max_values=np.array([200e-9, 500e-9, 1000e-9, 2000e-9]),
+        device_label="REFERENCE (test)",
+    )
+    F_opts = [p.F_assign_opt for p in curve]
+    # Non-decreasing within 5σ_shot slack (shot-noise σ ~ 1e-3, 5σ ≈ 5e-3)
+    for a, b in zip(F_opts, F_opts[1:]):
+        assert b >= a - 5e-3, (
+            f"F_opt decreased from {a:.4f} -> {b:.4f} across adjacent τ_max. "
+            "Increase n_warm_start_grid_side from 5 to 10 and retry."
+        )
