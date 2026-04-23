@@ -21,6 +21,14 @@ from .sensitivity import (
     compute_all_sensitivities,
     rank_sensitivities,
 )
+from .regime_map import (
+    DevicePoint,
+    PUBLISHED_DEVICE_POINTS,
+    f_analytic_dispersive,
+    purcell_boundary,
+    dispersive_breakdown_boundary,
+    resonator_too_slow_boundary,
+)
 
 __all__ = [
     "SENSITIVITY_FD_STEP",
@@ -31,4 +39,10 @@ __all__ = [
     "compute_log_sensitivity",
     "compute_all_sensitivities",
     "rank_sensitivities",
+    "DevicePoint",
+    "PUBLISHED_DEVICE_POINTS",
+    "f_analytic_dispersive",
+    "purcell_boundary",
+    "dispersive_breakdown_boundary",
+    "resonator_too_slow_boundary",
 ]

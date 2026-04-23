@@ -671,3 +671,83 @@ def test_f_analytic_dispersive_peaks_near_chi_over_kappa_half():
         f"F peaks at chi/kappa = {chi_k[peak_idx]}, expected 0.5 "
         f"(Bengtsson 2024 §II SNR-max). F array: {F_1d}"
     )
+
+
+# ────────────────────────────────────────────────────────────────────
+# Published-device-points data validation (Q5 lock)
+# ────────────────────────────────────────────────────────────────────
+
+def test_PUBLISHED_DEVICE_POINTS_has_four_entries_labeled_correctly():
+    """The 4 markers of the regime map — Marxer Q1, Marxer Q2, Bengtsson,
+    Garnet — with Hazra OMITTED per Q5 lock."""
+    from dispersive_readout.optimization.regime_map import PUBLISHED_DEVICE_POINTS
+    labels = [p.label for p in PUBLISHED_DEVICE_POINTS]
+    assert len(PUBLISHED_DEVICE_POINTS) == 4, (
+        f"Expected exactly 4 device points, got {len(PUBLISHED_DEVICE_POINTS)}. "
+        "Hazra must be OMITTED per Q5 (dimon, non-standard transmon)."
+    )
+    assert all("Hazra" not in lab for lab in labels), (
+        f"Hazra must not appear in plotted device points. Labels: {labels}"
+    )
+    expected_substrings = ["Marxer Q1", "Marxer Q2", "Bengtsson", "Garnet"]
+    for expected in expected_substrings:
+        assert any(expected in lab for lab in labels), (
+            f"Missing expected device '{expected}' from PUBLISHED_DEVICE_POINTS. "
+            f"Actual labels: {labels}"
+        )
+
+
+def test_PUBLISHED_DEVICE_POINTS_coordinates_are_physical():
+    """chi/kappa and gamma_1*tau must be finite, positive, and within the
+    regime map's x-axis [0.1, 10] and y-axis [1e-4, 1e-1] ranges."""
+    import math
+    from dispersive_readout.optimization.regime_map import PUBLISHED_DEVICE_POINTS
+    for p in PUBLISHED_DEVICE_POINTS:
+        assert math.isfinite(p.chi_over_kappa) and p.chi_over_kappa > 0
+        assert math.isfinite(p.gamma_1_tau) and p.gamma_1_tau > 0
+        assert 0.1 <= p.chi_over_kappa <= 10.0, (
+            f"{p.label}: chi_over_kappa={p.chi_over_kappa} outside [0.1, 10]"
+        )
+        assert 1e-4 <= p.gamma_1_tau <= 1e-1, (
+            f"{p.label}: gamma_1_tau={p.gamma_1_tau} outside [1e-4, 1e-1]"
+        )
+        if p.reported_F_assign is not None:
+            assert 0.5 <= p.reported_F_assign <= 1.0
+
+
+def test_marxer_q1_is_primary_anchor_with_F_reported():
+    """Marxer Q1 must have reported_F_assign set — it's the F_sim annotation
+    anchor for Panel (b) per Q3 Refinement 1."""
+    from dispersive_readout.optimization.regime_map import PUBLISHED_DEVICE_POINTS
+    q1 = next(p for p in PUBLISHED_DEVICE_POINTS if "Marxer Q1" in p.label)
+    assert q1.reported_F_assign is not None
+    assert q1.reported_F_assign > 0.99
+
+
+# ────────────────────────────────────────────────────────────────────
+# Analytic-boundary monotonicity tests
+# ────────────────────────────────────────────────────────────────────
+
+def test_purcell_boundary_decreases_with_chi_over_kappa():
+    """Under γ_Purcell = κ · (g/Δ)² with (g, Δ) at REFERENCE and
+    κ(x) = χ_REF / x, γ_Purcell ∝ 1/x, so τ_readout(x) at γ_P·τ=0.1 grows
+    with x, and y_Purcell(x) = γ_1·0.1/γ_P(x) also grows with x.
+    Boundary is monotone non-decreasing in x."""
+    import numpy as np
+    from dispersive_readout.optimization.regime_map import purcell_boundary
+    x = np.array([0.2, 0.5, 1.0, 2.0, 5.0])
+    y = purcell_boundary(x)
+    assert np.all(np.diff(y) >= 0), (
+        f"Purcell boundary not monotone in x: y = {y}"
+    )
+
+
+def test_resonator_too_slow_is_constant_in_x():
+    """kappa·tau_readout = 1 at fixed REFERENCE κ is a horizontal line."""
+    import numpy as np
+    from dispersive_readout.optimization.regime_map import resonator_too_slow_boundary
+    x = np.array([0.3, 1.0, 3.0])
+    y = resonator_too_slow_boundary(x)
+    assert np.allclose(y, y[0]), (
+        f"Resonator-too-slow line not constant: {y}"
+    )
