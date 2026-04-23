@@ -28,6 +28,8 @@ from .regime_map import (
     purcell_boundary,
     dispersive_breakdown_boundary,
     resonator_too_slow_boundary,
+    compute_analytic_regime_map,
+    validate_analytic_vs_lindblad,
 )
 
 __all__ = [
@@ -45,4 +47,6 @@ __all__ = [
     "purcell_boundary",
     "dispersive_breakdown_boundary",
     "resonator_too_slow_boundary",
+    "compute_analytic_regime_map",
+    "validate_analytic_vs_lindblad",
 ]

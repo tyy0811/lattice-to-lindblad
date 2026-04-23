@@ -206,6 +206,48 @@ def test_O8_analytic_mode_present_in_pareto_module():
     )
 
 
+# Item-11 amendment scope-extension: regime_map.py's validate_analytic_vs_lindblad
+# also runs inner-loop simulate_readout + compute_assignment_fidelity calls that
+# qualify under the same Q8 contract. Task-10 execution caught the regression at
+# the Lindblad-validation step (F_sim=1.0 exactly → 23–27% deviation vs analytic).
+# The contract now scans regime_map.py too so the next regression fires statically.
+
+def test_O8_no_gaussian_noise_inside_regime_map_module():
+    """Q8 lock: regime_map.py inner-loop sims must not use noise_model='gaussian'."""
+    src = (_OPTIMIZATION_DIR / "regime_map.py").read_text()
+    matches = _FORBIDDEN_GAUSSIAN.findall(src)
+    assert matches == [], (
+        f"Q8 contract violated: regime_map.py contains "
+        f"noise_model='gaussian' at {len(matches)} call site(s). Inner-loop "
+        "Lindblad-validation evaluations must use noise_model='analytic'. "
+        "See MODULE_4_SPEC.md §0 row 8."
+    )
+
+
+def test_O8_no_ideal_noise_inside_regime_map_module():
+    """Q8 lock (item-11 scope-extension): regime_map.py must never use
+    noise_model='ideal'. Caught at Task-10 execution: ideal mode returns F=1.0
+    and the analytic-vs-Lindblad comparison sees 23–27% spurious deviation."""
+    src = (_OPTIMIZATION_DIR / "regime_map.py").read_text()
+    matches = _FORBIDDEN_IDEAL.findall(src)
+    assert matches == [], (
+        f"Q8 contract violated: regime_map.py contains "
+        f"noise_model='ideal' at {len(matches)} call site(s). Ideal mode is the "
+        "zero-noise (F=1) limit — Lindblad-validation needs 'analytic'. "
+        "See MODULE_4_SPEC.md §0 row 8."
+    )
+
+
+def test_O8_analytic_mode_present_in_regime_map_module():
+    """Q8 lock (positive assertion): regime_map.py must invoke noise_model='analytic'."""
+    src = (_OPTIMIZATION_DIR / "regime_map.py").read_text()
+    matches = _REQUIRED_ANALYTIC.findall(src)
+    assert len(matches) >= 1, (
+        "Q8 contract violated: regime_map.py must call "
+        "compute_assignment_fidelity(..., noise_model='analytic') at least once."
+    )
+
+
 # ────────────────────────────────────────────────────────────────────
 # O1a / O1b — sensitivity sign sanity (physics-falsifiable invariant)
 #
@@ -751,3 +793,13 @@ def test_resonator_too_slow_is_constant_in_x():
     assert np.allclose(y, y[0]), (
         f"Resonator-too-slow line not constant: {y}"
     )
+
+
+# ────────────────────────────────────────────────────────────────────
+# O3a / O3b / O3c — analytic vs Lindblad at 3 points (per-level formula)
+# Pending Phase-5 commit of the per-level analytic derivation. The original
+# antisymmetric-2-level formula was off by 22-27% at all validation points;
+# Day-11 escalation determined that per-level chi[0], chi[1] asymmetry is
+# the root cause (item-15 amendment). Tests land alongside the corrected
+# formula in a single commit.
+# ────────────────────────────────────────────────────────────────────

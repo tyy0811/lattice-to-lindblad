@@ -191,3 +191,114 @@ def resonator_too_slow_boundary(chi_over_kappa: np.ndarray) -> np.ndarray:
     gamma_1_ref = REFERENCE_DEVICE.decoherence.gamma_1
     y_const = gamma_1_ref / kappa_ref
     return np.full_like(np.asarray(chi_over_kappa, dtype=float), y_const)
+
+
+def _infer_n_phot_at_reference() -> float:
+    """Infer steady-state photon number at REFERENCE operating point.
+
+    Reuses Module 2's calibration path: get_reference_operating_point returns
+    the calibrated drive; average photon number over the last 20% of the
+    integration window is the steady-state estimate.
+    """
+    from ..analysis.operating_point import get_reference_operating_point
+    from ..physics.readout_model import simulate_readout
+
+    op = get_reference_operating_point(n_shots=10_000)
+    r0 = simulate_readout(op.device, op.drive, initial_qubit_state=0)
+    # Average photon number over last 20% of the integration window
+    t = r0.t
+    t0, t1 = op.integration_window
+    window_mask = (t >= t0 + 0.8 * (t1 - t0)) & (t <= t1)
+    return float(np.mean(r0.photon_number[window_mask]))
+
+
+def compute_analytic_regime_map(
+    chi_over_kappa_range: tuple[float, float] = (0.1, 10.0),
+    gamma_1_tau_range: tuple[float, float] = (1e-4, 1e-1),
+    n_chi: int = 20,
+    n_gamma: int = 20,
+    n_phot: float | None = None,
+) -> dict:
+    """Return dict with 'chi_over_kappa_axis', 'gamma_1_tau_axis',
+    'F_grid', 'n_phot_used'. Sub-second; pure analytic (no sim calls)."""
+    if n_phot is None:
+        n_phot = _infer_n_phot_at_reference()
+
+    x_axis = np.logspace(
+        np.log10(chi_over_kappa_range[0]),
+        np.log10(chi_over_kappa_range[1]),
+        n_chi,
+    )
+    y_axis = np.logspace(
+        np.log10(gamma_1_tau_range[0]),
+        np.log10(gamma_1_tau_range[1]),
+        n_gamma,
+    )
+    # 2D grid via broadcasting: x on axis=0, y on axis=1
+    X, Y = np.meshgrid(x_axis, y_axis, indexing="ij")
+    F = f_analytic_dispersive(X, Y, n_phot=n_phot)
+
+    return {
+        "chi_over_kappa_axis": x_axis,
+        "gamma_1_tau_axis": y_axis,
+        "F_grid": F,
+        "n_phot_used": float(n_phot),
+    }
+
+
+def validate_analytic_vs_lindblad(
+    points: list[tuple[float, float]] | None = None,
+) -> dict:
+    """Q3 Refinement 2: evaluate F_sim at specified (χ/κ, γ_1·τ) points and
+    compare to F_analytic.
+
+    F_sim is computed at REFERENCE-with-resonator-κ-rescaled-to-hit-target-χ/κ
+    (holding χ at REFERENCE's dispersive-computed value) and decoherence-γ_1-
+    rescaled-to-hit-target-γ_1·τ (holding τ at REFERENCE's drive.duration).
+    Caption cites max deviation.
+    """
+    from dataclasses import replace
+
+    from ..analysis.operating_point import get_reference_operating_point
+    from ..physics.readout_model import simulate_readout, compute_assignment_fidelity
+
+    if points is None:
+        # Defaults: Marxer Q1 + mid-range (χ/κ=1, γ_1·τ=0.01)
+        q1 = next(p for p in PUBLISHED_DEVICE_POINTS if "Marxer Q1" in p.label)
+        points = [(q1.chi_over_kappa, q1.gamma_1_tau), (1.0, 0.01)]
+
+    op = get_reference_operating_point(n_shots=10_000)
+    n_phot = _infer_n_phot_at_reference()
+    chi_ref = _reference_chi_magnitude()
+    tau = op.drive.duration
+
+    per_point = []
+    for (target_chi_over_k, target_gamma_tau) in points:
+        # Construct device with rescaled κ and γ_1 to hit target coordinates
+        target_kappa = chi_ref / target_chi_over_k
+        target_gamma_1 = target_gamma_tau / tau
+        new_res = replace(op.device.resonator, kappa=target_kappa)
+        new_dec = replace(op.device.decoherence, gamma_1=target_gamma_1)
+        new_device = replace(op.device, resonator=new_res, decoherence=new_dec)
+
+        r0 = simulate_readout(new_device, op.drive, initial_qubit_state=0)
+        r1 = simulate_readout(new_device, op.drive, initial_qubit_state=1)
+        F_sim = compute_assignment_fidelity(
+            r0, r1, op.integration_window, n_shots=op.n_shots, noise_model="analytic",
+        ).F_assign
+
+        F_analytic = float(
+            f_analytic_dispersive(
+                np.asarray(target_chi_over_k), np.asarray(target_gamma_tau), n_phot=n_phot,
+            )
+        )
+        per_point.append({
+            "chi_over_kappa": float(target_chi_over_k),
+            "gamma_1_tau": float(target_gamma_tau),
+            "F_analytic": float(F_analytic),
+            "F_lindblad": float(F_sim),
+            "deviation_fractional": float(abs(F_sim - F_analytic) / F_sim),
+        })
+
+    max_dev = max(p["deviation_fractional"] for p in per_point)
+    return {"per_point": per_point, "max_deviation_fractional": max_dev, "n_phot_used": n_phot}
