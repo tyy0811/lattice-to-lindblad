@@ -124,17 +124,21 @@ def _evaluate_F_analytic(
     ).F_assign
 
 
-def _perturbed_device_drive_scale(
+def _perturbed_device_drive_window_scale(
     op: OperatingPoint,
     parameter: ParameterName,
     fractional_delta: float,
-) -> tuple[DeviceConfig, DriveParams, float]:
-    """Return (perturbed_device, perturbed_drive, chi_scale) for one perturbation.
+) -> tuple[DeviceConfig, DriveParams, tuple[float, float], float]:
+    """Return (device, drive, integration_window, chi_scale) for one probe.
 
-    Returns the trio that `_evaluate_F_analytic` needs; all non-perturbed fields
-    are copied unchanged.
+    All non-perturbed fields are copied unchanged. For τ, the integration
+    window's right edge is co-perturbed to track the new drive.duration
+    (window_start held fixed as the κ-ramp-up exclusion, not τ-dependent).
+    This makes both FD branches evaluate `F_assign` against a window
+    self-consistent with the probed τ — otherwise the FD silently mixes
+    τ-sensitivity with window-mismatch bias (Codex finding, Day-10 fix).
     """
-    device, drive = op.device, op.drive
+    device, drive, window = op.device, op.drive, op.integration_window
     chi_scale = 1.0  # baseline; only chi_scale-parameter path overrides
 
     if parameter == "chi_scale":
@@ -163,11 +167,15 @@ def _perturbed_device_drive_scale(
     elif parameter == "epsilon_0":
         drive = replace(drive, amplitude=drive.amplitude * (1.0 + fractional_delta))
     elif parameter == "tau":
-        drive = replace(drive, duration=drive.duration * (1.0 + fractional_delta))
+        new_duration = drive.duration * (1.0 + fractional_delta)
+        drive = replace(drive, duration=new_duration)
+        # Window end tracks the new duration so both FD branches integrate
+        # the full pulse; window start stays fixed (κ-ramp-up exclusion).
+        window = (window[0], new_duration)
     else:
         raise ValueError(f"Unknown parameter: {parameter}")
 
-    return device, drive, chi_scale
+    return device, drive, window, chi_scale
 
 
 def _reference_value_and_unit(op: OperatingPoint, parameter: ParameterName) -> tuple[float, str]:
@@ -193,23 +201,54 @@ def compute_log_sensitivity(
 
     Uses Module 1's analytic F pathway (Φ(SNR/2)) at both probe points;
     σ(S_θ) is propagated from the analytic binomial SE on F_ref.
+
+    τ-window coupling (Day-10 Codex-adversarial fix): for `parameter="tau"`,
+    the integration window's right edge co-perturbs with the probed τ so
+    both FD branches integrate the full pulse. `S_τ` therefore measures
+    the combined sensitivity to "longer pulse + longer integration" as a
+    package deal — the same landscape the Pareto solver navigates when it
+    optimizes τ. The 50 ns window-start exclusion is κ-ramp-up physics
+    and stays fixed. Other parameters leave the integration window
+    unchanged.
+
+    Zero-reference guard: if the parameter's reference value is exactly
+    0.0, raises `ValueError` because multiplicative perturbation
+    `θ·(1 ± h)` collapses to 0 at both FD branches, producing a silent
+    `S = 0`. Use an additive scheme or exclude the parameter if this
+    fires (e.g., `γ_φ = 0` from a Koch back-solve where `T_2_echo = 2·T_1`
+    exactly).
     """
     op = operating_point
-    integration_window = op.integration_window
     n_shots = op.n_shots
 
-    # Reference F (unperturbed)
+    theta_ref, unit = _reference_value_and_unit(op, parameter)
+    # Zero-reference guard. Multiplicative perturbation θ·(1±h) collapses
+    # to 0 at both branches when θ=0, producing a silent S=0. Raise
+    # explicitly (Codex adversarial finding #2, Day 10).
+    if theta_ref == 0.0:
+        raise ValueError(
+            f"Cannot compute log-sensitivity for {parameter!r}: "
+            f"reference_value is exactly 0.0. Multiplicative perturbation "
+            f"θ·(1 ± h) collapses to 0 at both branches, so the central "
+            f"finite difference would silently return S = 0. If this "
+            f"parameter is legitimately zero at the operating point "
+            f"(e.g., γ_φ when T_2_echo = 2·T_1 via Koch back-solve), "
+            f"use an additive perturbation scheme or exclude this "
+            f"parameter from the sensitivity analysis."
+        )
+
+    # Reference F (unperturbed): uses the operating point's configured window.
     F_ref = _evaluate_F_analytic(
-        op.device, op.drive, integration_window, n_shots, chi_scale=1.0,
+        op.device, op.drive, op.integration_window, n_shots, chi_scale=1.0,
     )
 
-    # Plus perturbation
-    dev_p, drv_p, chi_p = _perturbed_device_drive_scale(op, parameter, +step_size)
-    F_plus = _evaluate_F_analytic(dev_p, drv_p, integration_window, n_shots, chi_scale=chi_p)
+    # Plus perturbation — window threaded from dispatcher to keep τ self-consistent.
+    dev_p, drv_p, win_p, chi_p = _perturbed_device_drive_window_scale(op, parameter, +step_size)
+    F_plus = _evaluate_F_analytic(dev_p, drv_p, win_p, n_shots, chi_scale=chi_p)
 
     # Minus perturbation
-    dev_m, drv_m, chi_m = _perturbed_device_drive_scale(op, parameter, -step_size)
-    F_minus = _evaluate_F_analytic(dev_m, drv_m, integration_window, n_shots, chi_scale=chi_m)
+    dev_m, drv_m, win_m, chi_m = _perturbed_device_drive_window_scale(op, parameter, -step_size)
+    F_minus = _evaluate_F_analytic(dev_m, drv_m, win_m, n_shots, chi_scale=chi_m)
 
     # Central finite difference in log-log space
     S = (math.log(F_plus) - math.log(F_minus)) / (2.0 * step_size)
@@ -219,8 +258,6 @@ def compute_log_sensitivity(
     # central-diff uncertainty: sqrt(2) * σ(ln F) / (2h) = σ(F) / (sqrt(2) * h * F).
     sigma_F_ref = math.sqrt(F_ref * (1.0 - F_ref) / n_shots)
     sigma_S = sigma_F_ref / (math.sqrt(2.0) * step_size * F_ref)
-
-    theta_ref, unit = _reference_value_and_unit(op, parameter)
 
     return SensitivityResult(
         parameter=parameter,

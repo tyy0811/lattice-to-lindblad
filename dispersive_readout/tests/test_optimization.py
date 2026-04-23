@@ -351,6 +351,99 @@ _ALL_PARAMETERS = [
 ]
 
 
+# ────────────────────────────────────────────────────────────────────
+# Codex adversarial-review regression tests (Day-10 fixes)
+# Finding #1: τ-window mismatch (high severity)
+# Finding #2: zero-reference collapse (medium severity)
+# ────────────────────────────────────────────────────────────────────
+
+def test_tau_probe_integration_window_tracks_perturbed_tau():
+    """Regression: for parameter='tau', the per-probe integration window
+    must have its right edge equal to the perturbed drive.duration. The
+    50 ns window start (κ-ramp-up exclusion) stays fixed. Closes the
+    Codex high-severity finding where ±5% τ probes compared one pulse
+    shorter than the window and one pulse longer than the window."""
+    from dispersive_readout.analysis.operating_point import get_reference_operating_point
+    from dispersive_readout.optimization.sensitivity import (
+        _perturbed_device_drive_window_scale,
+    )
+
+    op = get_reference_operating_point(n_shots=10_000)
+    for delta in (-0.05, +0.05):
+        _dev, drive, window, _chi = _perturbed_device_drive_window_scale(op, "tau", delta)
+        expected_duration = op.drive.duration * (1.0 + delta)
+        assert drive.duration == pytest.approx(expected_duration, rel=1e-12)
+        assert window[1] == pytest.approx(drive.duration, rel=1e-12), (
+            f"τ probe at δ={delta}: integration_window[1]={window[1]} does "
+            f"not track perturbed drive.duration={drive.duration}. Window "
+            "must co-perturb with τ per spec §0.1 amendment."
+        )
+        assert window[0] == op.integration_window[0], (
+            f"τ probe at δ={delta}: window start shifted from "
+            f"{op.integration_window[0]} to {window[0]}. κ-ramp-up "
+            "exclusion should stay fixed."
+        )
+
+
+def test_fd_dispatcher_probe_configuration_self_consistent():
+    """Regression: for every parameter, the dispatcher's returned triple
+    (device, drive, integration_window) must be self-consistent —
+    non-perturbed fields unchanged, perturbed fields aligned. Closes
+    the class of bugs where an FD dispatcher silently couples a probed
+    parameter to an un-probed field (Codex adversarial finding class)."""
+    from dispersive_readout.analysis.operating_point import get_reference_operating_point
+    from dispersive_readout.optimization.sensitivity import (
+        _perturbed_device_drive_window_scale,
+    )
+
+    op = get_reference_operating_point(n_shots=10_000)
+    params = ("chi_scale", "kappa", "gamma_1", "gamma_phi", "n_th", "epsilon_0", "tau")
+    for p in params:
+        for delta in (-0.05, +0.05):
+            _dev, drive, window, _chi = _perturbed_device_drive_window_scale(op, p, delta)
+            if p == "tau":
+                # τ probe: duration and window end must match.
+                assert drive.duration == pytest.approx(window[1], rel=1e-12), (
+                    f"{p} probe at δ={delta}: drive.duration={drive.duration} "
+                    f"!= window[1]={window[1]}"
+                )
+            else:
+                # Non-τ probes must leave drive.duration AND window unchanged
+                # from the reference operating point.
+                assert drive.duration == op.drive.duration, (
+                    f"{p} probe at δ={delta} inadvertently perturbed drive.duration"
+                )
+                assert window == op.integration_window, (
+                    f"{p} probe at δ={delta} inadvertently perturbed integration_window"
+                )
+
+
+def test_compute_log_sensitivity_raises_at_zero_reference_value():
+    """Regression: multiplicative perturbation θ·(1±h) collapses to 0 at
+    both branches when θ=0, so central FD returns silent S=0.
+    compute_log_sensitivity must raise ValueError with Koch-back-solve
+    guidance. Closes Codex medium-severity finding #2."""
+    from dataclasses import replace
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    from dispersive_readout.analysis.operating_point import (
+        get_reference_operating_point, OperatingPoint,
+    )
+    from dispersive_readout.optimization.sensitivity import compute_log_sensitivity
+
+    ref_op = get_reference_operating_point(n_shots=10_000)
+    zero_gamma_phi = replace(REFERENCE_DEVICE.decoherence, gamma_phi=0.0)
+    dev_zero = replace(REFERENCE_DEVICE, decoherence=zero_gamma_phi)
+    op_zero = OperatingPoint(
+        device=dev_zero,
+        drive=ref_op.drive,
+        integration_window=ref_op.integration_window,
+        n_shots=ref_op.n_shots,
+    )
+
+    with pytest.raises(ValueError, match=r"reference_value is exactly 0\.0"):
+        compute_log_sensitivity(op_zero, "gamma_phi")
+
+
 @pytest.mark.parametrize("parameter", _ALL_PARAMETERS)
 def test_O12_O18_per_parameter_sensitivity_finite_and_typed(parameter):
     """Each of the 7 parameters returns a finite SensitivityResult at REFERENCE."""
