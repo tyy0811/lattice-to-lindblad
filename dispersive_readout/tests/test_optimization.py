@@ -1090,8 +1090,42 @@ def test_O4_pareto_monotonic_in_tau_max_for_reference():
     for a, b in zip(F_opts, F_opts[1:]):
         assert b >= a - 5e-3, (
             f"F_opt decreased from {a:.4f} -> {b:.4f} across adjacent τ_max. "
-            "Increase n_warm_start_grid_side from 5 to 10 and retry."
+            "Increase n_warm_start_grid_side from 10 to 20 and retry."
         )
+
+
+# ────────────────────────────────────────────────────────────────────
+# Amendment #10 regression guard — Day-13 warm-start grid bug
+# ────────────────────────────────────────────────────────────────────
+
+@pytest.mark.slow
+def test_warm_start_resolves_basin_at_reference():
+    """Pareto optimum at REFERENCE, tau_max=500ns must clear F > 0.99.
+
+    Under the pre-fix 5-point linear warm-start, F_opt returned 0.929
+    (stuck at eps_opt=2.5e8 warm-start winner; SLSQP could not cross
+    the inter-grid valley to the true basin at eps ~ 1.59e8).
+    Log-spaced 10-point warm-start resolves the basin: F_opt ~ 0.993.
+    See docs/module4_diagnostics/warm_start_grid_bug.md."""
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    from dispersive_readout.optimization.pareto import find_pareto_point
+
+    p = find_pareto_point(REFERENCE_DEVICE, tau_max=500e-9)
+    assert p.F_assign_opt >= 0.99, (
+        f"REFERENCE at tau_max=500ns returned F_opt={p.F_assign_opt:.4f} "
+        f"(eps_opt={p.epsilon_0_opt:.3e}, tau_opt={p.tau_opt*1e9:.1f}ns). "
+        "Expected F_opt >= 0.99. Under the pre-fix warm-start grid "
+        "(5-point linear), F_opt was 0.929 — SLSQP trapped outside "
+        "the true basin at eps ~ 1.59e8. If this regresses, the "
+        "warm-start topology may have reverted to linear on eps."
+    )
+    # Sanity: solver landed at tau boundary (physically correct at 500ns
+    # with REFERENCE decoherence — F monotone in tau up to ~T_phi).
+    assert p.tau_opt >= 500e-9 * 0.999, (
+        f"tau_opt={p.tau_opt*1e9:.1f} ns < tau_max boundary; "
+        "either decoherence dominates earlier than expected or "
+        "SLSQP is stuck."
+    )
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -1210,3 +1244,169 @@ def test_generate_narrative_contains_no_raw_format_tokens():
     )
     # Dominant channel name should appear
     assert "T1_intrinsic" in narrative
+
+
+# ────────────────────────────────────────────────────────────────────
+# O5a — modeled improvement (analytic)
+# O5b — shot-noise detectability (Welch-t at n_shots = 10^4, p < 0.05)
+# ────────────────────────────────────────────────────────────────────
+
+def _load_demo_device():
+    """Load the Day-13 picked demo device; build its DeviceConfig."""
+    from pathlib import Path
+    from dataclasses import replace
+    import yaml
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+
+    demo_path = Path("06_Dispersive_Readout/figures/closed_loop_demo_device.yaml")
+    if not demo_path.exists():
+        pytest.skip(
+            "closed_loop_demo_device.yaml missing - run "
+            "scripts/pick_closed_loop_demo_device.py first (Task 17 Step 2)."
+        )
+    payload = yaml.safe_load(demo_path.read_text())
+    c = payload["chosen"]
+    new_dec = replace(
+        REFERENCE_DEVICE.decoherence,
+        gamma_1=1.0 / (c["T_1_us"] * 1e-6),
+        gamma_phi=max(
+            1.0 / (c["T_2_echo_us"] * 1e-6) - 0.5 / (c["T_1_us"] * 1e-6), 0.0,
+        ),
+    )
+    return replace(REFERENCE_DEVICE, decoherence=new_dec), payload
+
+
+@pytest.mark.slow
+def test_O5a_closed_loop_modeled_improvement():
+    """F_opt_analytic - F_default_analytic > 0.005 on the fitted demo device.
+
+    Threshold 0.005 exceeds SLSQP ftol (1e-6) and Lindblad rtol (~1e-5) -
+    asserts a genuine modeled improvement, not numerical wiggle."""
+    from dispersive_readout.physics.config import DriveParams
+    from dispersive_readout.physics.readout_model import (
+        simulate_readout, compute_assignment_fidelity,
+    )
+    from dispersive_readout.optimization.pareto import find_pareto_point
+
+    demo_device, payload = _load_demo_device()
+    # "Default" drive = REFERENCE's Pareto-optimum drive applied to demo device.
+    ref_drive = DriveParams(
+        amplitude=payload["reference_optimum"]["epsilon_0_opt"],
+        duration=payload["reference_optimum"]["tau_opt_ns"] * 1e-9,
+        detuning=0.0,
+    )
+
+    r0 = simulate_readout(demo_device, ref_drive, initial_qubit_state=0)
+    r1 = simulate_readout(demo_device, ref_drive, initial_qubit_state=1)
+    F_default = compute_assignment_fidelity(
+        r0, r1, (50e-9, ref_drive.duration),
+        n_shots=10_000, noise_model="analytic",
+    ).F_assign
+
+    p_opt = find_pareto_point(demo_device, tau_max=500e-9)
+    F_opt = p_opt.F_assign_opt
+
+    delta = F_opt - F_default
+    assert delta > 0.005, (
+        f"F_opt - F_default = {delta:.4f} <= 0.005. Either the demo "
+        "device is too close to REFERENCE (recompute pick), or the "
+        "recommendation bridge is miscalibrated (spec section 9 item 6)."
+    )
+
+
+@pytest.mark.slow
+def test_O5b_closed_loop_shot_noise_detectability():
+    """Welch-t-style test at n=10^4: p < 0.05 on modeled F_default vs F_opt.
+
+    Uses binomial-proportion SE: sigma_F = sqrt(F(1-F)/n); Z = delta_F / sqrt(2) sigma.
+    Asserts the modeled improvement is measurable at the spec's shot budget."""
+    import math
+    from scipy import stats as sp_stats
+    from dispersive_readout.physics.config import DriveParams
+    from dispersive_readout.physics.readout_model import (
+        simulate_readout, compute_assignment_fidelity,
+    )
+    from dispersive_readout.optimization.pareto import find_pareto_point
+
+    demo_device, payload = _load_demo_device()
+    ref_drive = DriveParams(
+        amplitude=payload["reference_optimum"]["epsilon_0_opt"],
+        duration=payload["reference_optimum"]["tau_opt_ns"] * 1e-9,
+        detuning=0.0,
+    )
+
+    r0_d = simulate_readout(demo_device, ref_drive, initial_qubit_state=0)
+    r1_d = simulate_readout(demo_device, ref_drive, initial_qubit_state=1)
+    F_default = compute_assignment_fidelity(
+        r0_d, r1_d, (50e-9, ref_drive.duration),
+        n_shots=10_000, noise_model="analytic",
+    ).F_assign
+
+    p_opt = find_pareto_point(demo_device, tau_max=500e-9)
+    opt_drive = DriveParams(
+        amplitude=p_opt.epsilon_0_opt, duration=p_opt.tau_opt, detuning=0.0,
+    )
+    r0_o = simulate_readout(demo_device, opt_drive, initial_qubit_state=0)
+    r1_o = simulate_readout(demo_device, opt_drive, initial_qubit_state=1)
+    F_opt_sample = compute_assignment_fidelity(
+        r0_o, r1_o, (50e-9, opt_drive.duration),
+        n_shots=10_000, noise_model="analytic",
+    ).F_assign
+
+    # Welch-t style at n=10^4 (binomial-proportion SE, independent samples)
+    n = 10_000
+    sigma_d = math.sqrt(F_default * (1.0 - F_default) / n)
+    sigma_o = math.sqrt(F_opt_sample * (1.0 - F_opt_sample) / n)
+    t = (F_opt_sample - F_default) / math.sqrt(sigma_d ** 2 + sigma_o ** 2)
+    p_value = 2.0 * (1.0 - sp_stats.norm.cdf(abs(t)))
+    assert p_value < 0.05, (
+        f"Welch-t p = {p_value:.4f} >= 0.05: shot-noise detectability "
+        "fails at n=10^4. Either the demo device's F_opt - F_default is "
+        "too small to detect at this shot budget, or F_default and F_opt "
+        "are within one sigma_shot (~ 1e-3)."
+    )
+
+
+# ────────────────────────────────────────────────────────────────────
+# O9 - regression gate: regenerate sensitivities and compare against
+# committed artifact (SEED=42 stable, ±2% per value)
+# ────────────────────────────────────────────────────────────────────
+
+@pytest.mark.slow
+def test_O9_regression_gate_against_committed_yaml():
+    """Regenerate per-parameter S_theta at SEED=42; compare to committed
+    fig4_data.yaml. Tolerance ±2% per value (Module 3 C3 convention).
+    If the fitter legitimately improves: regenerate the artifact via
+    scripts/regenerate_fig4_data.py and re-commit."""
+    from pathlib import Path
+    import yaml
+
+    committed_path = Path("06_Dispersive_Readout/figures/fig4_data.yaml")
+    if not committed_path.exists():
+        pytest.skip(
+            "fig4_data.yaml missing - run "
+            "scripts/regenerate_fig4_data.py first (Task 20 Step 1)."
+        )
+    committed = yaml.safe_load(committed_path.read_text())
+
+    from dispersive_readout.analysis.operating_point import get_reference_operating_point
+    from dispersive_readout.optimization.sensitivity import compute_all_sensitivities
+
+    op = get_reference_operating_point(n_shots=10_000)
+    sens = compute_all_sensitivities(op)
+
+    TOL = 0.02
+    for observed, pinned in zip(sens, committed["sensitivities"]):
+        assert observed.parameter == pinned["parameter"], (
+            f"Parameter ordering drift: observed[{observed.parameter!r}] "
+            f"vs pinned[{pinned['parameter']!r}]"
+        )
+        ref_S = pinned["S"]
+        obs_S = observed.sensitivity
+        if abs(ref_S) > 1e-6:
+            rel = abs(obs_S - ref_S) / abs(ref_S)
+            assert rel < TOL, (
+                f"Sensitivity S_{observed.parameter} drifted from pinned "
+                f"{ref_S:.4f} to {obs_S:.4f} ({rel*100:.2f}% > 2%). "
+                "If intentional, regenerate fig4_data.yaml."
+            )
