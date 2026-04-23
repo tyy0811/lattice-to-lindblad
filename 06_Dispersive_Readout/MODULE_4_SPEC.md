@@ -53,6 +53,16 @@ Three substantive amendments were surfaced during Day-10 execution. Each is grou
 
 **τ-at-the-edge caption phrasing**: the corrected tornado has one bar-rendered parameter (ε₀) and six point-with-errorbar. The Panel (a) caption should describe this as *"ε₀ is the dominant control parameter; τ and χ sit at the rendering-threshold edge with statistically significant support (|S|/σ ≈ 2), but neither has the central-value dominance that would warrant a filled bar."* Draft language subject to final verification against the re-rendered PNG.
 
+### 0.3 Day-11 execution-time amendment (per-level analytic derivation)
+
+| # | Execution-time amendment | Driver |
+|---|---|---|
+| 15 | **Per-level analytic regime-map formula (replaces Q3-locked textbook ±χ/2 form)**: the original §3.2 closed-form `SNR_steady = 4(χ/κ)·sqrt(n_phot) / (1 + (2χ/κ)²)` assumed (a) the textbook two-level antisymmetric dispersive-shift convention (per-state shifts ±χ/2) and (b) a steady-state IQ-separation SNR with no integration-time amplification. Day-11 Task-10 validation against the Module 1 Lindblad simulator found 22–27% deviation at both validation points — far above the spec's 5% caption claim. Root cause: real transmons have asymmetric per-level shifts `χ_j` (REFERENCE: `χ_0 ≈ +43.6 MHz·2π`, `χ_1 ≈ +29.7 MHz·2π`, ratio 1.47, both positive) per Koch 2007 §V; the Lorentzian-response Lorentzian `(2χ/κ)/(1+(2χ/κ)²)` antisymmetric form captures neither the per-state photon-number asymmetry (sim shows `⟨n_g⟩=2.35`, `⟨n_e⟩=4.30` at REFERENCE-Marxer-Q1; antisymmetric formula predicts symmetric `n ≈ 13`, off by 4×) nor the integrated readout SNR (missing `2√(κ·T_window)` factor, ~3× shift at REFERENCE). Re-derived from first principles in `docs/module4_diagnostics/per_level_analytic_derivation.md` with full per-level Lorentzian response and Module 1's σ-formula convention (η=1 implicit, T_window = integration window length, not pulse duration). New chart parametrization is **REFERENCE-family-anchored**: at each chart point, REFERENCE's `(χ_0, χ_1)` and `(ε, T_window)` are held fixed; only κ varies to hit each chart x-coordinate. Caption updated to scope the chart to "REFERENCE family (Koch E_J/E_C)". Validated against the simulator at 3 operating points (Marxer Q1, mid-range, weak-decoherence) to **3.48% max deviation** (well under the spec 5% target). The 3-point check ships as O3a/O3b/O3c. To absorb the 1-day re-derivation cost, the contingent autodiff add-on (§3.5) is cut. | Execution finding: the textbook 2-level analytic surface is structurally unable to predict full transmon Lindblad simulator F to 5%, by an amount that affects the publishable figure. The per-level derivation, while requiring the chart caption to acknowledge device-family scope, is the spec-faithful route under Q3's "analytic over simulated, for defensibility" mandate. |
+
+**Code surface affected by item 15.** `optimization/regime_map.py` — `f_analytic_dispersive` reimplemented with REFERENCE-anchored chart wrapper around new workhorse `f_analytic_dispersive_per_level(chi_0, chi_1, kappa, epsilon, T_window, gamma_1_tau)`. `compute_analytic_regime_map` returns the chart with anchor metadata (`chi_per_level_anchor`, `epsilon`, `T_window`) instead of `n_phot_used`. `validate_analytic_vs_lindblad` defaults to 3 points (was 2). `_infer_n_phot_at_reference` removed (no longer needed). Old Task-8 unit tests `test_f_analytic_dispersive_returns_monotone_increase_with_n_phot` and `test_f_analytic_dispersive_peaks_near_chi_over_kappa_half` removed (tested the obsolete `n_phot` signature and the now-device-dependent χ/κ=0.5 peak); replaced with `test_f_analytic_dispersive_at_REFERENCE_anchor_matches_F_sim_within_1pct` and `test_f_analytic_dispersive_per_level_chart_form_consistency`. The 4 published-device markers, the analytic boundaries (purcell/dispersive-breakdown/resonator-too-slow), and the decoherence-envelope unit test are unchanged. O8 contract (item-11 extension) continues to enforce `noise_model='analytic'` in `regime_map.py`'s inner-loop sim calls.
+
+**Caption language for Figure 4 Panel (b) (Day-11 lock).** *"Closed-form analytic readout fidelity F_assign as a function of dispersive-shift ratio χ/κ ≡ |χ_0−χ_1|/κ and decoherence budget γ_1·τ_readout. Surface evaluated at REFERENCE drive amplitude (ε/2π = 11.06 MHz) and integration window (T_window = 450 ns), with REFERENCE's per-level dispersive-shift asymmetry held fixed (χ_0/χ_1 = 1.47); other transmon families with different per-level structure (Koch 2007 §V) will shift the surface. Lindblad-validated at three operating points (Marxer Q1, χ/κ=1·γ_1τ=0.01, χ/κ=0.5·γ_1τ=10⁻³) to 3.48% max deviation. Decoherence envelope √(1 − γ_1τ/2) agrees with exp(−γ_1τ/4) to <1% over the y-axis range. Per-level derivation: docs/module4_diagnostics/per_level_analytic_derivation.md."*
+
 ---
 
 ## 1. Philosophy
@@ -166,17 +176,19 @@ All three constants are auditable, test-targeted, and cited in the Figure 4 capt
 - `S_{γ_1} < 0`, `S_{γ_φ} < 0`, `S_{n̄_th} < 0` (increasing any loss channel degrades F).
 - Signs falsifiable by Test O1; wrong signs mean the simulator is broken, not the sensitivity code.
 
-### 3.2 Regime map (analytic)
+### 3.2 Regime map (analytic) — **superseded in part by §0.3 item 15**
+
+> **Day-11 update:** the closed-form below is the original spec lock; per item 15 the actual shipped formula uses **per-level dispersive shifts (χ_0, χ_1)** rather than the textbook ±χ/2 antisymmetric form, and includes the integration-time factor `2√(κ·T_window)`. See §0.3 item 15 + `docs/module4_diagnostics/per_level_analytic_derivation.md` for the derivation. The chart parametrization (χ/κ, γ_1τ) is preserved but is now REFERENCE-family-anchored. The text below is preserved as the pre-amendment record; the published-device markers (4 entries) and analytic boundaries (3 functions) below are unchanged.
 
 **Closed-form F_assign** over (χ/κ, γ₁·τ_readout) from the dispersive-SNR formula (Bengtsson 2024 PRL §II; Blais RMP 2021 §V.B cross-check for the steady-state derivation):
 
 ```
-SNR_steady(χ/κ, n̄_phot) = 4 · (χ/κ) · sqrt(n̄_phot) / (1 + (2χ/κ)²)
+SNR_steady(χ/κ, n̄_phot) = 4 · (χ/κ) · sqrt(n̄_phot) / (1 + (2χ/κ)²)   # superseded — see §0.3 item 15
 SNR_eff(χ/κ, γ₁τ, n̄_phot) = SNR_steady · (1 − γ₁τ/2)^(1/2)
 F_analytic = Φ(SNR_eff / 2)       # Φ = standard normal CDF
 ```
 
-where `n̄_phot` is the steady-state resonator photon number, held fixed at a value chosen to reproduce REFERENCE's operating point and quoted on Figure 4 Panel (b)'s subtitle.
+where `n̄_phot` is the steady-state resonator photon number, held fixed at a value chosen to reproduce REFERENCE's operating point and quoted on Figure 4 Panel (b)'s subtitle. **(Pre-amendment text — superseded by per-level formula per §0.3 item 15.)**
 
 Linear decoherence-envelope `(1 − γ₁τ/2)^(1/2)` is within 1% of the exponential form `exp(−γ₁τ/4)` across the grid's y-axis range `[1e-4, 1e-1]` — confirmed once in a unit test and annotated in the caption.
 
@@ -806,8 +818,9 @@ with `chi_scale: float = 1.0` added as a kwarg on `build_hamiltonian`. Threaded 
 |---|---|---|
 | **O1** | Sensitivity sign sanity: `S_χ > 0`, `S_{γ_1} < 0`, `S_{γ_φ} < 0`, `S_{n̄_th} < 0` | < 1 min |
 | **O2** | Sensitivity step-independence: S at h=0.05 vs h=0.025 within 10% | < 1 min |
-| **O3a** | Analytic-vs-Lindblad regime map at Marxer Q1: `abs(F_analytic − F_Lindblad) < 5%` | 1 sim call |
-| **O3b** | Analytic-vs-Lindblad regime map at (χ/κ=1, γ₁τ=0.01): same 5% tolerance | 1 sim call |
+| **O3a** | Analytic-vs-Lindblad regime map at Marxer Q1 (per-level formula per §0.3 item 15): `abs(F_analytic − F_Lindblad) < 5%` | 2 sim calls |
+| **O3b** | Analytic-vs-Lindblad at (χ/κ=1, γ₁τ=0.01): same 5% tolerance | 2 sim calls |
+| **O3c** | Analytic-vs-Lindblad at (χ/κ=0.5, γ₁τ=10⁻³) (weak-decoherence near dispersive optimum, per §0.3 item 15): same 5% tolerance | 2 sim calls |
 | **O4** | Pareto monotonicity: F_opt non-decreasing in tau_max along each variant's curve | uses O5's variants |
 | **O5a** | Closed-loop modeled improvement: `F_opt_analytic − F_default_analytic > 0.005` | moderate |
 | **O5b** | Closed-loop shot-noise detectability: Welch-t on n_shots=10⁴ samples, p < 0.05 | 2 extra sim calls |

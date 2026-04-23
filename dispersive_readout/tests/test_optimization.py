@@ -687,31 +687,59 @@ def test_decoherence_envelope_linear_agrees_with_exp_within_1pct():
     )
 
 
-def test_f_analytic_dispersive_returns_monotone_increase_with_n_phot():
-    """F should be non-decreasing in n_phot for fixed (chi/kappa, gamma_tau)."""
-    import numpy as np
-    from dispersive_readout.optimization.regime_map import f_analytic_dispersive
-    chi_k = np.array([0.5])
-    g_t = np.array([1e-3])
-    F_low = f_analytic_dispersive(chi_k, g_t, n_phot=1.0)
-    F_high = f_analytic_dispersive(chi_k, g_t, n_phot=10.0)
-    assert F_high >= F_low, f"F decreased with n_phot: {F_high} < {F_low}"
+# NOTE: Task-8's n_phot-monotone and chi-over-kappa-half-peak tests were
+# removed in the item-15 amendment (Day 11 PM). They tested the textbook
+# 2-level antisymmetric formula's parametrization (n_phot as a free input,
+# universal peak at χ/κ=0.5). Under the per-level formula those properties
+# don't hold: n_phot is not a free input (derived from ε, κ, χ_j); the peak
+# location depends on REFERENCE per-level chi structure (device-specific).
+# See docs/module4_diagnostics/per_level_analytic_derivation.md §6.
 
 
-def test_f_analytic_dispersive_peaks_near_chi_over_kappa_half():
-    """Dispersive SNR 4·(χ/κ)/(1 + (2χ/κ)²) peaks at χ/κ = 0.5; F should
-    inherit that maximum location at fixed gamma_tau and n_phot."""
-    import numpy as np
-    from dispersive_readout.optimization.regime_map import f_analytic_dispersive
-    chi_k = np.array([0.1, 0.3, 0.5, 0.7, 1.0, 3.0])
-    g_t = np.array([1e-3])
-    F_vals = f_analytic_dispersive(chi_k[:, None], g_t[None, :], n_phot=4.0)
-    # Collapse the singleton second axis
-    F_1d = F_vals[:, 0]
-    peak_idx = int(np.argmax(F_1d))
-    assert chi_k[peak_idx] == 0.5, (
-        f"F peaks at chi/kappa = {chi_k[peak_idx]}, expected 0.5 "
-        f"(Bengtsson 2024 §II SNR-max). F array: {F_1d}"
+def test_f_analytic_dispersive_at_REFERENCE_anchor_matches_F_sim_within_1pct():
+    """At REFERENCE chart coordinates, the per-level analytic F must match
+    REFERENCE's F_sim ≈ 0.989 to within 1% absolute. Tight bound: REFERENCE
+    is the natural anchor for the per-level formula, so agreement here should
+    be ~0.02% (numerically observed). Using 1% gives safety margin for
+    Module-1-side small numerical drift across versions."""
+    from dispersive_readout.optimization.regime_map import (
+        f_analytic_dispersive, _reference_chi_magnitude,
+    )
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    chi_diff = _reference_chi_magnitude()
+    chi_over_kappa = chi_diff / REFERENCE_DEVICE.resonator.kappa
+    gamma_1_tau = REFERENCE_DEVICE.decoherence.gamma_1 * 5e-7  # REF drive duration
+    F = float(f_analytic_dispersive(chi_over_kappa, gamma_1_tau))
+    F_REF_sim = 0.9899  # session-frozen REFERENCE F_sim per Day-10 closeout
+    assert abs(F - F_REF_sim) < 0.01, (
+        f"F_analytic at REFERENCE anchor = {F:.4f}, expected ~{F_REF_sim:.4f} ± 0.01. "
+        "Per-level formula should match REFERENCE F_sim tightly."
+    )
+
+
+def test_f_analytic_dispersive_per_level_chart_form_consistency():
+    """The chart wrapper f_analytic_dispersive(χ/κ, γτ) must equal the
+    workhorse f_analytic_dispersive_per_level when given REFERENCE-anchored
+    inputs at the same chart coordinates."""
+    from dispersive_readout.optimization.regime_map import (
+        f_analytic_dispersive, f_analytic_dispersive_per_level,
+        _reference_per_level_chi, _reference_drive_and_window, _reference_chi_magnitude,
+    )
+    chi_over_kappa = 0.5
+    gamma_1_tau = 1e-3
+    chi_0_ref, chi_1_ref = _reference_per_level_chi()
+    chi_diff_ref = _reference_chi_magnitude()
+    epsilon, T_window = _reference_drive_and_window()
+    target_kappa = chi_diff_ref / chi_over_kappa
+
+    F_chart = float(f_analytic_dispersive(chi_over_kappa, gamma_1_tau))
+    F_per_level = float(f_analytic_dispersive_per_level(
+        chi_0=chi_0_ref, chi_1=chi_1_ref, kappa=target_kappa,
+        epsilon=epsilon, T_window=T_window, gamma_1_tau=gamma_1_tau,
+    ))
+    assert abs(F_chart - F_per_level) < 1e-12, (
+        f"Chart wrapper {F_chart} ≠ per-level workhorse {F_per_level} "
+        "at the same coordinates (REFERENCE-anchored)."
     )
 
 
@@ -796,10 +824,77 @@ def test_resonator_too_slow_is_constant_in_x():
 
 
 # ────────────────────────────────────────────────────────────────────
-# O3a / O3b / O3c — analytic vs Lindblad at 3 points (per-level formula)
-# Pending Phase-5 commit of the per-level analytic derivation. The original
-# antisymmetric-2-level formula was off by 22-27% at all validation points;
-# Day-11 escalation determined that per-level chi[0], chi[1] asymmetry is
-# the root cause (item-15 amendment). Tests land alongside the corrected
-# formula in a single commit.
+# O3a / O3b / O3c — per-level analytic vs Lindblad at 3 points
+# Per item-15 amendment (Day 11 PM): the closed-form analytic surface
+# uses per-level dispersive shifts (χ_0, χ_1) — not the textbook
+# antisymmetric ±χ/2 — and the integrated SNR carries the 2√(κ·T_window)
+# factor that the old formula omitted. Validates against Module 1's
+# Lindblad simulator at REFERENCE per-level anchor.
+# Derivation: docs/module4_diagnostics/per_level_analytic_derivation.md.
 # ────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture(scope="module")
+def _validation_report():
+    """Cache the 3-point Lindblad validation across O3a/O3b/O3c (~1 min total)."""
+    from dispersive_readout.optimization.regime_map import validate_analytic_vs_lindblad
+    return validate_analytic_vs_lindblad()
+
+
+def test_O3a_per_level_analytic_vs_lindblad_at_marxer_q1(_validation_report):
+    """Per-level analytic F at Marxer Q1's coordinates must agree with
+    Module 1's Lindblad F_sim within 5% (REFERENCE is the Marxer Q1 anchor;
+    expected agreement is much tighter, ~0.1%)."""
+    from dispersive_readout.optimization.regime_map import PUBLISHED_DEVICE_POINTS
+    marxer_q1 = next(p for p in PUBLISHED_DEVICE_POINTS if "Marxer Q1" in p.label)
+    pt = next(
+        p for p in _validation_report["per_point"]
+        if abs(p["chi_over_kappa"] - marxer_q1.chi_over_kappa) < 1e-6
+    )
+    assert pt["deviation_fractional"] < 0.05, (
+        f"O3a deviation {pt['deviation_fractional']*100:.2f}% > 5% at Marxer Q1 "
+        f"({marxer_q1.chi_over_kappa:.2f}, {marxer_q1.gamma_1_tau:.2e}). "
+        f"F_an={pt['F_analytic']:.4f}, F_sim={pt['F_lindblad']:.4f}. "
+        "Per-level formula should match REFERENCE-anchor Marxer Q1 to <1% — "
+        "if this fails, the per-level chi computation may have regressed."
+    )
+
+
+def test_O3b_per_level_analytic_vs_lindblad_at_midrange_point(_validation_report):
+    """At (χ/κ=1.0, γ_1·τ=0.01), per-level analytic must agree within 5%.
+    This is the most stringent of the three points (largest deviation under
+    the linearized weak-drive approximation)."""
+    pt = next(
+        p for p in _validation_report["per_point"]
+        if abs(p["chi_over_kappa"] - 1.0) < 1e-6
+    )
+    assert pt["deviation_fractional"] < 0.05, (
+        f"O3b deviation {pt['deviation_fractional']*100:.2f}% > 5% at (1.0, 0.01). "
+        f"F_an={pt['F_analytic']:.4f}, F_sim={pt['F_lindblad']:.4f}. "
+        "Caption claim 'Lindblad-validated to <5%' fails."
+    )
+
+
+def test_O3c_per_level_analytic_vs_lindblad_at_weak_decoherence(_validation_report):
+    """At (χ/κ=0.5, γ_1·τ=10⁻³), weak-decoherence near dispersive optimum,
+    per-level analytic must agree within 5%."""
+    pt = next(
+        p for p in _validation_report["per_point"]
+        if abs(p["chi_over_kappa"] - 0.5) < 1e-6
+    )
+    assert pt["deviation_fractional"] < 0.05, (
+        f"O3c deviation {pt['deviation_fractional']*100:.2f}% > 5% at (0.5, 1e-3). "
+        f"F_an={pt['F_analytic']:.4f}, F_sim={pt['F_lindblad']:.4f}."
+    )
+
+
+def test_O3_max_deviation_under_5pct(_validation_report):
+    """Aggregate gate: max deviation across O3a/O3b/O3c must be <5% per the
+    item-15 amendment caption claim. If this fires but individual O3a/b/c
+    pass, the per-point gate has drifted."""
+    max_dev = _validation_report["max_deviation_fractional"]
+    assert max_dev < 0.05, (
+        f"Max O3 deviation {max_dev*100:.2f}% > 5%. "
+        "Per-level analytic surface no longer matches Lindblad to spec; "
+        "re-derivation needed."
+    )
