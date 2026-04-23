@@ -623,3 +623,51 @@ def test_O11_sensitivity_warning_fires_at_high_drive_regime():
         f"drive-stress regime isn't hitting the dominance level. Re-run "
         "docs/module4_diagnostics/check_*.py to re-verify the ceiling."
     )
+
+
+# ────────────────────────────────────────────────────────────────────
+# Decoherence-envelope linearization: (1 − γτ/2)^½ vs exp(−γτ/4)
+# ────────────────────────────────────────────────────────────────────
+
+def test_decoherence_envelope_linear_agrees_with_exp_within_1pct():
+    """Linearized envelope (1 − γτ/2)^½ must agree with exp(−γτ/4) within
+    1% over the regime map's y-axis range [1e-4, 1e-1]. Caption claims
+    this explicitly — if it fails, add the correction term or re-linearize."""
+    import numpy as np
+    gamma_tau = np.logspace(-4, -1, 40)
+    linear = np.sqrt(1.0 - gamma_tau / 2.0)
+    expon = np.exp(-gamma_tau / 4.0)
+    rel_dev = np.abs(linear - expon) / expon
+    assert rel_dev.max() < 0.01, (
+        f"Max relative deviation {rel_dev.max()*100:.2f}% > 1% at gamma_tau="
+        f"{gamma_tau[rel_dev.argmax()]:.3e}. Caption claim 'deviation from "
+        "exp form < 1% over y-axis range' is false — add correction term."
+    )
+
+
+def test_f_analytic_dispersive_returns_monotone_increase_with_n_phot():
+    """F should be non-decreasing in n_phot for fixed (chi/kappa, gamma_tau)."""
+    import numpy as np
+    from dispersive_readout.optimization.regime_map import f_analytic_dispersive
+    chi_k = np.array([0.5])
+    g_t = np.array([1e-3])
+    F_low = f_analytic_dispersive(chi_k, g_t, n_phot=1.0)
+    F_high = f_analytic_dispersive(chi_k, g_t, n_phot=10.0)
+    assert F_high >= F_low, f"F decreased with n_phot: {F_high} < {F_low}"
+
+
+def test_f_analytic_dispersive_peaks_near_chi_over_kappa_half():
+    """Dispersive SNR 4·(χ/κ)/(1 + (2χ/κ)²) peaks at χ/κ = 0.5; F should
+    inherit that maximum location at fixed gamma_tau and n_phot."""
+    import numpy as np
+    from dispersive_readout.optimization.regime_map import f_analytic_dispersive
+    chi_k = np.array([0.1, 0.3, 0.5, 0.7, 1.0, 3.0])
+    g_t = np.array([1e-3])
+    F_vals = f_analytic_dispersive(chi_k[:, None], g_t[None, :], n_phot=4.0)
+    # Collapse the singleton second axis
+    F_1d = F_vals[:, 0]
+    peak_idx = int(np.argmax(F_1d))
+    assert chi_k[peak_idx] == 0.5, (
+        f"F peaks at chi/kappa = {chi_k[peak_idx]}, expected 0.5 "
+        f"(Bengtsson 2024 §II SNR-max). F array: {F_1d}"
+    )
