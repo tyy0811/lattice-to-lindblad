@@ -40,7 +40,7 @@ from dispersive_readout.optimization.sensitivity import (
 
 
 _DISPLAY_LABELS: dict[str, str] = {
-    "chi_scale": r"$\chi$ (via chi_scale, $\pm 5\%$)",
+    "chi_scale": r"$\chi$ scale ($\pm 5\%$)",
     "kappa":     r"$\kappa$ ($\pm 5\%$)",
     "gamma_1":   r"$T_1$ (via $\gamma_1$, $\pm 5\%$)",
     "gamma_phi": r"$T_\varphi$ (via $\gamma_\varphi$, $\pm 5\%$)",
@@ -79,15 +79,17 @@ def render_tornado(
     ys = np.arange(len(ranked))[::-1]
     labels = [_DISPLAY_LABELS[r.parameter] for r in ranked]
 
-    # Cool palette — two shades for positive / negative sign
-    cool_pos = "#4A90E2"
-    cool_neg = "#2E6DA4"
+    # Sign-contrast palette: cool blue for positive (helps F), warm orange-
+    # red for negative (hurts F). Two distinct hues make sign legible at a
+    # glance — prior two-shade cool palette read as one color to readers.
+    color_pos = "#4A90E2"
+    color_neg = "#D35400"
 
     for y, r in zip(ys, ranked):
         S = r.sensitivity
         sigma = r.sensitivity_uncertainty
         is_noise_like = r.noise_consistent_with_zero
-        color = cool_pos if S >= 0 else cool_neg
+        color = color_pos if S >= 0 else color_neg
         if is_noise_like:
             # Point-with-errorbar rendering for near-zero parameters
             ax.errorbar(
@@ -102,7 +104,7 @@ def render_tornado(
             ax.text(
                 label_x, y,
                 f"{S:+.3f} ± {sigma:.3f}",
-                va="center", ha="left", fontsize=8, color="dimgray",
+                va="center", ha="left", fontsize=9, color="dimgray",
             )
         else:
             # Filled bar for bar-rendered parameters (|S| >= threshold)
@@ -110,12 +112,14 @@ def render_tornado(
                 [y], [S], color=color, edgecolor="black", linewidth=0.5,
                 alpha=0.9, zorder=3,
             )
-            # Numeric annotation just outside the bar end
+            # Numeric annotation just outside the bar end — matched in
+            # weight/color/size to the point-with-errorbar labels so no
+            # single parameter (ε_0) visually dominates the annotation layer.
             offset = 0.008 * (1 if S >= 0 else -1)
             ha = "left" if S >= 0 else "right"
             ax.text(
                 S + offset, y, f"{S:+.3f}", va="center", ha=ha,
-                fontsize=9, fontweight="bold",
+                fontsize=9, color="dimgray",
             )
 
     ax.set_yticks(ys)
@@ -133,8 +137,10 @@ def render_tornado(
     ax.spines["right"].set_visible(False)
 
     # Shade the noise-consistent band symmetrically around x=0 for visual
-    # context — readers can tell at a glance which parameters register as
-    # bar-rendered vs noise-consistent.
+    # context — bar-rendered parameters sit outside the band, noise-
+    # consistent parameters sit inside it and render as point-with-errorbar
+    # per the Q1 amendment. Band's role is explained in the figure caption
+    # to keep the plot itself uncluttered.
     ax.axvspan(
         -SENSITIVITY_RENDER_BAR_THRESHOLD,
         SENSITIVITY_RENDER_BAR_THRESHOLD,
