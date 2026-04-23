@@ -103,7 +103,12 @@ from .sensitivity import (
 )
 
 
-_OPAQUE_LOSS_CHANNELS = frozenset({"solver_failed", "unknown"})
+# Escalation policy: 'solver_failed' means no valid Pareto point. 'unknown'
+# means the error-budget attribution raised but the Pareto point is valid
+# (F computed, solver converged); surface it as a narrative caveat rather
+# than raising, since Task 14's cached data shows ~10% of Pareto points hit
+# 'unknown' under normal operation.
+_ESCALATE_LOSS_CHANNELS = frozenset({"solver_failed"})
 
 
 def generate_narrative(report: RecommendationReport) -> str:
@@ -183,7 +188,7 @@ def recommend_from_fitted_parameters(
 
     pareto = find_pareto_point(device, tau_max=tau_max)
 
-    if pareto.dominant_loss_channel in _OPAQUE_LOSS_CHANNELS:
+    if pareto.dominant_loss_channel in _ESCALATE_LOSS_CHANNELS:
         raise RuntimeError(
             f"find_pareto_point returned dominant_loss_channel="
             f"{pareto.dominant_loss_channel!r} on the fitted device "
@@ -192,7 +197,7 @@ def recommend_from_fitted_parameters(
             "Diagnose before continuing: either the fitted device is "
             "pathological (e.g. near a regime-change boundary) or the "
             "Pareto solver hit an edge case. Do not silently fall back "
-            "to the narrative on opaque failures."
+            "to the narrative on solver failures."
         )
 
     # Sensitivities at the PER-DEVICE optimum
@@ -217,6 +222,17 @@ def recommend_from_fitted_parameters(
         for s in ranked
         if abs(s.sensitivity) > SENSITIVITY_WARNING_THRESHOLD
     ]
+    # Surface 'unknown' dominant_loss_channel as a caveat rather than raising
+    # (error-budget attribution failed but Pareto point is valid).
+    if pareto.dominant_loss_channel == "unknown":
+        warnings_.append(
+            f"dominant_loss_channel='unknown' at the fitted-device optimum: "
+            f"error-budget attribution raised while the Pareto point itself "
+            f"converged (F_opt={pareto.F_assign_opt:.4f}, "
+            f"eps_0_opt={pareto.epsilon_0_opt:.3e}, tau_opt={pareto.tau_opt*1e9:.1f} ns). "
+            "Narrative reports 'unknown'; diagnose error_budget for this "
+            "device before attributing a physical loss channel."
+        )
 
     # Extract fitted parameter values for the narrative.
     fitted_as_dict = {
