@@ -1092,3 +1092,78 @@ def test_O4_pareto_monotonic_in_tau_max_for_reference():
             f"F_opt decreased from {a:.4f} -> {b:.4f} across adjacent τ_max. "
             "Increase n_warm_start_grid_side from 5 to 10 and retry."
         )
+
+
+# ────────────────────────────────────────────────────────────────────
+# O6.3 — RecommendationReport schema
+# ────────────────────────────────────────────────────────────────────
+
+def test_O6_3_recommendation_report_accepts_valid():
+    from dispersive_readout.optimization.recommend import RecommendationReport
+    from dispersive_readout.optimization.sensitivity import SensitivityResult
+
+    s = SensitivityResult(
+        parameter="chi_scale", reference_value=1.0, reference_unit="",
+        sensitivity=0.4, sensitivity_uncertainty=0.01, F_reference=0.99,
+    )
+    r = RecommendationReport(
+        device_parameters_fitted={
+            "T_1": 86e-6, "T_2_echo": 40e-6,
+            "omega_q": 4.9e9 * 2 * 3.14159,
+        },
+        optimal_drive={
+            "amplitude": 5e7, "duration": 480e-9,
+            "detuning": 0.0, "edge_sigma": 2e-9,
+        },
+        predicted_F_assign=0.9984,
+        predicted_F_uncertainty=1e-3,
+        top_3_sensitivities=[s, s, s],
+        all_sensitivities=[s, s, s, s, s, s, s],
+        dominant_loss_channel="T1_intrinsic",
+        sensitivity_warnings=[],
+        recommendation_narrative="...",
+    )
+    assert r.predicted_F_assign == 0.9984
+    assert len(r.top_3_sensitivities) == 3
+
+
+def test_O6_3_recommendation_report_rejects_empty_all_sensitivities():
+    from pydantic import ValidationError
+    from dispersive_readout.optimization.recommend import RecommendationReport
+    with pytest.raises(ValidationError):
+        RecommendationReport(
+            device_parameters_fitted={},
+            optimal_drive={},
+            predicted_F_assign=0.99,
+            predicted_F_uncertainty=1e-3,
+            top_3_sensitivities=[],
+            all_sensitivities=[],              # empty → reject
+            dominant_loss_channel="T1_intrinsic",
+            sensitivity_warnings=[],
+            recommendation_narrative="",
+        )
+
+
+# ────────────────────────────────────────────────────────────────────
+# _format_value_with_sigma — metrology σ convention (Q9b + Nit 1)
+# ────────────────────────────────────────────────────────────────────
+
+def test_format_value_with_sigma_rounds_up_to_one_sig_fig():
+    """σ=0.00022 rounds UP to 0.0003 at 1 sig fig (metrology standard).
+    Value matches σ's last-decimal position."""
+    from dispersive_readout.optimization.recommend import _format_value_with_sigma
+    val_s, sig_s = _format_value_with_sigma(value=0.99943, sigma=0.00022)
+    # 0.00022 at 1 sig fig, rounded up → 0.0003; value to 4 decimals matching
+    assert sig_s == "0.0003", f"Expected '0.0003', got {sig_s!r}"
+    assert val_s == "0.9994", f"Expected '0.9994', got {val_s!r}"
+
+
+def test_format_value_with_sigma_handles_asymmetric():
+    from dispersive_readout.optimization.recommend import _format_value_with_sigma
+    val_s, sig_s = _format_value_with_sigma(
+        value=86.0, sigma=0.0, sigma_lo=3.0, sigma_hi=5.0,
+    )
+    # Asymmetric: value +σ_hi / −σ_lo; both σ rounded up to 1 sig fig.
+    # Accept ASCII hyphen or Unicode minus (U+2212), with or without space.
+    assert "+5" in sig_s
+    assert any(tok in sig_s for tok in ("−3", "-3", "− 3", "- 3"))

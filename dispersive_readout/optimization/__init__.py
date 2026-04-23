@@ -41,6 +41,7 @@ from .pareto import (
     compute_pareto_frontier,
 )
 from .modal_pareto import app, pareto_one_tuple
+from .recommend import RecommendationReport
 
 __all__ = [
     "SENSITIVITY_FD_STEP",
@@ -68,4 +69,5 @@ __all__ = [
     "compute_pareto_frontier",
     "app",
     "pareto_one_tuple",
+    "RecommendationReport",
 ]
