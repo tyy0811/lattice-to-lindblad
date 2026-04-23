@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-23 (Day 11 PM, Stage 06 Module 4)
 **Status:** First-principles derivation supporting MODULE_4_SPEC.md §0.3 item 15
-**Companion code:** `dispersive_readout/optimization/regime_map.py` (`f_analytic_dispersive`, `_marxer_q1_anchor`, `validate_analytic_vs_lindblad`)
+**Companion code:** `dispersive_readout/optimization/regime_map.py` — public API: `f_analytic_dispersive` (chart wrapper), `f_analytic_dispersive_per_level` (workhorse), `compute_analytic_regime_map`, `validate_analytic_vs_lindblad`. REFERENCE-anchor helpers (cached): `_reference_per_level_chi`, `_reference_chi_magnitude`, `_reference_drive_and_window`.
 
 ---
 
@@ -109,7 +109,7 @@ For REFERENCE (Marxer-Q1 setup, `ε = 69.5 Mrad/s`, `κ_target = 33.8 Mrad/s`):
 
 These ~4–6% over-predictions are the residual transient-response correction: the linear-response steady-state approximation underestimates per-state ⟨n⟩ because the pulse is square with finite-σ Gaussian edges, and the sim averages over a window that contains the rise edge (rise time ~ `2/κ ≈ 60 ns`, while window starts at `t_0 = 50 ns` post-pulse-start). Agreement is comfortably within the 5% target tolerance.
 
-**Asymmetry check:** the textbook ±χ/2 model predicts symmetric `n_g = n_e`, which would be `n_pred = 4ε²/κ² / (1 + (χ/κ)²) ≈ 13` (using `χ = χ_0 − χ_1`). The simulator sees ~3.3 per state — a 4× over-prediction by the textbook formula. The per-level formula is correct; the textbook formula isn't even close.
+**Asymmetry check:** the textbook ±χ/2 model predicts symmetric `n_g = n_e`, which would be `n_pred = 4ε²/κ² / (1 + (χ/κ)²) ≈ 14.5` (using `χ = χ_0 − χ_1`, REFERENCE values: `4·(69.5/33.8)²/(1 + 0.41²) = 16.91/1.168 = 14.5`). The simulator sees ~3.3 per state on average — a ~4.4× over-prediction by the textbook formula. The per-level formula is correct; the textbook formula isn't close.
 
 ---
 
@@ -133,7 +133,7 @@ $$
 |\Delta\alpha|_{\rm ss} = \frac{\varepsilon\cdot|\chi_0 - \chi_1|}{\sqrt{(\kappa/2)^2 + \chi_0^2}\cdot\sqrt{(\kappa/2)^2 + \chi_1^2}}.
 $$
 
-For REFERENCE (Marxer-Q1 setup): predicted `|Δα|_ss = 0.604`, sim measured time-averaged `|⟨a_e − a_g⟩| = 0.606` over the 50–500 ns window. **0.3% agreement.** ✓
+For REFERENCE (Marxer-Q1 setup): predicted `|Δα|_ss = 0.603`, sim measured time-averaged `|⟨a_e − a_g⟩| = 0.606` over the 50–500 ns window. **0.5% agreement.** ✓ (Computed: `|Δα|_pred = 69.5·13.86 / (√((33.8/2)² + 43.6²) · √((33.8/2)² + 29.7²)) = 963.3 / (46.8 · 34.2) = 0.603`, all values in Mrad/s.)
 
 The integrated centroid (Module 1's `Δc = ∫⟨a⟩dt`) for a square pulse that reaches steady-state by the start of the integration window is:
 
@@ -189,6 +189,8 @@ This surface is therefore a **linear-response reference**, not a model of any sp
 
 ## 7. Recovering the regime-map chart (REFERENCE-anchored κ-sweep)
 
+> **Top-line scope statement:** The shipped regime map is **not a universal F(χ/κ, γ_1τ) law**. It is a **REFERENCE-family chart evaluated under a specific κ-sweep convention** (Option C below). The two-axis surface is anchored to REFERENCE's per-level dispersive shifts `(χ_0, χ_1)`, drive amplitude `ε`, and integration window `T_window`; transmon families with different per-level structure (different `E_J/E_C`, different `g/Δ`, different drive calibration) would produce a different surface at the same `(χ/κ, γ_1τ)` coordinates. This is a structural consequence of item 15 — it is the price of replacing the textbook-form chart with one that quantitatively matches the simulator. Caption language and the publication narrative must state this explicitly.
+
 The closed-form `F_analytic(ε, κ, χ_0, χ_1, T_window, γ_1τ)` has six inputs but the chart has two axes `(χ/κ, γ_1τ)`. The remaining four inputs must be specified by the chart construction. There are several physically distinct ways to do this:
 
 | Option | What's held fixed across the chart | What varies along x = χ/κ | Physical interpretation |
@@ -210,9 +212,9 @@ This fully determines `F_analytic` at each chart point. The implementation lives
 
 **Caveat on the published-device markers.** The four markers (Marxer Q1/Q2, Bengtsson, Garnet) are placed at their measured `(χ/κ, γ_1τ)` coordinates, but each represents a *different* transmon family with *different* `(χ_0, χ_1, ε, T_window)`. Reading any marker's predicted `F_analytic` off the Option-C surface should be interpreted as "what F a REFERENCE-family transmon with the marker's `(χ/κ, γ_1τ)` would achieve under linear-response idealizations (§6)" — not "the cited device's actual F_assign." For Marxer Q1 specifically, REFERENCE *is* the Marxer Q1 anchor (per §0 row 5 of the spec), so the marker prediction matches its `F_sim` annotation tightly (validated by O3a). For Bengtsson and Garnet markers, the chart prediction is approximate — the markers are accurate-position, surface-prediction-approximate.
 
-**Caption language (Day-11 lock):**
+**Caption language (Day-11 lock).** The caption must lead with the non-universality scope statement — readers skimming the figure should not assume this is a universal law:
 
-> *"Closed-form analytic readout fidelity F_assign as a function of dispersive-shift ratio χ/κ ≡ |χ_0−χ_1|/κ and decoherence budget γ_1·τ_readout. Surface evaluated at REFERENCE drive amplitude (ε/2π = 11.06 MHz) and integration window (T_window = 450 ns), with REFERENCE's per-level dispersive-shift asymmetry held fixed (χ_0/χ_1 = 1.47); other transmon families with different per-level structure (Koch 2007 §V) will shift the surface. Lindblad-validated at three operating points (Marxer Q1, χ/κ=1·γ_1τ=0.01, χ/κ=0.5·γ_1τ=10⁻³) to within 5%. Decoherence envelope √(1 − γ_1τ/2) agrees with exp(−γ_1τ/4) to <1% over the y-axis range. Per-level derivation: docs/module4_diagnostics/per_level_analytic_derivation.md."*
+> *"**REFERENCE-family-anchored** dispersive-readout fidelity surface F_assign(χ/κ, γ_1·τ_readout). The chart is **not a universal law**: it is a κ-sweep at fixed REFERENCE per-level dispersive shifts (χ_0/(2π) = 6.94 MHz, χ_1/(2π) = 4.73 MHz, ratio 1.47), drive amplitude (ε/(2π) = 11.06 MHz), and integration window (T_window = 450 ns); transmon families with different per-level structure (Koch 2007 §V) shift the surface. Lindblad-validated at three operating points (Marxer Q1, χ/κ=1·γ_1τ=0.01, χ/κ=0.5·γ_1τ=10⁻³) to 3.48% max deviation. Linearized decoherence envelope √(1 − γ_1τ/2) agrees with exp(−γ_1τ/4) to <1% over the y-axis range. Surface assumes weak resonant drive at bare ω_r, η=1 homodyne efficiency, two-state equal-prior discrimination, no measurement-induced transitions or shelving — published high-fidelity readout protocols (Marxer 99.94%) layer additional engineering on top of this baseline. Per-level derivation: docs/module4_diagnostics/per_level_analytic_derivation.md (item 15)."*
 
 The four published-device markers (Marxer Q1/Q2, Bengtsson, Garnet) sit at their measured (χ/κ, γ_1·τ) coordinates — those coordinates are still the right marker placement. The honest framing is: each marker's predicted `F_analytic` should be read as "REFERENCE-family transmon with the marker's (χ/κ, γ_1·τ)" rather than "the cited device's actual fidelity." For Marxer Q1 specifically, REFERENCE *is* the Marxer Q1 anchor (per §0 row 5 of the spec), so the marker prediction matches its `F_sim` annotation tightly.
 
