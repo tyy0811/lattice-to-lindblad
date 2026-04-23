@@ -932,3 +932,81 @@ def test_O10_modal_pareto_one_tuple_smoke():
 
     assert len(results) == 1
     assert isinstance(results[0], ParetoPoint)
+
+
+# ────────────────────────────────────────────────────────────────────
+# O6.2 — ParetoPoint schema validation
+# ────────────────────────────────────────────────────────────────────
+
+def test_O6_2_pareto_point_accepts_valid():
+    from dispersive_readout.optimization.pareto import ParetoPoint
+    p = ParetoPoint(
+        device_id="deadbeef",
+        device_label="REFERENCE (≈ Marxer Q1)",
+        tau_max=500e-9,
+        epsilon_0_opt=5e7,
+        tau_opt=480e-9,
+        F_assign_opt=0.9984,
+        F_assign_uncertainty=1.2e-3,
+        dominant_loss_channel="T1_intrinsic",
+        solver_converged=True,
+    )
+    assert p.tau_opt <= p.tau_max
+
+
+def test_O6_2_pareto_point_rejects_tau_opt_exceeding_tau_max():
+    from pydantic import ValidationError
+    from dispersive_readout.optimization.pareto import ParetoPoint
+    with pytest.raises(ValidationError):
+        ParetoPoint(
+            device_id="deadbeef",
+            device_label="REFERENCE",
+            tau_max=500e-9,
+            epsilon_0_opt=5e7,
+            tau_opt=520e-9,  # > tau_max, must reject
+            F_assign_opt=0.99,
+            F_assign_uncertainty=1e-3,
+            dominant_loss_channel="T1_intrinsic",
+            solver_converged=True,
+        )
+
+
+# ────────────────────────────────────────────────────────────────────
+# O22 / O23 — bridge round-trip for V2 (T1=40us) and V3 (T1=20us, kappa=6MHz)
+# ────────────────────────────────────────────────────────────────────
+
+def test_O22_build_variant_v2_garnet_like():
+    """V2 swaps decoherence.gamma_1 = 1/40us, leaves resonator and coupling
+    at REFERENCE. gamma_phi recomputed via Koch back-solve."""
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    from dispersive_readout.optimization.pareto import build_variant, PARETO_DEVICE_VARIANTS
+
+    spec = next(v for v in PARETO_DEVICE_VARIANTS if v["T1_us"] == 40.0)
+    variant = build_variant(spec)
+
+    assert variant.decoherence.gamma_1 == pytest.approx(1.0 / 40e-6, rel=1e-9)
+    assert variant.resonator.kappa == REFERENCE_DEVICE.resonator.kappa
+    assert variant.coupling.g == REFERENCE_DEVICE.coupling.g
+    # Koch back-solve for gamma_phi: gamma_phi = 1/T2_echo - gamma_1/2
+    # T2_echo preserved at REFERENCE's value
+    T2_echo_REF = 2.0 / (REFERENCE_DEVICE.decoherence.gamma_1 +
+                         2.0 * REFERENCE_DEVICE.decoherence.gamma_phi)
+    expected_gamma_phi = max(1.0 / T2_echo_REF - 0.5 * (1.0 / 40e-6), 0.0)
+    assert variant.decoherence.gamma_phi == pytest.approx(expected_gamma_phi, rel=1e-9)
+
+
+def test_O23_build_variant_v3_bengtsson_like():
+    """V3 swaps T1=20us AND kappa/2pi=6MHz."""
+    import math
+    from dispersive_readout.physics.config import REFERENCE_DEVICE
+    from dispersive_readout.optimization.pareto import build_variant, PARETO_DEVICE_VARIANTS
+
+    spec = next(
+        v for v in PARETO_DEVICE_VARIANTS
+        if v["T1_us"] == 20.0 and v["kappa_MHz"] == 6.0
+    )
+    variant = build_variant(spec)
+
+    assert variant.decoherence.gamma_1 == pytest.approx(1.0 / 20e-6, rel=1e-9)
+    assert variant.resonator.kappa == pytest.approx(2.0 * math.pi * 6e6, rel=1e-9)
+    assert variant.coupling.g == REFERENCE_DEVICE.coupling.g
