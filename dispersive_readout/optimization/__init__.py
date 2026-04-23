@@ -32,6 +32,8 @@ from .regime_map import (
     compute_analytic_regime_map,
     validate_analytic_vs_lindblad,
 )
+from .pareto import ParetoPoint, find_pareto_point
+from .modal_pareto import app, pareto_one_tuple
 
 __all__ = [
     "SENSITIVITY_FD_STEP",
@@ -51,4 +53,8 @@ __all__ = [
     "resonator_too_slow_boundary",
     "compute_analytic_regime_map",
     "validate_analytic_vs_lindblad",
+    "ParetoPoint",
+    "find_pareto_point",
+    "app",
+    "pareto_one_tuple",
 ]
