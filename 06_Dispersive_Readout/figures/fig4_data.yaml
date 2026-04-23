@@ -1,0 +1,164 @@
+seed: 42
+sensitivities:
+- parameter: chi_scale
+  S: -0.0292
+  sigma_S: 0.01426
+  F_reference: 0.98994
+- parameter: kappa
+  S: 0.0105
+  sigma_S: 0.01426
+  F_reference: 0.98994
+- parameter: gamma_1
+  S: -0.0005
+  sigma_S: 0.01426
+  F_reference: 0.98994
+- parameter: gamma_phi
+  S: 0.0
+  sigma_S: 0.01426
+  F_reference: 0.98994
+- parameter: n_th
+  S: -0.0001
+  sigma_S: 0.01426
+  F_reference: 0.98994
+- parameter: epsilon_0
+  S: 0.0503
+  sigma_S: 0.01426
+  F_reference: 0.98994
+- parameter: tau
+  S: 0.0297
+  sigma_S: 0.01426
+  F_reference: 0.98994
+day_10_cross_check:
+  S_chi: -0.0292
+  S_g: -0.0622
+  residual_fractional: 0.0642
+regime_grid_hash: 8f893052ea086351987d8318362386149b3dbea58da87ec1695b7118d9f7b467
+regime_chi_per_level_anchor:
+- 43580662.98353292
+- 29715004.12239306
+regime_epsilon: 69479225.99164064
+regime_T_window: 4.5e-07
+pareto_frontiers:
+  "REFERENCE (\u2248 Marxer Q1)":
+  - tau_max_ns: 100.0
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 100.0
+    F_assign_opt: 0.854184
+  - tau_max_ns: 139.495
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 139.495
+    F_assign_opt: 0.912161
+  - tau_max_ns: 194.589
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 194.589
+    F_assign_opt: 0.93327
+  - tau_max_ns: 271.442
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 271.442
+    F_assign_opt: 0.962301
+  - tau_max_ns: 378.648
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 378.648
+    F_assign_opt: 0.983803
+  - tau_max_ns: 528.195
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 528.195
+    F_assign_opt: 0.995167
+  - tau_max_ns: 736.806
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 736.806
+    F_assign_opt: 0.999093
+  - tau_max_ns: 1027.809
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 1027.809
+    F_assign_opt: 0.999887
+  - tau_max_ns: 1433.742
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 1433.742
+    F_assign_opt: 0.999992
+  - tau_max_ns: 2000.0
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 2000.0
+    F_assign_opt: 1.0
+  "T_1 = 40 \xB5s (Garnet-like)":
+  - tau_max_ns: 100.0
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 100.0
+    F_assign_opt: 0.854303
+  - tau_max_ns: 139.495
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 139.495
+    F_assign_opt: 0.912307
+  - tau_max_ns: 194.589
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 194.589
+    F_assign_opt: 0.93345
+  - tau_max_ns: 271.442
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 271.442
+    F_assign_opt: 0.962483
+  - tau_max_ns: 378.648
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 378.648
+    F_assign_opt: 0.983951
+  - tau_max_ns: 528.195
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 528.195
+    F_assign_opt: 0.995233
+  - tau_max_ns: 736.806
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 736.806
+    F_assign_opt: 0.999118
+  - tau_max_ns: 1027.809
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 1027.809
+    F_assign_opt: 0.999893
+  - tau_max_ns: 1433.742
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 1433.742
+    F_assign_opt: 0.999992
+  - tau_max_ns: 2000.0
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 2000.0
+    F_assign_opt: 1.0
+  "T_1 = 20 \xB5s, \u03BA/2\u03C0 = 6 MHz (Bengtsson-like)":
+  - tau_max_ns: 100.0
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 100.0
+    F_assign_opt: 0.866351
+  - tau_max_ns: 139.495
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 139.495
+    F_assign_opt: 0.927506
+  - tau_max_ns: 194.589
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 194.589
+    F_assign_opt: 0.950046
+  - tau_max_ns: 271.442
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 271.442
+    F_assign_opt: 0.972896
+  - tau_max_ns: 378.648
+    epsilon_0_opt: 80000000.0
+    tau_opt_ns: 378.648
+    F_assign_opt: 0.988776
+  - tau_max_ns: 528.195
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 528.195
+    F_assign_opt: 0.996597
+  - tau_max_ns: 736.806
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 736.806
+    F_assign_opt: 0.999349
+  - tau_max_ns: 1027.809
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 1027.809
+    F_assign_opt: 0.999913
+  - tau_max_ns: 1433.742
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 1433.742
+    F_assign_opt: 0.999992
+  - tau_max_ns: 2000.0
+    epsilon_0_opt: 140000000.0
+    tau_opt_ns: 2000.0
+    F_assign_opt: 1.0

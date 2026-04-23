@@ -1584,11 +1584,22 @@ def test_O5b_confirm_closed_loop_shot_noise_indistinguishable():
 @pytest.mark.slow
 def test_O9_regression_gate_against_committed_yaml():
     """Regenerate per-parameter S_theta at SEED=42; compare to committed
-    fig4_data.yaml. Tolerance ±2% per value (Module 3 C3 convention).
+    fig4_data.yaml. Module 3 C3 tolerance convention, with the point-vs-
+    bar split from Amendment #13:
+
+      - Bar-rendered parameters (|ref_S| >= SENSITIVITY_RENDER_BAR_THRESHOLD):
+        strict ±2% relative drift (meaningful central value).
+      - Point-with-errorbar parameters (|ref_S| < threshold): shot-noise-
+        consistent regime; assert absolute drift <= sigma_S from the pinned
+        YAML (no well-defined central value to assert 2% of).
+
     If the fitter legitimately improves: regenerate the artifact via
     scripts/regenerate_fig4_data.py and re-commit."""
     from pathlib import Path
     import yaml
+    from dispersive_readout.optimization.sensitivity import (
+        SENSITIVITY_RENDER_BAR_THRESHOLD,
+    )
 
     committed_path = Path("06_Dispersive_Readout/figures/fig4_data.yaml")
     if not committed_path.exists():
@@ -1604,7 +1615,7 @@ def test_O9_regression_gate_against_committed_yaml():
     op = get_reference_operating_point(n_shots=10_000)
     sens = compute_all_sensitivities(op)
 
-    TOL = 0.02
+    TOL_REL = 0.02
     for observed, pinned in zip(sens, committed["sensitivities"]):
         assert observed.parameter == pinned["parameter"], (
             f"Parameter ordering drift: observed[{observed.parameter!r}] "
@@ -1612,10 +1623,25 @@ def test_O9_regression_gate_against_committed_yaml():
         )
         ref_S = pinned["S"]
         obs_S = observed.sensitivity
-        if abs(ref_S) > 1e-6:
+        sigma_S = pinned["sigma_S"]
+
+        if abs(ref_S) >= SENSITIVITY_RENDER_BAR_THRESHOLD:
+            # Bar-rendered: assert 2% relative drift
             rel = abs(obs_S - ref_S) / abs(ref_S)
-            assert rel < TOL, (
+            assert rel < TOL_REL, (
                 f"Sensitivity S_{observed.parameter} drifted from pinned "
-                f"{ref_S:.4f} to {obs_S:.4f} ({rel*100:.2f}% > 2%). "
+                f"{ref_S:.4f} to {obs_S:.4f} ({rel*100:.2f}% > 2% for "
+                "bar-rendered parameter). If intentional, regenerate "
+                "fig4_data.yaml."
+            )
+        else:
+            # Point-with-errorbar: shot-noise-consistent with zero.
+            # Assert absolute drift stays within the pinned sigma_S (1 sigma
+            # shot-noise band); anything larger would indicate a real drift.
+            abs_drift = abs(obs_S - ref_S)
+            assert abs_drift <= sigma_S, (
+                f"Sensitivity S_{observed.parameter} drifted from pinned "
+                f"{ref_S:.5f} to {obs_S:.5f} (absolute {abs_drift:.5f} > "
+                f"sigma_S={sigma_S:.5f}) for point-with-errorbar parameter. "
                 "If intentional, regenerate fig4_data.yaml."
             )
