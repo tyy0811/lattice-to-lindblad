@@ -49,3 +49,27 @@ def pareto_one_tuple(device, tau_max: float):
     """
     from .pareto import find_pareto_point
     return find_pareto_point(device, tau_max)
+
+
+@app.function(cpu=2.0, memory=4096, timeout=3600)
+def pareto_one_tuple_with_grid_density(device, tau_max: float, n_warm_start: int):
+    """Day-13 diagnostic variant: exposes n_warm_start_grid_side for
+    grid-density studies (expanded-B diagnostic: does Pareto optimum
+    shift under finer warm-start sampling?)."""
+    from .pareto import find_pareto_point
+    return find_pareto_point(
+        device, tau_max, n_warm_start_grid_side=int(n_warm_start),
+    )
+
+
+@app.function(cpu=2.0, memory=4096, timeout=600)
+def F_analytic_at_point(device, eps_0: float, tau: float):
+    """Day-13 diagnostic: evaluate F_analytic at one (eps_0, tau) point
+    for F-surface scanning. Returns float F (or NaN on any exception,
+    so one bad point doesn't abort the batch)."""
+    import math
+    try:
+        from .pareto import _F_analytic_at
+        return float(_F_analytic_at(device, float(eps_0), float(tau)))
+    except Exception:
+        return float("nan")
