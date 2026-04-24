@@ -32,6 +32,9 @@ env/
 docs/plans/
 docs/superpowers/
 
+# Local-only career-framing assets (not public)
+Reframing*Career*.pdf
+
 # LaTeX build artifacts
 texput.log
 *.aux
