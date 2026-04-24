@@ -1,0 +1,15 @@
+O4 Modal audit (compute_pareto_frontier(use_modal=True), 4 τ_max points)
+Ref device: REFERENCE_DEVICE
+Assertion: F_opt non-decreasing across tau_max = [2e-07, 5e-07, 1e-06, 2e-06]
+Measured F_opt values: [0.934971, 0.993847, 0.999862, 1.0]
+Pairwise differences: [0.058877, 0.006014, 0.000138]
+All non-negative (within 5e-3 slack): True
+Wall-clock: 992.5 s
+Timestamp: 2026-04-24T13:16:03+02:00
+Git commit: 8809a480184c7f3574e1cf2bfbca6109d83fb54d
+
+Per-point detail (tau_max_ns, eps_opt, tau_opt_ns, F_opt, dominant_loss, converged):
+    200.0  8.0000e+07    200.0  0.934971  T1_intrinsic          True
+    500.0  1.4000e+08    500.0  0.993847  T1_intrinsic          True
+   1000.0  1.4000e+08   1000.0  0.999862  pure_dephasing        True
+   2000.0  1.4000e+08   2000.0  1.000000  T1_intrinsic          True
