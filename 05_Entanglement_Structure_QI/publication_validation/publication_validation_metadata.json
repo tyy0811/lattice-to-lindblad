@@ -1,0 +1,456 @@
+{
+  "bundle": "publication_grade_validation",
+  "timestamp": "2026-03-10T01:44:21.875429+00:00",
+  "git_commit": "31c748d",
+  "full_run_performed": true,
+  "rerun_after_cleanup": false,
+  "provenance_note": "commands_requested lists full intended CLI invocations; commands_executed are actually run; commands_reused_cached_outputs were skipped due to pre-existing complete outputs.",
+  "commands_requested": [
+    {
+      "bundle": "truncation_study",
+      "step": "chi16_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 16 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi16 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:32:59.165450+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi16_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 16 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi16 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:33:39.046978+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi24_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 24 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi24 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:34:20.920920+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi24_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 24 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi24 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:34:56.726462+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi32_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 32 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi32 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:35:29.105994+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi32_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 32 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi32 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:35:54.483423+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi48_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 48 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi48 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:36:20.191727+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi48_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 48 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi48 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:36:39.203589+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:36:57.293134+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi64_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:37:13.578317+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:37:30.132250+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi96_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:37:47.482757+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:03.621534+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi128_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:18.167307+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N12_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 12 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N12/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:36.484673+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N12_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 12 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N12/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:45.354735+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N12_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 12 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N12/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:52.853897+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N16_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 16 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N16/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:00.245805+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N16_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 16 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N16/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:09.761965+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N16_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 16 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N16/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:19.932469+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N20_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N20/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:30.770914+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N20_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N20/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:44.547327+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N20_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N20/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:59.483253+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N24_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 24 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N24/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:40:19.519740+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N24_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 24 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N24/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:40:33.000180+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N24_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 24 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N24/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:40:56.463221+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N28_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 28 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N28/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:41:18.275556+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N28_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 28 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N28/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:41:44.984824+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N28_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 28 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N28/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:42:14.335667+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N32_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 32 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N32/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:42:50.533364+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N32_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 32 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N32/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:43:22.336665+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N32_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 32 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N32/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:43:52.976523+00:00"
+    }
+  ],
+  "commands_executed": [
+    {
+      "bundle": "truncation_study",
+      "step": "chi16_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 16 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi16 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:32:59.165964+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi16_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 16 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi16 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:33:39.047066+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi24_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 24 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi24 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:34:20.921095+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi24_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 24 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi24 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:34:56.726684+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi32_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 32 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi32 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:35:29.106163+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi32_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 32 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi32 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:35:54.483568+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi48_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 48 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi48 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:36:20.191860+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi48_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 48 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi48 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:36:39.203700+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:36:57.293257+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi64_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:37:13.578441+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:37:30.132352+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi96_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:37:47.482973+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:03.621691+00:00"
+    },
+    {
+      "bundle": "truncation_study",
+      "step": "chi128_spectrum",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --cut 10 --nlevels 8 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:18.167462+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N12_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 12 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N12/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:36.484746+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N12_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 12 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N12/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:45.354864+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N12_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 12 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N12/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:38:52.854023+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N16_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 16 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N16/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:00.245899+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N16_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 16 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N16/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:09.762075+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N16_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 16 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N16/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:19.932611+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N20_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N20/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:30.771053+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N20_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N20/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:44.547432+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N20_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N20/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:39:59.483356+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N24_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 24 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N24/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:40:19.519849+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N24_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 24 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N24/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:40:33.000270+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N24_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 24 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N24/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:40:56.463427+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N28_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 28 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N28/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:41:18.275751+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N28_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 28 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N28/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:41:44.984976+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N28_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 28 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N28/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:42:14.335827+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N32_chi64_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 32 --mass 0.125 --coupling 4.0 --chi 64 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N32/chi64 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:42:50.533497+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N32_chi96_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 32 --mass 0.125 --coupling 4.0 --chi 96 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N32/chi96 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:43:22.336829+00:00"
+    },
+    {
+      "bundle": "finite_size_scaling",
+      "step": "N32_chi128_entropy",
+      "command": "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 32 --mass 0.125 --coupling 4.0 --chi 128 --bc open --state-source compute --application-bundle-role comparison --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/N32/chi128 --tag publication --force",
+      "timestamp_observed": "2026-03-10T01:43:52.976706+00:00"
+    }
+  ],
+  "commands_reused_cached_outputs": [],
+  "commands_run_total": 32,
+  "bundles": {
+    "truncation_study_metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/truncation_study_metadata.json",
+    "finite_size_scaling_metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/finite_size_scaling_metadata.json",
+    "duplicate_results_manifest": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/cleanup/duplicate_results_manifest.json"
+  },
+  "outputs": {
+    "truncation": {
+      "table_csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi_convergence_table.csv",
+      "table_json": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/chi_convergence_table.json",
+      "figure": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/truncation_study/truncation_convergence_figure.png",
+      "summary_markdown": "/Users/zenith/Desktop/Quantum_Simulation/APPLICATION_TRUNCATION_STUDY_SUMMARY.md"
+    },
+    "finite_size": {
+      "table_csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/finite_size_scaling_table.csv",
+      "table_json": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/finite_size_scaling_table.json",
+      "raw_csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/finite_size_raw_table.csv",
+      "raw_json": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/finite_size_raw_table.json",
+      "scaling_figure": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/finite_size_scaling_figure.png",
+      "structural_profile_figure": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/finite_size_scaling/finite_size_structural_profile_collapse.png",
+      "summary_markdown": "/Users/zenith/Desktop/Quantum_Simulation/APPLICATION_FINITE_SIZE_SCALING_SUMMARY.md"
+    },
+    "fit_summary_table": {
+      "csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/observable_fit_summary.csv",
+      "json": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/observable_fit_summary.json",
+      "markdown": "/Users/zenith/Desktop/Quantum_Simulation/APPLICATION_PUBLICATION_VALIDATION_TABLE.md"
+    },
+    "cleanup": {
+      "manifest": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/cleanup/duplicate_results_manifest.json",
+      "summary_markdown": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/cleanup/duplicate_results_cleanup_summary.md",
+      "archived_count": 0
+    }
+  },
+  "artifact_provenance": {
+    "fit_summary_table": {
+      "status": "executed",
+      "timestamp_observed": "2026-03-10T01:44:21.620006+00:00",
+      "output_paths": {
+        "csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/observable_fit_summary.csv",
+        "json": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/observable_fit_summary.json",
+        "markdown": "/Users/zenith/Desktop/Quantum_Simulation/APPLICATION_PUBLICATION_VALIDATION_TABLE.md"
+      }
+    },
+    "cleanup_bundle": {
+      "status": "executed",
+      "timestamp_observed": "2026-03-10T01:44:21.875379+00:00",
+      "output_paths": {
+        "manifest": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/cleanup/duplicate_results_manifest.json",
+        "summary_markdown": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/cleanup/duplicate_results_cleanup_summary.md"
+      }
+    },
+    "publication_validation_metadata": {
+      "status": "executed",
+      "timestamp_observed": "2026-03-10T01:44:21.875416+00:00",
+      "output_paths": {
+        "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/publication_validation/publication_validation_metadata.json"
+      }
+    }
+  }
+}
