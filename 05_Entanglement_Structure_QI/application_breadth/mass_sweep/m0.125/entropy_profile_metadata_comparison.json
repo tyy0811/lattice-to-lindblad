@@ -1,0 +1,30 @@
+{
+  "script": "schwinger_entanglement_entropy.py",
+  "timestamp": "2026-03-09T19:52:38.021265+00:00",
+  "git_commit": "b901a98",
+  "output_directory": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125",
+  "tag": "comparison",
+  "state_source": "compute",
+  "state_path": null,
+  "bc": "open",
+  "application_bundle_role": "comparison",
+  "max_entropy": 0.6008030782740716,
+  "max_entropy_cut": 18,
+  "actual_primary_cut": null,
+  "actual_reference_cut": null,
+  "outputs": {
+    "csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entropy_profile_comparison.csv",
+    "figure": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entropy_profile_comparison.png",
+    "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entropy_profile_metadata_comparison.json"
+  },
+  "args": {
+    "N": 20,
+    "m_over_g": 0.125,
+    "x": 4.0,
+    "chi": 64,
+    "bc": "open",
+    "force": true,
+    "show": false,
+    "application_bundle_role": "comparison"
+  }
+}
