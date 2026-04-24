@@ -1,0 +1,159 @@
+{
+  "script": "open_schwinger_entanglement_dynamics.py",
+  "timestamp": "2026-03-10T22:34:19.816622+00:00",
+  "git_commit": "a976041",
+  "output_directory": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/open_dynamics_results/N10_m0.125_x4.0_cut4_charge_dephasing",
+  "outputs": {
+    "csv": "05_Entanglement_Structure_QI/open_dynamics_results/N10_m0.125_x4.0_cut4_charge_dephasing/open_schwinger_entanglement_dynamics_canonical.csv",
+    "snapshots_csv": "05_Entanglement_Structure_QI/open_dynamics_results/N10_m0.125_x4.0_cut4_charge_dephasing/open_schwinger_entanglement_schmidt_snapshots_canonical.csv",
+    "figure": "05_Entanglement_Structure_QI/open_dynamics_results/N10_m0.125_x4.0_cut4_charge_dephasing/open_schwinger_entanglement_dynamics_canonical.png",
+    "metadata": "05_Entanglement_Structure_QI/open_dynamics_results/N10_m0.125_x4.0_cut4_charge_dephasing/run_metadata_canonical.json",
+    "benchmark_summary_csv": "05_Entanglement_Structure_QI/open_dynamics_results/N10_m0.125_x4.0_cut4_charge_dephasing/open_schwinger_entanglement_benchmark_summary_canonical.csv",
+    "benchmark_summary_md": "05_Entanglement_Structure_QI/open_dynamics_results/N10_m0.125_x4.0_cut4_charge_dephasing/open_schwinger_entanglement_benchmark_summary_canonical.md"
+  },
+  "args": {
+    "N": 10,
+    "mass": 0.125,
+    "coupling": 4.0,
+    "tmax": 6.0,
+    "nt": 61,
+    "cut": 4,
+    "gamma": 0.0,
+    "gamma_ref": 0.02,
+    "channel": "charge_dephasing",
+    "snapshot_times": [
+      0.0,
+      3.0,
+      6.0
+    ],
+    "initial_state": "string_gs",
+    "quench": "e0_drop"
+  },
+  "model_meta": {
+    "N": 10,
+    "m_over_g": 0.125,
+    "x": 4.0,
+    "g": 1.0,
+    "E0_init": 1.0,
+    "E0_evolve": 0.0,
+    "n_up": 5,
+    "initial_state": "string_gs",
+    "quench": "e0_drop"
+  },
+  "prep_meta": {
+    "prep_type": "GS(string_gs)",
+    "prep_energy": -14.401515521706862,
+    "initial_state": "string_gs",
+    "quench": "e0_drop"
+  },
+  "solver_metas": {
+    "0.0": {
+      "max_abs_trace_error": 4.440892098500626e-16,
+      "max_hermiticity_error": 0.0,
+      "min_eig_real_over_checks": -2.083710354731679e-07,
+      "n_positivity_checks": 11,
+      "rtol": 1e-08,
+      "atol": 1e-10,
+      "gamma": 0.0,
+      "channel": "charge_dephasing"
+    },
+    "0.02": {
+      "max_abs_trace_error": 2.220446049250313e-16,
+      "max_hermiticity_error": 0.0,
+      "min_eig_real_over_checks": -4.812369228560561e-16,
+      "n_positivity_checks": 11,
+      "rtol": 1e-08,
+      "atol": 1e-10,
+      "gamma": 0.02,
+      "channel": "charge_dephasing"
+    }
+  },
+  "entropy_measure_label": "subsystem_von_neumann_entropy",
+  "closed_case_note": "For gamma=0, S_vN(rho_A) is a bipartite entanglement entropy for the pure state.",
+  "open_case_note": "For gamma>0, S_vN(rho_A) mixes entanglement with local mixedness/classical uncertainty and is not a pure entanglement measure.",
+  "schmidt_proxy_definition": "Panel derived from eigenvalue spectrum of rho_A; for open dynamics this is a reduced-state compressibility proxy, not a strict pure-state Schmidt decomposition.",
+  "snapshot_spectrum_definition": "p_eig are eigenvalues of rho_A at the chosen cut.",
+  "summary_highlights": {
+    "gamma_0": {
+      "peak_entropy_vn": 0.9420416238615033,
+      "final_entropy_vn": 0.6902624995856209,
+      "mean_entropy_vn": 0.7621127419904079,
+      "peak_mean_abs_L": 0.34705678235365184,
+      "final_mean_abs_L": 0.226013976403446
+    },
+    "gamma_0.02": {
+      "peak_entropy_vn": 1.5627720982267985,
+      "final_entropy_vn": 1.425648336530878,
+      "mean_entropy_vn": 1.1411407136758327,
+      "peak_mean_abs_L": 0.34611748673066417,
+      "final_mean_abs_L": 0.23662435912917237
+    }
+  },
+  "threshold_notes": [],
+  "verdict_rules": {
+    "entropy_increase_verdict": "\u2713 if open > closed for peak_entropy_vn, final_entropy_vn, and mean_entropy_vn; otherwise ~.",
+    "compressibility_reduction_verdict": "Use post-quench shared snapshot times only (t > 0 within tolerance). \u2713 if open is not worse at every post-quench shared time and has at least one strict increase in rank_95 and/or rank_99; ~ if mixed/incomplete post-quench evidence; \u2717 if open is not less compressible post-quench.",
+    "field_perturbation_verdict": "~ if abs(delta_peak_mean_abs_L) <= 0.02 and abs(delta_final_mean_abs_L) <= 0.02; otherwise !."
+  },
+  "compressibility_verdict_definition": "Verdict based on post-quench shared snapshot times only (t > 0 within tolerance); t=0 is excluded because closed and open spectra are identical by construction.",
+  "compressibility_shared_snapshot_times": [
+    0.0,
+    3.0,
+    6.0
+  ],
+  "compressibility_post_quench_snapshot_times": [
+    3.0,
+    6.0
+  ],
+  "headline_takeaway": "Weak charge dephasing in the tested Schwinger quench substantially increases subsystem entropy and broadens the reduced-state spectrum, making the dynamics less tensor-network-compressible, while only modestly perturbing the mean electric-field observable.",
+  "comparison_summary": {
+    "closed_gamma": 0.0,
+    "open_gamma": 0.02,
+    "delta_peak_entropy_vn": 0.6207304743652953,
+    "delta_final_entropy_vn": 0.7353858369452572,
+    "delta_mean_entropy_vn": 0.3790279716854248,
+    "delta_peak_mean_abs_L": -0.0009392956229876681,
+    "delta_final_mean_abs_L": 0.01061038272572637,
+    "entropy_increase_verdict": "\u2713",
+    "compressibility_reduction_verdict": "\u2713",
+    "field_perturbation_verdict": "~",
+    "compressibility_time_tol": 1e-12,
+    "compressibility_shared_snapshot_times": [
+      0.0,
+      3.0,
+      6.0
+    ],
+    "compressibility_post_quench_snapshot_times": [
+      3.0,
+      6.0
+    ],
+    "compressibility_verdict_definition": "Verdict based on post-quench shared snapshot times only (t > 0 within tolerance); t=0 is excluded because closed and open spectra are identical by construction."
+  },
+  "two_gamma_comparison": {
+    "closed_gamma": 0.0,
+    "open_gamma": 0.02,
+    "delta_peak_entropy_vn": 0.6207304743652953,
+    "delta_final_entropy_vn": 0.7353858369452572,
+    "delta_mean_entropy_vn": 0.3790279716854248,
+    "delta_peak_mean_abs_L": -0.0009392956229876681,
+    "delta_final_mean_abs_L": 0.01061038272572637,
+    "entropy_increase_verdict": "\u2713",
+    "compressibility_reduction_verdict": "\u2713",
+    "field_perturbation_verdict": "~",
+    "compressibility_time_tol": 1e-12,
+    "compressibility_shared_snapshot_times": [
+      0.0,
+      3.0,
+      6.0
+    ],
+    "compressibility_post_quench_snapshot_times": [
+      3.0,
+      6.0
+    ],
+    "compressibility_verdict_definition": "Verdict based on post-quench shared snapshot times only (t > 0 within tolerance); t=0 is excluded because closed and open spectra are identical by construction."
+  },
+  "benchmark_summary_paths": {
+    "benchmark_summary_csv": "05_Entanglement_Structure_QI/open_dynamics_results/N10_m0.125_x4.0_cut4_charge_dephasing/open_schwinger_entanglement_benchmark_summary_canonical.csv",
+    "benchmark_summary_md": "05_Entanglement_Structure_QI/open_dynamics_results/N10_m0.125_x4.0_cut4_charge_dephasing/open_schwinger_entanglement_benchmark_summary_canonical.md"
+  }
+}

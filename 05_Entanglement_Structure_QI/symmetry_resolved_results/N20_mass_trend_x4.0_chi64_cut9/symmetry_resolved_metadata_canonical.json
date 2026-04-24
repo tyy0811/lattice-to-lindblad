@@ -1,0 +1,258 @@
+{
+  "script": "schwinger_symmetry_resolved_entanglement.py",
+  "timestamp": "2026-03-10T17:47:16.357049+00:00",
+  "git_commit": "a976041",
+  "output_directory": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/symmetry_resolved_results/N20_mass_trend_x4.0_chi64_cut9",
+  "tag": "canonical",
+  "sector_definition": "bond-charge-like sector label q taken from conserved-block Schmidt decomposition on the bipartition bond",
+  "sector_note": "q indexes the bond sector labels used to group Schmidt values at the chosen cut.",
+  "mass_trend_enabled": true,
+  "masses_run": [
+    0.05,
+    0.08,
+    0.125,
+    0.2
+  ],
+  "bridge_summary_enabled": true,
+  "bridge_summary_csv_path": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_mass_trend_x4.0_chi64_cut9/symmetry_resolved_entropy_spectrum_bridge_canonical.csv",
+  "bridge_summary_figure_path": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_mass_trend_x4.0_chi64_cut9/symmetry_resolved_entropy_spectrum_bridge_canonical.png",
+  "bridge_quantities": [
+    "total_entropy",
+    "q0_weight",
+    "q_minus2_weight",
+    "top_2_cum_weight",
+    "shannon_sector_entropy",
+    "weighted_intrasector_entropy_sum",
+    "xi_0",
+    "xi_1",
+    "xi_2",
+    "retained_weight_rank_2",
+    "retained_weight_rank_3"
+  ],
+  "comparison_enabled": false,
+  "masses_compared": [
+    0.05,
+    0.08,
+    0.125,
+    0.2
+  ],
+  "decomposition_available": true,
+  "n_sectors": 6,
+  "total_weight": 1.0000000000000004,
+  "top_2_cum_weight": 0.992858703643219,
+  "top_3_cum_weight": 0.9999868004420746,
+  "top_sectors": [
+    {
+      "sector": "q0",
+      "weight": 0.8057047815776794
+    },
+    {
+      "sector": "q-2",
+      "weight": 0.18715392206553957
+    },
+    {
+      "sector": "q2",
+      "weight": 0.0071280967988554805
+    }
+  ],
+  "sector_entropy_reconstruction": {
+    "shannon_sector_entropy": 0.5230873379098797,
+    "weighted_intrasector_entropy_sum": 0.016582159312112186,
+    "reconstructed_total_entropy": 0.5396694972219919,
+    "direct_total_entropy": 0.539669497221992,
+    "reconstruction_error": -1.1102230246251565e-16
+  },
+  "top_2_cum_weight_by_mass": {
+    "0.05": 0.992858703643219,
+    "0.08": 0.9936030108982342,
+    "0.125": 0.9945328081856201,
+    "0.2": 0.9957252543128178
+  },
+  "top_3_cum_weight_by_mass": {
+    "0.05": 0.9999868004420746,
+    "0.08": 0.9999883531420368,
+    "0.125": 0.9999904604999733,
+    "0.2": 0.9999933098586684
+  },
+  "q0_weight_by_mass": {
+    "0.05": 0.8057047815776794,
+    "0.08": 0.8104782054964675,
+    "0.125": 0.8179176027080082,
+    "0.2": 0.8303804455007417
+  },
+  "q_minus2_weight_by_mass": {
+    "0.05": 0.18715392206553957,
+    "0.08": 0.18312480540176668,
+    "0.125": 0.17661520547761192,
+    "0.2": 0.16534480881207606
+  },
+  "shannon_sector_entropy_by_mass": {
+    "0.05": 0.5230873379098797,
+    "0.08": 0.5135790657945991,
+    "0.125": 0.4991571884817869,
+    "0.2": 0.4752874109020758
+  },
+  "weighted_intrasector_entropy_sum_by_mass": {
+    "0.05": 0.016582159312112186,
+    "0.08": 0.01459401336052014,
+    "0.125": 0.012099790081803695,
+    "0.2": 0.008941178979659887
+  },
+  "reconstructed_total_entropy_by_mass": {
+    "0.05": 0.5396694972219919,
+    "0.08": 0.5281730791551192,
+    "0.125": 0.5112569785635906,
+    "0.2": 0.4842285898817357
+  },
+  "reconstruction_error_by_mass": {
+    "0.05": -1.1102230246251565e-16,
+    "0.08": -1.1102230246251565e-16,
+    "0.125": 0.0,
+    "0.2": -1.1102230246251565e-16
+  },
+  "dominant_sector_labels_used_in_figure": [
+    "q0",
+    "q-2",
+    "q2",
+    "q-4"
+  ],
+  "per_mass": [
+    {
+      "mass_label": "m/g=0.05",
+      "m_over_g": 0.05,
+      "n_sectors": 6,
+      "total_weight": 1.0000000000000004,
+      "top_2_cum_weight": 0.992858703643219,
+      "top_3_cum_weight": 0.9999868004420746,
+      "top_sectors": [
+        {
+          "sector": "q0",
+          "weight": 0.8057047815776794
+        },
+        {
+          "sector": "q-2",
+          "weight": 0.18715392206553957
+        },
+        {
+          "sector": "q2",
+          "weight": 0.0071280967988554805
+        }
+      ],
+      "sector_entropy_reconstruction": {
+        "shannon_sector_entropy": 0.5230873379098797,
+        "weighted_intrasector_entropy_sum": 0.016582159312112186,
+        "reconstructed_total_entropy": 0.5396694972219919,
+        "direct_total_entropy": 0.539669497221992,
+        "reconstruction_error": -1.1102230246251565e-16
+      }
+    },
+    {
+      "mass_label": "m/g=0.08",
+      "m_over_g": 0.08,
+      "n_sectors": 6,
+      "total_weight": 1.0000000000000002,
+      "top_2_cum_weight": 0.9936030108982342,
+      "top_3_cum_weight": 0.9999883531420368,
+      "top_sectors": [
+        {
+          "sector": "q0",
+          "weight": 0.8104782054964675
+        },
+        {
+          "sector": "q-2",
+          "weight": 0.18312480540176668
+        },
+        {
+          "sector": "q2",
+          "weight": 0.006385342243802596
+        }
+      ],
+      "sector_entropy_reconstruction": {
+        "shannon_sector_entropy": 0.5135790657945991,
+        "weighted_intrasector_entropy_sum": 0.01459401336052014,
+        "reconstructed_total_entropy": 0.5281730791551192,
+        "direct_total_entropy": 0.5281730791551194,
+        "reconstruction_error": -1.1102230246251565e-16
+      }
+    },
+    {
+      "mass_label": "m/g=0.125",
+      "m_over_g": 0.125,
+      "n_sectors": 6,
+      "total_weight": 1.0000000000000002,
+      "top_2_cum_weight": 0.9945328081856201,
+      "top_3_cum_weight": 0.9999904604999733,
+      "top_sectors": [
+        {
+          "sector": "q0",
+          "weight": 0.8179176027080082
+        },
+        {
+          "sector": "q-2",
+          "weight": 0.17661520547761192
+        },
+        {
+          "sector": "q2",
+          "weight": 0.005457652314353278
+        }
+      ],
+      "sector_entropy_reconstruction": {
+        "shannon_sector_entropy": 0.4991571884817869,
+        "weighted_intrasector_entropy_sum": 0.012099790081803695,
+        "reconstructed_total_entropy": 0.5112569785635906,
+        "direct_total_entropy": 0.5112569785635906,
+        "reconstruction_error": 0.0
+      }
+    },
+    {
+      "mass_label": "m/g=0.2",
+      "m_over_g": 0.2,
+      "n_sectors": 6,
+      "total_weight": 1.0000000000000002,
+      "top_2_cum_weight": 0.9957252543128178,
+      "top_3_cum_weight": 0.9999933098586684,
+      "top_sectors": [
+        {
+          "sector": "q0",
+          "weight": 0.8303804455007417
+        },
+        {
+          "sector": "q-2",
+          "weight": 0.16534480881207606
+        },
+        {
+          "sector": "q2",
+          "weight": 0.004268055545850582
+        }
+      ],
+      "sector_entropy_reconstruction": {
+        "shannon_sector_entropy": 0.4752874109020758,
+        "weighted_intrasector_entropy_sum": 0.008941178979659887,
+        "reconstructed_total_entropy": 0.4842285898817357,
+        "direct_total_entropy": 0.48422858988173584,
+        "reconstruction_error": -1.1102230246251565e-16
+      }
+    }
+  ],
+  "outputs": {
+    "csv": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_mass_trend_x4.0_chi64_cut9/symmetry_resolved_entanglement_canonical.csv",
+    "mass_trend_summary_csv": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_mass_trend_x4.0_chi64_cut9/symmetry_resolved_mass_trend_summary_canonical.csv",
+    "mass_trend_figure": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_mass_trend_x4.0_chi64_cut9/symmetry_resolved_mass_trend_canonical.png",
+    "bridge_summary_csv": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_mass_trend_x4.0_chi64_cut9/symmetry_resolved_entropy_spectrum_bridge_canonical.csv",
+    "bridge_summary_figure": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_mass_trend_x4.0_chi64_cut9/symmetry_resolved_entropy_spectrum_bridge_canonical.png",
+    "metadata": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_mass_trend_x4.0_chi64_cut9/symmetry_resolved_metadata_canonical.json"
+  },
+  "args": {
+    "N": 20,
+    "m_over_g": null,
+    "compare_mass": null,
+    "mass_list": "0.05,0.08,0.125,0.20",
+    "x": 4.0,
+    "chi": 64,
+    "cut": 9,
+    "max_sectors": 12,
+    "sort_by": "weight",
+    "force": true,
+    "show": false
+  }
+}
