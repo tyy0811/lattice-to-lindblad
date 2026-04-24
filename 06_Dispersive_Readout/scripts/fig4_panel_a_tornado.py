@@ -91,35 +91,33 @@ def render_tornado(
         is_noise_like = r.noise_consistent_with_zero
         color = color_pos if S >= 0 else color_neg
         if is_noise_like:
-            # Point-with-errorbar rendering for near-zero parameters
+            # Point-with-errorbar rendering for near-zero parameters.
+            # Day-14 round-2 polish: lighter label color (#999) and
+            # central-value only (no ± σ) so the bar-rendered ε_0 label
+            # retains visual weight and the annotation layer doesn't
+            # compete with the plotted data.
             ax.errorbar(
                 [S], [y], xerr=[sigma], fmt="o", color=color,
                 capsize=3, markersize=5, zorder=5,
             )
-            # Numeric annotation: always to the right of the errorbar's
-            # right cap, ha="left". Keeps labels off the y-axis-label gutter
-            # (which is where the left-side annotations would otherwise
-            # collide for parameters with negative S like χ at REFERENCE).
             label_x = S + sigma + 0.004
             ax.text(
-                label_x, y,
-                f"{S:+.3f} ± {sigma:.3f}",
-                va="center", ha="left", fontsize=9, color="dimgray",
+                label_x, y, f"{S:+.3f}",
+                va="center", ha="left", fontsize=9, color="#999999",
             )
         else:
-            # Filled bar for bar-rendered parameters (|S| >= threshold)
+            # Filled bar for bar-rendered parameters (|S| >= threshold).
+            # Keep dimgray and full weight — this is the lever the figure
+            # is actually pointing at.
             ax.barh(
                 [y], [S], color=color, edgecolor="black", linewidth=0.5,
                 alpha=0.9, zorder=3,
             )
-            # Numeric annotation just outside the bar end — matched in
-            # weight/color/size to the point-with-errorbar labels so no
-            # single parameter (ε_0) visually dominates the annotation layer.
             offset = 0.008 * (1 if S >= 0 else -1)
             ha = "left" if S >= 0 else "right"
             ax.text(
                 S + offset, y, f"{S:+.3f}", va="center", ha=ha,
-                fontsize=9, color="dimgray",
+                fontsize=9.5, fontweight="semibold", color="dimgray",
             )
 
     ax.set_yticks(ys)

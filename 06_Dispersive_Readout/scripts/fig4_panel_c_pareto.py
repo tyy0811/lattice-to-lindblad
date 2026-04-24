@@ -34,23 +34,39 @@ _VARIANT_STYLES = {
 }
 
 
-def _find_reference_knee(points: list) -> tuple[float, float] | None:
-    """Anchor annotation for the REFERENCE curve: the last τ at which F gains
-    ≥ 0.03 over the previous τ_max grid point. Past this knee, each further
-    doubling of τ buys only diminishing fidelity, which is the practical
-    "done" point for an operator budgeting readout time."""
-    if len(points) < 2:
+def load_closed_loop_demo(
+    path: Path | str = Path("06_Dispersive_Readout/figures/closed_loop_demo_device.yaml"),
+) -> tuple[dict, dict] | None:
+    """Return (demo_device, reference_optimum) dicts from the Task-17 YAML.
+
+    Both dicts expose at minimum: tau_opt_ns, F_assign_opt. The demo device
+    adds T_1_us, T_2_echo_us, omega_q_GHz, dominant_loss_channel, index.
+    Returns None if the file is missing (lets standalone panel renders
+    degrade gracefully without the closed-loop annotation)."""
+    p = Path(path)
+    if not p.exists():
         return None
-    # Sort by tau_opt just in case input ordering isn't guaranteed.
-    pts = sorted(points, key=lambda p: p.tau_opt)
-    best_idx = 0
-    for i in range(1, len(pts)):
-        if pts[i].F_assign_opt - pts[i - 1].F_assign_opt >= 0.03:
-            best_idx = i
-    return (pts[best_idx].tau_opt * 1e9, pts[best_idx].F_assign_opt)
+    raw = yaml.safe_load(p.read_text())
+    return raw["chosen"], raw["reference_optimum"]
 
 
-def render_pareto(ax: plt.Axes, frontiers: dict[str, list]) -> None:
+def render_pareto(
+    ax: plt.Axes,
+    frontiers: dict[str, list],
+    closed_loop: tuple[dict, dict] | None = None,
+) -> None:
+    """Render the 3-variant Pareto panel.
+
+    closed_loop: optional (demo_device, reference_optimum) from
+        load_closed_loop_demo(). When provided, draws the closed-loop
+        demo as a static open marker at the demo device's recommended
+        Pareto point. No arrow and no ΔF annotation per Day-14
+        Amendment #18: Amendment #17's shared-argmax regime means
+        "fitted default" and "optimized" coincide in (ε_0, τ), so a
+        default→optimized arrow is not populatable; the static marker
+        communicates that the pipeline ran end-to-end and returned a
+        stable recommendation on the fitted device. reference_optimum
+        is accepted for interface stability but unused in rendering."""
     for label, points in frontiers.items():
         style = _VARIANT_STYLES.get(label, {"color": "black", "marker": "o", "ls": "-"})
         tau_ns = [p.tau_opt * 1e9 for p in points]
@@ -62,27 +78,42 @@ def render_pareto(ax: plt.Axes, frontiers: dict[str, list]) -> None:
         ax.scatter(tau_ns, F, marker=style["marker"], s=42, color=style["color"],
                    edgecolors="white", linewidths=0.8, label=label, zorder=5)
 
-    # Anchor annotation on the REFERENCE curve: show the practical knee
-    # point (last big-gain step). Makes one concrete operating point visible
-    # on the plot itself — pairs this panel to Module 2 / Module 4's
-    # REFERENCE working point without forcing the reader to scan the legend.
-    ref_points = frontiers.get("REFERENCE (≈ Marxer Q1)")
-    if ref_points:
-        knee = _find_reference_knee(ref_points)
-        if knee is not None:
-            tau_knee, F_knee = knee
-            ax.annotate(
-                rf"REFERENCE knee: $\tau={tau_knee:.0f}$ ns, $F={F_knee:.3f}$",
-                xy=(tau_knee, F_knee), xycoords="data",
-                xytext=(12, -28), textcoords="offset points",
-                fontsize=8.5, color="#1F3A5F",
-                arrowprops=dict(arrowstyle="->", color="#1F3A5F", lw=0.8),
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          edgecolor="#1F3A5F", alpha=0.85),
-            )
+    # Closed-loop demo as a static recommended-point marker (Day-14
+    # Amendment #18 rendering decision: Amendment #17's shared-argmax
+    # regime collapses "fitted default" and "optimized" to the same
+    # (ε_0, τ), so a default→optimized arrow is not populatable. The
+    # static marker communicates that the pipeline returned a stable
+    # recommendation for the fitted device without implying a ΔF gain
+    # against REFERENCE — the latter framing would read as an
+    # optimization regression to a recruiter audience.
+    if closed_loop is not None:
+        demo, _ref = closed_loop  # reference_optimum no longer used in rendering
+        tau_shared = float(demo["tau_opt_ns"])
+        F_demo = float(demo["F_assign_opt"])
+        T1_us = float(demo["T_1_us"])
+
+        ax.scatter(
+            [tau_shared], [F_demo],
+            marker="o", s=130, facecolors="none",
+            edgecolors="#C62828", linewidths=1.8, zorder=6,
+            label=(
+                f"closed-loop demo: fitted $T_1$={T1_us:.1f} $\\mu$s "
+                "(recommended point)"
+            ),
+        )
+
+        # Small in-panel label so a first-pass reader catches the marker
+        # without having to scan the legend. Day-14 round-2 reviewer note:
+        # no ΔF, no arrow — just the identifier.
+        ax.annotate(
+            "closed-loop demo",
+            xy=(tau_shared, F_demo), xycoords="data",
+            xytext=(10, -14), textcoords="offset points",
+            fontsize=8.5, color="#C62828", va="top", ha="left",
+        )
 
     ax.set_xscale("log")
-    ax.set_xlabel(r"Readout duration $\tau_{\rm opt}$ (ns, log)")
+    ax.set_xlabel(r"Readout duration $\tau_{\rm max}$ (ns, log)")
     ax.set_ylabel(r"$F_{\rm assign}$ at optimum")
     # Subtitle names the objective so an external reader knows what the
     # frontier is a frontier OF.
@@ -211,7 +242,12 @@ def main() -> None:
             yaml.safe_dump(serializable, f, sort_keys=False)
 
     fig, ax = plt.subplots(figsize=(8, 5.5))
-    render_pareto(ax, {k: v for k, v in frontiers.items() if v})
+    closed_loop = load_closed_loop_demo()
+    render_pareto(
+        ax,
+        {k: v for k, v in frontiers.items() if v},
+        closed_loop=closed_loop,
+    )
     fig.tight_layout()
     fig.savefig(out_dir / "fig4_panel_c_pareto.png", dpi=150, bbox_inches="tight")
     print(f"Wrote {out_dir / 'fig4_panel_c_pareto.png'}")

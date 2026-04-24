@@ -26,7 +26,7 @@ from dispersive_readout.optimization.regime_map import (
     compute_analytic_regime_map,
     validate_analytic_vs_lindblad,
     purcell_boundary,
-    dispersive_breakdown_boundary,
+    chi_phase_integration_boundary,
     resonator_too_slow_boundary,
     PUBLISHED_DEVICE_POINTS,
 )
@@ -37,9 +37,9 @@ _MARKER_COLOR_MAP = {"warm_orange": "#E8801A", "red": "#C0392B"}
 # Boundary-line labels for the legend. Each function is called once inside
 # render_regime_map; the label string matches the caption phrasing.
 _BOUNDARY_LABELS = {
-    "purcell":   "Purcell boundary",
-    "breakdown": "Dispersive breakdown (χ/κ ≲ 1)",
-    "slow":      "Resonator-too-slow (κ·τ_readout ≲ 1)",
+    "purcell":   "Purcell boundary (γ_Purcell·τ ≈ 0.1)",
+    "phase":     "χ-phase accumulation (χ·τ ≈ 2π)",
+    "slow":      "Resonator-too-slow (κ·τ ≲ 1)",
 }
 
 
@@ -49,13 +49,19 @@ def render_regime_map(ax: plt.Axes, validation: dict, grid: dict) -> None:
     F = grid["F_grid"]
 
     X, Y = np.meshgrid(x_axis, y_axis, indexing="ij")
-    pcm = ax.pcolormesh(X, Y, F, cmap="viridis", shading="auto", vmin=0.5, vmax=1.0)
+    # vmin=0.85 per Day-14 review: most publications land at F > 0.85 so the
+    # full [0.5, 1.0] range wasted colormap dynamic range where it mattered.
+    # Below 0.85 saturates to the lowest color (dark purple); the 0.7/0.8
+    # contour lines are retained below for users who want the low-F locus.
+    pcm = ax.pcolormesh(X, Y, F, cmap="viridis", shading="auto", vmin=0.85, vmax=1.0)
     plt.colorbar(pcm, ax=ax, label=r"$F_{\rm assign}$")
 
-    # Denser contour set reveals more structure in the 0.8-1.0 regime where
-    # most of the interesting physics sits; 0.5/0.7 anchor the low-F corners.
+    # Day-14 round-2 polish: contours trimmed to the three levels that
+    # matter for the high-F operating regime where publications sit.
+    # Previous [0.7, 0.8, 0.9, 0.95, 0.99, 0.999] crowded the panel and
+    # put 0.7/0.8 in the colorbar-saturated dark region.
     cs = ax.contour(
-        X, Y, F, levels=[0.7, 0.8, 0.9, 0.95, 0.99, 0.999],
+        X, Y, F, levels=[0.90, 0.95, 0.99],
         colors="white", linestyles="dashed", linewidths=0.8,
     )
     ax.clabel(cs, inline=True, fontsize=8)
@@ -63,9 +69,9 @@ def render_regime_map(ax: plt.Axes, validation: dict, grid: dict) -> None:
     # Analytic boundaries — each labeled so the legend maps line to meaning.
     x_fine = np.logspace(np.log10(x_axis[0]), np.log10(x_axis[-1]), 200)
     for bkey, yfn in (
-        ("purcell",   purcell_boundary),
-        ("breakdown", dispersive_breakdown_boundary),
-        ("slow",      resonator_too_slow_boundary),
+        ("purcell", purcell_boundary),
+        ("phase",   chi_phase_integration_boundary),
+        ("slow",    resonator_too_slow_boundary),
     ):
         y_boundary = yfn(x_fine)
         mask = (y_boundary >= y_axis[0]) & (y_boundary <= y_axis[-1])

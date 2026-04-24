@@ -56,11 +56,14 @@ Because the transverse coupling is no longer explicit, Purcell decay is added as
 
 The plan originally specified a rotating frame at ω_d = ω_r with the full transverse coupling retained. In that frame the transmon diagonal has GHz-scale entries (level j at ω_j − j·ω_d), so the Lindblad solver needs ~2.5 ps timesteps to integrate correctly. At the default QuTiP `nsteps=10000` limit the integrator was silently returning non-converged trajectories that disagreed with analytic steady states by factors of 4–60 in photon number and 10× in |⟨a⟩|, without raising. The dispersive-frame refactor in commit `9139241` both sped the simulation by ~30× and corrected this latent silent-failure mode. This is a diagnostic finding worth preserving — the kind of issue a tight validation suite is specifically designed to surface.
 
-## Modules 2–4 (pending)
+## Modules 2–4 (shipped)
 
-Stage 06 will add:
-- Module 2 — error-budget decomposition (script: `error_budget_decomposition.py`). Waterfall chart has nine named channels now that Purcell is its own Lindblad operator (plan originally specified eight).
-- Module 3 — characterization recovery (script + CLI: `characterize.py` wrapping `dispersive_readout.characterization.cli`).
-- Module 4 — sensitivity / Pareto analysis (script: `sensitivity_pareto_analysis.py`).
+- **Module 2 — error-budget decomposition.** Figure 2 with nine named Lindblad channels (Purcell promoted to its own operator, plan originally specified eight). Script: `scripts/fig2_error_budget.py`.
+- **Module 3 — characterization recovery.** 4-protocol CLI wrapping `dispersive_readout.characterization.cli`. Script: `characterize.py`.
+- **Module 4 — sensitivity + regime map + Pareto + closed-loop recommendation.** Figure 4 composite (3 panels): `scripts/fig4_optimization.py`.
 
-Scripts are runnable with `python 06_Dispersive_Readout/<name>.py`; tests for each module are colocated with their package code under `dispersive_readout/<module>/` — see `dispersive_readout/tests/`.
+Scripts are runnable with `python 06_Dispersive_Readout/<name>.py`; tests for each module are colocated under `dispersive_readout/tests/`.
+
+### Module 4 / Figure 4 — closed-loop rendering note
+
+In the scoped closed-loop harness, fitted devices vary (*T*₁, *T*₂, ω_q) over fixed REFERENCE resonator and coupling. The Pareto argmax is shared across the harness, so the closed-loop demonstration is rendered as a recommended operating-point marker rather than a default-to-optimized arrow. Full resonator spectroscopy and AC-Stark calibration — which would break the shared-argmax regime and enable a default→optimized ΔF gain — are out of Module 3's characterization scope and scheduled as post-submission extensions. See `MODULE_4_SPEC.md` §0.5 Amendment #18 for the full rationale.

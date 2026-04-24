@@ -27,7 +27,7 @@ import yaml
 # Reuse standalone-panel renderers (no rendering duplication)
 from fig4_panel_a_tornado import render_tornado
 from fig4_panel_b_regime import render_regime_map
-from fig4_panel_c_pareto import render_pareto, _load_frontiers_from_yaml
+from fig4_panel_c_pareto import render_pareto, _load_frontiers_from_yaml, load_closed_loop_demo
 
 from dispersive_readout.analysis.operating_point import get_reference_operating_point
 from dispersive_readout.optimization.sensitivity import (
@@ -80,42 +80,63 @@ def main() -> None:
     )
     render_tornado(axes[0], sens, anchoring_a)
     render_regime_map(axes[1], validation, grid)
-    render_pareto(axes[2], frontiers)
+    render_pareto(axes[2], frontiers, closed_loop=load_closed_loop_demo())
 
-    # Figure-wide caption with the 3 locked caveats + anchor numbers
+    # Bold (a)(b)(c) labels inside the upper-left of each subplot — kept
+    # compact (fontsize 13) per Day-14 round-2 review so they don't
+    # compete with the per-panel titles.
+    for ax, letter in zip(axes, ("a", "b", "c")):
+        ax.text(
+            0.02, 0.97, f"({letter})", transform=ax.transAxes,
+            fontsize=13, fontweight="bold", va="top", ha="left",
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
+                      edgecolor="none", alpha=0.75),
+        )
+
+    # Figure-wide caption with the 3 locked caveats + anchor numbers.
+    # Explicit line breaks (\n) per paragraph — matplotlib's wrap=True is
+    # unreliable for fig.text at composite-figure widths; pre-wrapped text
+    # renders predictably.
     max_dev_pct = validation["max_deviation_fractional"] * 100.0
     residual_pct = cross["residual_fractional"] * 100.0
     n_validation_points = len(validation.get("per_point", []))
-    caption = (
-        r"$\bf{Figure\ 4.}$ Optimization layer for dispersive transmon readout. "
-        r"$\bf{(a)}$ Normalized log-sensitivities of $F_{\rm assign}$ to 7 parameters "
-        r"at REFERENCE (Marxer arXiv:2508.16437); sensitivities computed with parameters "
-        r"treated as independent axes via chi_scale. Day-10 cross-check "
-        rf"$|S_g - 2 S_\chi| / |2 S_\chi|$ = {residual_pct:.2f}% (raw: "
-        rf"$S_\chi$={cross['S_chi']:+.3f}, $S_g$={cross['S_g']:+.3f}; "
-        r"denominator is small because $|S_\chi|$ sits at the tornado noise floor, "
-        r"so a few-percent residual does not indicate Q1 orthogonality failure). "
-        r"$\bf{(b)}$ Analytic regime map (Bengtsson 2024 PRL section II + Blais RMP 2021 section V.B); "
-        rf"Lindblad-validated at {n_validation_points} points, max deviation {max_dev_pct:.2f}%. "
-        r"Hazra 2407.10934 (dimon, non-standard $\chi$-mediation) cited in reference list "
-        r"but not plotted. "
-        r"$\bf{(c)}$ Pareto frontiers for 3 parameter-anchored variants of REFERENCE "
-        r"(V1=REFERENCE, V2=$T_1$=40 $\mu$s, V3=$T_1$=20 $\mu$s + $\kappa/2\pi$=6 MHz). "
-        r"Curves represent the Pareto frontier predicted by this work's simulator under "
-        r"parameter substitution - NOT the frontier achievable on the cited devices' native "
-        r"hardware. Frontiers transition between two dispersive-readout operating regimes "
-        r"around $\tau_{\rm max} \approx$ 450 ns: the low-photon regime "
-        r"($\varepsilon_0 \approx 8 \times 10^7$ rad/s, peak \#1 - dispersive shift clean, "
-        r"shot-noise-limited contrast) optimal at short integration, and the "
-        r"dispersive-saturation regime ($\varepsilon_0 \approx 1.4 \times 10^8$ rad/s, "
-        r"peak \#2 - $\bar{n}_{\rm phot}$ near bifurcation threshold, decoherence-limited "
-        r"integration) optimal at long integration. The specific transition $\tau_{\rm max}$ "
-        r"is set by the trade-off between the two regimes. "
-        r"Closed-loop scope: fitted ($T_1$, $T_2$, $\omega_q$) over fixed REFERENCE "
-        r"resonator and coupling; full closed-loop including resonator spectroscopy is "
-        r"post-submission roadmap. $n_{\rm shots} = 10^4$ throughout."
+    # Caption per Day-14 review round 2: recruiter-facing hero-figure
+    # brevity. Day-10 residual, S_χ orthogonality detail, Hazra citation,
+    # and per-regime physics narrative moved to the report body. Caption
+    # keeps only: one-sentence per panel + synthetic/honesty caveat.
+    # Scope caveat rendered as a separate smaller paragraph below.
+    # (Unused helpers preserved for possible report-text re-use.)
+    _ = residual_pct, max_dev_pct, n_validation_points  # kept computed for report
+    caption_main = (
+        r"$\bf{Figure\ 4.}$ Optimization layer for dispersive transmon readout."
+        "\n"
+        r"$\bf{(a)}$ Local normalized sensitivities $S_\theta = \partial\ln F_{\rm assign}/\partial\ln\theta$ "
+        r"at the REFERENCE operating point."
+        "\n"
+        r"Near $F_{\rm assign} \approx 0.99$, $F$-space sensitivities are compressed; the local optimum "
+        r"is control-dominated, with $\varepsilon_0$ the only clearly bar-rendered lever."
+        "\n"
+        r"$\bf{(b)}$ Analytic regime map over $\chi/\kappa$ and $\gamma_1 \tau_{\rm readout}$, with "
+        r"REFERENCE-family device anchors and Lindblad spot-checks."
+        "\n"
+        r"Dashed lines mark Purcell, $\chi$-phase accumulation, and resonator-response boundaries."
+        "\n"
+        r"$\bf{(c)}$ Speed–fidelity Pareto frontiers for three REFERENCE-family parameter variants."
+        "\n"
+        r"The open marker shows a fitted synthetic demo device mapped by the closed-loop "
+        r"recommendation pipeline to its Pareto operating point; curves are simulator-predicted "
+        r"under parameter substitution,"
+        "\n"
+        r"$\bf{not}$ claims about the cited devices' native hardware."
     )
-    fig.text(0.01, -0.02, caption, wrap=True, fontsize=9, ha="left")
+    caption_scope = (
+        r"Closed-loop scope: fitted ($T_1$, $T_2$, $\omega_q$) over fixed REFERENCE "
+        r"resonator/coupling; full resonator spectroscopy and AC-Stark calibration are "
+        r"post-submission extensions."
+    )
+    fig.text(0.01, -0.03, caption_main, fontsize=11, ha="left", va="top")
+    fig.text(0.01, -0.33, caption_scope, fontsize=9.5, ha="left", va="top",
+             color="#444444", style="italic")
 
     out = _FIGURES_DIR / "fig4_optimization.png"
     out.parent.mkdir(parents=True, exist_ok=True)

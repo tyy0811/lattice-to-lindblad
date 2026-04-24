@@ -264,8 +264,21 @@ def purcell_boundary(chi_over_kappa: np.ndarray) -> np.ndarray:
     return gamma_1_ref * tau_readout_x
 
 
-def dispersive_breakdown_boundary(chi_over_kappa: np.ndarray) -> np.ndarray:
-    """Dispersive breakdown locus: χ · τ_readout = 2π."""
+def chi_phase_integration_boundary(chi_over_kappa: np.ndarray) -> np.ndarray:
+    """χ-phase integration locus: χ · τ_readout = 2π.
+
+    Physics: this is where the differential dispersive-shift phase between
+    |g⟩ and |e⟩ accumulates one full 2π cycle within the readout window.
+    Above the line (phase wraps > 2π), IQ-plane discrimination degrades
+    due to phase-wrap periodicity; below the line, only a fraction of the
+    phase is integrated.
+
+    NOT the dispersive-approximation-validity boundary (that would be
+    `g/Δ << 1` or `n̄_phot/n_crit << 1`). Day-14 review correction:
+    previous name `dispersive_breakdown_boundary` and the "χ/κ ≲ 1"
+    legend were physically misleading — low χ/κ is poor resolvability,
+    not breakdown of the dispersive approximation. The line plotted here
+    marks the χ·τ timescale, not the approximation's regime of validity."""
     kappa_ref = REFERENCE_DEVICE.resonator.kappa
     gamma_1_ref = REFERENCE_DEVICE.decoherence.gamma_1
     chi_x = np.asarray(chi_over_kappa, dtype=float) * kappa_ref
