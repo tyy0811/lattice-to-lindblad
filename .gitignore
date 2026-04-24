@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+.envrc
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+.*.swp
+*~
+
+# macOS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Local workflow notes (not public)
+docs/plans/
+docs/superpowers/
+
+# LaTeX build artifacts
+texput.log
+*.aux
+*.synctex.gz
