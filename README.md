@@ -314,6 +314,14 @@ Typical outputs from this stage include:
 
 ---
 
+## 06 — Dispersive Readout for Transmon Qubits
+
+Adds a superconducting-readout modeling stage: validated transmon–resonator Lindblad simulation, coherent/incoherent readout error budget, synthetic characterization and parameter recovery, and sensitivity/Pareto optimization for readout settings.
+
+See `06_Dispersive_Readout/README.md` and the `dispersive_readout/` package.
+
+---
+
 ## Repository Structure
 
 ```text
@@ -381,6 +389,9 @@ vqe_modular/                                    # Modular VQE benchmark (Aer + Q
     publication_validation/                     # Truncation study, finite-size scaling
     symmetry_resolved_results/                  # Sector decomposition outputs
     open_dynamics_results/                      # Closed vs open quench benchmark
+
+06_Dispersive_Readout/                          # Stage 06 report, figures, and module documentation
+dispersive_readout/                             # Python package for transmon readout modeling and optimization
 ```
 
 ---

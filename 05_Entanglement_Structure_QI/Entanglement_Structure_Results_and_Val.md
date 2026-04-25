@@ -583,10 +583,11 @@ for both $\gamma=0$ and $\gamma=0.02$, across 11 positivity checks. The minimum 
 
 ## Source materials used for this report
 
-* `Continuum_Physics_Results_and_Validation.md` (format template)
-* `APPLICATION_BREADTH_SUMMARY.md`
-* `APPLICATION_MASS_SWEEP_SUMMARY.md`
-* `APPLICATION_TRUNCATION_STUDY_SUMMARY.md`
+* `../04_Continuum Physics Results/Continuum_Physics_Results_and_Validation.md` (format template)
+* `application_breadth/application_breadth_metadata.json`
+* `application_breadth/mass_sweep/mass_sweep_metadata.json`
+* `publication_validation/truncation_study/chi_convergence_table.csv`
+* `publication_validation/truncation_study/chi_convergence_table.json`
 * `observable_fit_summary.json`
 * `mass_sweep_metadata.json`
 * `finite_size_scaling_table.json`
