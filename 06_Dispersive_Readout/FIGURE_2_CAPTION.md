@@ -1,0 +1,9 @@
+# Figure 2 — Error Budget Decomposition
+
+## Caption
+
+**Figure 2.** Assignment infidelity decomposition at REFERENCE_DEVICE (500 ns readout, F_full ≈ 0.99, 10⁵ shots). **Active loss** (left, 4 bars): T1, pure dephasing, thermal, Purcell — each measured by turning off its collapse operator. **Calibration sensitivity** (right, 2 bars): F loss under ±5 % amplitude / ±κ/4 detuning perturbations about the nominal operating point. The grey residual bar reports cross-channel interactions within the active-loss group and satisfies the additivity identity Σ ΔF_c + R = (F_ideal − F_full).
+
+## Methods note
+
+**Methods note (Figure 2).** The waterfall decomposes assignment infidelity within the scope of the 2nd-order Schrieffer-Wolff dispersive-frame Hamiltonian used throughout Stage 06. Two physics boundaries are relevant: the dispersive approximation itself is validated by unit test V2 to ≤ 2 % at REFERENCE, producing a fidelity residual of O(10⁻⁴) below the bar-visibility threshold; measurement-induced ionization (Shillito 2022) requires an intra-resonator photon count of n̄ > n_crit, where the reference operating point sits at n̄/n_crit ≈ 0.062, well below onset. Residual |1⟩→|2⟩ occupation P(|2⟩) ≈ 3 × 10⁻⁴ is entirely thermal and is attributed to the thermal channel. The operating point ε₀ is calibrated analytically from the dispersive-regime steady-state SNR formula (§2.3) and cross-verified against simulation within shot-noise tolerance. Active-loss and calibration-sensitivity bars answer two conceptually distinct questions — loss contribution at the nominal point versus robustness derivative under named perturbations — and are presented as separate groups to make this distinction explicit; only the active-loss group carries a residual identity and a B2 additivity validation test.

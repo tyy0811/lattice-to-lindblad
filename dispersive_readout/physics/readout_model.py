@@ -150,6 +150,7 @@ def compute_assignment_fidelity(
     integration_window: tuple[float, float],
     n_shots: int = 10000,
     noise_model: Literal["ideal", "gaussian"] = "gaussian",
+    rng: np.random.Generator | None = None,
 ) -> AssignmentFidelityResult:
     """Single-shot assignment fidelity from two simulated trajectories.
 
@@ -157,6 +158,21 @@ def compute_assignment_fidelity(
     deterministic centroids; adds per-shot circular Gaussian noise in IQ space
     (when noise_model='gaussian'); classifies shots with the perpendicular-
     bisector discriminator; returns F = 1 - (P(1|0) + P(0|1)) / 2.
+
+    Parameters
+    ----------
+    rng : np.random.Generator | None, optional
+        RNG for shot-noise draws. If None (default), an ephemeral RNG is
+        created per call, giving independent draws across successive calls.
+        Pass a seeded RNG for deterministic tests.
+
+    Notes
+    -----
+    The analytic F_assign_uncertainty returned in the result assumes
+    independent shot draws between successive calls with the same (c0, c1).
+    Passing the *same* rng object to multiple calls will advance its state
+    and correlate the draws, violating that assumption — Module 2's
+    error-budget decomposition relies on default rng=None.
     """
     if noise_model not in ("ideal", "gaussian"):
         raise ValueError(f"noise_model must be 'ideal' or 'gaussian', got {noise_model!r}")
@@ -183,7 +199,8 @@ def compute_assignment_fidelity(
     # instead of the ≥95% the plan expected at these parameters.
     sigma = np.sqrt(window_duration / (4.0 * kappa)) if noise_model == "gaussian" else 0.0
 
-    rng = np.random.default_rng(seed=42)
+    if rng is None:
+        rng = np.random.default_rng()
 
     if sigma == 0.0:
         # Ideal case: all shots fall on the centroid; F = 1 if centroids differ.

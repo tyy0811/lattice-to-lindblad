@@ -52,13 +52,17 @@ class CouplingParams:
 class DecoherenceParams:
     """Incoherent error channels.
 
-    gamma_1:   qubit relaxation rate (1/s, equivalently rad/s for rates).
-    gamma_phi: pure dephasing rate; from T2_echo after subtracting gamma_1/2.
-    n_th:      bath thermal population (dimensionless).
+    gamma_1:          qubit relaxation rate (1/s, equivalently rad/s for rates).
+    gamma_phi:        pure dephasing rate; from T2_echo after subtracting gamma_1/2.
+    n_th:             bath thermal population (dimensionless).
+    purcell_enabled:  if False, omit Purcell collapse operators in
+                      build_collapse_operators. Used by Module 2's Purcell
+                      turn-off channel to isolate the Purcell contribution.
     """
     gamma_1: float
     gamma_phi: float
     n_th: float = 0.01
+    purcell_enabled: bool = True
 
 
 @dataclass(frozen=True)
