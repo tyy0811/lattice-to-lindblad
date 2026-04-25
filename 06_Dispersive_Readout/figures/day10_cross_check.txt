@@ -1,0 +1,12 @@
+Day-10 Q1 cross-check at REFERENCE_DEVICE:
+  S_chi (via chi_scale ± 0.05)   = -0.0292
+  S_g   (via coupling.g ± 0.05)  = -0.0622
+  Predicted S_g = 2 · S_chi       = -0.0585
+  Residual |S_g - 2*S_chi|        = 0.0038
+  Fractional |residual|/|2*S_chi| = 6.42%
+
+Note (spec §0 Q1-amended): at this REFERENCE, S_chi sits at the
+tornado noise floor (|S_chi| < 0.03), so the fractional residual
+|S_g - 2*S_chi|/|2*S_chi| can be large without indicating Q1
+orthogonality failure — the denominator is small. The caption
+cites the residual verbatim alongside both raw numbers.
