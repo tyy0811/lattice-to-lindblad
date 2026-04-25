@@ -142,8 +142,14 @@ def build_hamiltonian(
     device: DeviceConfig,
     drive_params: DriveParams,
     frame: Literal["rotating", "dispersive"] = "rotating",
+    chi_scale: float = 1.0,
 ) -> tuple[qt.Qobj, list]:
     """Dispersive-regime effective Hamiltonian in the fully-rotating frame.
+
+    chi_scale (float, default 1.0) multiplicatively rescales the per-level
+    dispersive shift array χ_j. Default reproduces the un-rescaled Hamiltonian
+    bit-exactly. Module 4's sensitivity analysis uses this for orthogonal
+    χ-sensitivity (spec §0 row 1, Q1 lock).
 
     Frame: each transmon level j rotates at its bare frequency ω_j, the
     resonator rotates at ω_d = ω_r + detuning. 2nd-order Schrieffer-Wolff
@@ -188,7 +194,7 @@ def build_hamiltonian(
     omega_d = omega_r + drive_params.detuning
 
     # Per-level chi_j (non-RWA 2nd-order PT, includes Bloch-Siegert term)
-    chi_per_level = dispersive_shift_full(energies, n_mat, g, omega_r)
+    chi_per_level = chi_scale * dispersive_shift_full(energies, n_mat, g, omega_r)
 
     # Lamb shift: Δω_j = Σ |g n_jk|² / (ω_j − ω_k − ω_r)
     # Same sum as χ_j but keeping only the near-resonant (−ω_r) denominator.

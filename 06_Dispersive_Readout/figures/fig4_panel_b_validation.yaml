@@ -1,0 +1,22 @@
+per_point:
+- chi_over_kappa: 0.4098360655737705
+  gamma_1_tau: 0.0032558139534883722
+  F_analytic: 0.9906057068778764
+  F_lindblad: 0.9909296071972596
+  deviation_fractional: 0.0003268651143640245
+- chi_over_kappa: 1.0
+  gamma_1_tau: 0.01
+  F_analytic: 0.9626821209492445
+  F_lindblad: 0.9303291597003139
+  deviation_fractional: 0.03477582198901778
+- chi_over_kappa: 0.5
+  gamma_1_tau: 0.001
+  F_analytic: 0.9883593990791448
+  F_lindblad: 0.9886367319532333
+  deviation_fractional: 0.0002805205037653874
+max_deviation_fractional: 0.03477582198901778
+epsilon: 69479225.99164064
+T_window: 4.5e-07
+chi_per_level_anchor:
+- 43580662.98353292
+- 29715004.12239306

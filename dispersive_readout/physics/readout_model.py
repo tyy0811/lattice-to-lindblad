@@ -13,6 +13,7 @@ from typing import Literal
 
 import numpy as np
 import qutip as qt
+from scipy.stats import norm
 
 from .config import DeviceConfig, DriveParams
 from .lindblad import build_collapse_operators, build_hamiltonian
@@ -68,6 +69,7 @@ def simulate_readout(
     initial_resonator_state: str = "vacuum",
     t_list: np.ndarray | None = None,
     solver_options: dict | None = None,
+    chi_scale: float = 1.0,
 ) -> ReadoutResult:
     """Integrate the Lindblad ME for the transmon-resonator system under a pulsed drive.
 
@@ -83,7 +85,7 @@ def simulate_readout(
     Nq = tr.N_transmon
     Nr = tr.N_resonator
 
-    H0, drive_spec = build_hamiltonian(device, drive_params, frame="rotating")
+    H0, drive_spec = build_hamiltonian(device, drive_params, frame="rotating", chi_scale=chi_scale)
     c_ops = build_collapse_operators(device, Nq, Nr)
 
     psi0 = qt.tensor(qt.basis(Nq, initial_qubit_state), qt.basis(Nr, 0))
@@ -149,22 +151,49 @@ def compute_assignment_fidelity(
     result_excited: ReadoutResult,
     integration_window: tuple[float, float],
     n_shots: int = 10000,
-    noise_model: Literal["ideal", "gaussian"] = "gaussian",
+    noise_model: Literal["ideal", "analytic", "gaussian"] = "gaussian",
     rng: np.random.Generator | None = None,
 ) -> AssignmentFidelityResult:
     """Single-shot assignment fidelity from two simulated trajectories.
 
     Integrates ⟨a⟩(t) over the window for each of |0> and |1> to get
-    deterministic centroids; adds per-shot circular Gaussian noise in IQ space
-    (when noise_model='gaussian'); classifies shots with the perpendicular-
+    deterministic centroids; classifies shots with the perpendicular-
     bisector discriminator; returns F = 1 - (P(1|0) + P(0|1)) / 2.
+
+    Three noise_model options:
+
+    - 'ideal'    — σ = 0. Zero-shot-noise limit; all shots land on their
+                   centroids → F = 1.0 unconditionally when centroids differ.
+                   Represents the infinite-SNR upper bound.
+    - 'analytic' — F = Φ(SNR/2) = Φ(|Δc| / (2 σ_per_quadrature)), the
+                   ensemble-mean F under the gaussian noise model in the
+                   continuous-shot (n → ∞) limit. `F_assign_uncertainty` is
+                   the analytic binomial SE √(F(1-F)/n_shots) at the stated
+                   n_shots — useful for uncertainty propagation in finite-
+                   difference sensitivity analysis where shot-noise draws
+                   would pollute the gradient (Module 4 Q8 contract).
+    - 'gaussian' — σ = √(T/(4κ)). Per-shot circular Gaussian noise is drawn
+                   in IQ space; empirical F from the perpendicular-bisector
+                   discriminator over n_shots samples. The stochastic default.
+
+    Invariant: ``F_gaussian → F_analytic`` as ``n_shots → ∞`` for fixed
+    centroids. Pinned by regression test.
+
+    σ-formula: Homodyne photocurrent variance is T/2 per quadrature in the
+    convention where Gambetta 2008's integrated output is s = √(2κ) ∫⟨a⟩ dt.
+    Scaled into the |Δc| = |∫⟨a⟩ dt| integrated units, σ_per_quadrature
+    = √(T/(4κ)), giving SNR = |Δc|/σ_per_quadrature = 2√(κ/T) × |Δc| which
+    matches the standard dispersive-readout formula SNR² = 4κ|Δα|²T for
+    well-separated steady states. Perpendicular-bisector fidelity follows
+    F = 1 − Q(SNR/2) = Φ(SNR/2) for equal-prior two-state discrimination.
 
     Parameters
     ----------
     rng : np.random.Generator | None, optional
-        RNG for shot-noise draws. If None (default), an ephemeral RNG is
-        created per call, giving independent draws across successive calls.
-        Pass a seeded RNG for deterministic tests.
+        RNG for shot-noise draws (noise_model='gaussian' only). If None
+        (default), an ephemeral RNG is created per call, giving independent
+        draws across successive calls. Pass a seeded RNG for deterministic
+        tests.
 
     Notes
     -----
@@ -174,8 +203,10 @@ def compute_assignment_fidelity(
     and correlate the draws, violating that assumption — Module 2's
     error-budget decomposition relies on default rng=None.
     """
-    if noise_model not in ("ideal", "gaussian"):
-        raise ValueError(f"noise_model must be 'ideal' or 'gaussian', got {noise_model!r}")
+    if noise_model not in ("ideal", "analytic", "gaussian"):
+        raise ValueError(
+            f"noise_model must be 'ideal', 'analytic', or 'gaussian', got {noise_model!r}"
+        )
 
     c0 = result_ground.integrated_iq(integration_window)
     c1 = result_excited.integrated_iq(integration_window)
@@ -186,32 +217,32 @@ def compute_assignment_fidelity(
     t0, t1 = integration_window
     window_duration = t1 - t0
     kappa = result_ground.device.resonator.kappa
-    # Shot-noise σ per quadrature for integrated homodyne output.
-    # Homodyne photocurrent variance is T/2 per quadrature in the convention
-    # where Gambetta 2008's integrated output is s = √(2κ) ∫⟨a⟩ dt. Scaled
-    # into the |Δc| = |∫⟨a⟩ dt| integrated units, σ_per_quadrature = √(T/(4κ)),
-    # giving SNR = |Δc|/σ_per_quadrature = 2√(κ/T) × |Δc| which matches
-    # the standard dispersive-readout formula SNR² = 4κ |Δα|² T for
-    # well-separated steady states. Perpendicular-bisector fidelity then
-    # follows F = 1 − Q(SNR/2) for equal-prior two-state discrimination.
-    # Plan draft's σ = √(κT/2) reversed κ ↔ 1/κ and gave SNR values that
-    # didn't match Gambetta — caught when reference device gave 50% fidelity
-    # instead of the ≥95% the plan expected at these parameters.
-    sigma = np.sqrt(window_duration / (4.0 * kappa)) if noise_model == "gaussian" else 0.0
+    # σ_per_quadrature (shared by 'gaussian' empirical draws and 'analytic'
+    # closed-form F via F = Φ(SNR/2)). See docstring for full derivation.
+    sigma_gaussian = np.sqrt(window_duration / (4.0 * kappa))
 
     if rng is None:
         rng = np.random.default_rng()
 
-    if sigma == 0.0:
-        # Ideal case: all shots fall on the centroid; F = 1 if centroids differ.
+    if noise_model == "ideal":
+        # Zero-shot-noise limit: all shots fall on the centroid; F = 1 whenever
+        # centroids differ. Represents the SNR → ∞ upper bound.
         F = 1.0
         F_unc = 0.0
-    else:
+        reported_sigma = 0.0
+    elif noise_model == "analytic":
+        # Ensemble-mean F under the gaussian noise model, continuous-shot limit.
+        # F = Φ(SNR/2); binomial SE at n_shots for uncertainty propagation.
+        snr = separation / sigma_gaussian
+        F = float(norm.cdf(snr / 2.0))
+        F_unc = float(np.sqrt(F * (1.0 - F) / n_shots))
+        reported_sigma = sigma_gaussian
+    else:  # 'gaussian'
         # Per-quadrature noise: each of Re, Im gets an independent σ-Gaussian.
-        draws_0 = c0 + sigma * (
+        draws_0 = c0 + sigma_gaussian * (
             rng.standard_normal(n_shots) + 1j * rng.standard_normal(n_shots)
         )
-        draws_1 = c1 + sigma * (
+        draws_1 = c1 + sigma_gaussian * (
             rng.standard_normal(n_shots) + 1j * rng.standard_normal(n_shots)
         )
         # Perpendicular-bisector discriminator:
@@ -226,13 +257,14 @@ def compute_assignment_fidelity(
         F = 1.0 - 0.5 * (wrong_0 + wrong_1)
         # Bootstrap uncertainty (binomial-standard-error of F)
         F_unc = np.sqrt(F * (1.0 - F) / n_shots)
+        reported_sigma = sigma_gaussian
 
     return AssignmentFidelityResult(
         F_assign=float(F),
         F_assign_uncertainty=float(F_unc),
         centroid_0=complex(c0),
         centroid_1=complex(c1),
-        snr=float(separation / sigma) if sigma > 0 else float("inf"),
+        snr=float(separation / reported_sigma) if reported_sigma > 0 else float("inf"),
         separation_distance=float(separation),
         integration_window=(float(t0), float(t1)),
         n_shots=int(n_shots),

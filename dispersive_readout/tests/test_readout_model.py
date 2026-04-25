@@ -93,6 +93,55 @@ def test_assignment_fidelity_ideal_is_at_least_as_large_as_gaussian():
     assert f_i.F_assign >= f_g.F_assign - 1e-9
 
 
+def test_assignment_fidelity_analytic_matches_phi_snr_over_2():
+    """noise_model='analytic' must return F = Φ(SNR/2) exactly.
+
+    Pins the semantics of the 'analytic' mode from the closed-form side:
+    direct comparison of the reported F against scipy's Gaussian CDF
+    evaluated at snr/2 (the same SNR reported in the result).
+    """
+    from scipy.stats import norm
+    d = REFERENCE_DEVICE
+    drv = _default_drive()
+    r0 = simulate_readout(d, drv, initial_qubit_state=0)
+    r1 = simulate_readout(d, drv, initial_qubit_state=1)
+    window = (400e-9, 500e-9)
+    f_a = compute_assignment_fidelity(r0, r1, window, n_shots=10_000, noise_model="analytic")
+    expected = float(norm.cdf(f_a.snr / 2.0))
+    assert abs(f_a.F_assign - expected) < 1e-12, (
+        f"analytic F={f_a.F_assign} does not match Φ(SNR/2)={expected} "
+        f"at SNR={f_a.snr:.4f}; definitional invariant violated."
+    )
+
+
+def test_assignment_fidelity_gaussian_converges_to_analytic_as_n_shots_grows():
+    """Pin the invariant 'gaussian' → 'analytic' as n_shots → ∞.
+
+    At large n_shots the empirical perpendicular-bisector F should agree
+    with the closed-form F = Φ(SNR/2) to within the binomial SE √(F(1-F)/n).
+    Tightens the 'ideal ≥ gaussian' bound above into a two-sided statement
+    about how the three modes relate.
+    """
+    d = REFERENCE_DEVICE
+    drv = _default_drive()
+    r0 = simulate_readout(d, drv, initial_qubit_state=0)
+    r1 = simulate_readout(d, drv, initial_qubit_state=1)
+    window = (400e-9, 500e-9)
+    n = 200_000
+    rng = np.random.default_rng(seed=42)
+    f_g = compute_assignment_fidelity(
+        r0, r1, window, n_shots=n, noise_model="gaussian", rng=rng,
+    )
+    f_a = compute_assignment_fidelity(r0, r1, window, n_shots=n, noise_model="analytic")
+    # 5σ binomial tolerance at n=2e5
+    tol = 5.0 * math.sqrt(f_a.F_assign * (1.0 - f_a.F_assign) / n)
+    assert abs(f_g.F_assign - f_a.F_assign) < tol, (
+        f"gaussian F={f_g.F_assign:.5f} does not match analytic F={f_a.F_assign:.5f} "
+        f"at n={n} within 5σ_binomial={tol:.2e}. Invariant 'gaussian → analytic "
+        "as n → ∞' violated — shot-noise sampling and Φ(SNR/2) closed form drift."
+    )
+
+
 def test_assignment_fidelity_sanity_on_reference_device():
     """Reference device should hit ≥ 95% assignment fidelity at a drive
     amplitude that stays within the dispersive regime.

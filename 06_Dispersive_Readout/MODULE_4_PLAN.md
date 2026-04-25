@@ -2,6 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Day-10 execution-time amendments (2026-04-22) — read before implementing Tasks 1-7:**
+>
+> Three amendments applied during Day-10 execution. See `MODULE_4_SPEC.md` §0.1 for full rationale and `docs/module4_diagnostics/` for the supporting diagnostic artifacts.
+>
+> - **Amendment 10 (Q1 S_χ sign):** Under the SW-2 simulator at REFERENCE, F_assign peaks at `chi_scale ≈ 0.85`; REFERENCE sits ~18% past the peak so `S_χ = −0.029 ± 0.014` (noise-consistent). **O1 is split into O1a (sign-assert for bar-rendered parameters) and O1b (log-only for near-zero parameters).** Step 4.1's `test_O1_sensitivity_signs_at_REFERENCE` is superseded by the O1a/O1b pair in the shipped code.
+> - **Amendment 11 (noise_model='analytic'):** Module 1's shipped `noise_model='ideal'` returns `F=1.0` unconditionally (zero-shot-noise limit, useless for FD). Added `noise_model='analytic'` returning `F = Φ(SNR/2)` as an additive extension. **All references in this plan to `noise_model='ideal'` inside sensitivity.py / pareto.py inner loops should be read as `noise_model='analytic'`.** Module 1 tests `test_assignment_fidelity_analytic_matches_phi_snr_over_2` and `test_assignment_fidelity_gaussian_converges_to_analytic_as_n_shots_grows` pin the new invariants. O8 contract strengthened from 1 to 3 tests per module (forbid `'gaussian'`, forbid `'ideal'`, require `'analytic'`).
+> - **Amendment 12 (threshold 2.0 → 0.3):** `SENSITIVITY_WARNING_THRESHOLD` recalibrated from 2.0 (unreachable under Lindblad simulator) to 0.3 (spec §2.1 dominance level). Verified via six independent checks. **Step 2.3's policy-constants code and Step 6.1's O11 probe device are superseded** — see shipped code: `SENSITIVITY_WARNING_THRESHOLD = 0.3` and O11 probes `ε/2π = 15 MHz` at REFERENCE T_1 (drive-stress regime) rather than `T_1 = 5 µs` at REFERENCE drive.
+>
+> Other plan-text references to `2.0` / `'ideal'` that do NOT appear inside inner loops (e.g., Module 1's shipped `'ideal'` mode in `compute_assignment_fidelity`) remain unamended.
+
 **Goal:** Implement the optimization layer for dispersive transmon readout — parameter sensitivity tornado, closed-form analytic regime map, Modal-parallelized Pareto frontier, and closed-loop recommendation from fitted parameters — rendered as Figure 4 and a YAML recommendation artifact.
 
 **Architecture:** Add a `dispersive_readout/optimization/` subpackage that consumes Module 1's public API (`simulate_readout`, `compute_assignment_fidelity`), Module 2's `OperatingPoint` / `ErrorBudget`, and Module 3's `ExtractedParameterPack.to_device_config()`. One surgical edit to Module 1 adds a `chi_scale: float = 1.0` kwarg on `build_hamiltonian` (threaded through `simulate_readout`) so sensitivity analysis can perturb χ orthogonally to `coupling.g` (Q1 orthogonality decision, spec §0 row 1). All finite-difference loops use `noise_model='ideal'` (Q8 contract). Pareto parallelizes via Modal `.map()`, reusing Module 3's pattern.
@@ -47,7 +57,7 @@ The `python -m pytest` form ensures the conda env's pytest is used (`/usr/local/
 | `dispersive_readout/optimization/pareto.py` | `ParetoPoint` Pydantic schema; `PARETO_DEVICE_VARIANTS` spec list (3 entries per spec §3.3 table); `build_variant` via `dataclasses.replace`; `find_pareto_point` (SLSQP + 5×5 warm-start, `noise_model='ideal'`); `compute_pareto_frontier` (Modal-dispatched or serial). |
 | `dispersive_readout/optimization/modal_pareto.py` | `stage_06_module4_image` Modal image spec (debian_slim + numpy + scipy + qutip + pydantic + pyyaml); `app = modal.App(...)`; `@app.function pareto_one_tuple(device, tau_max) -> ParetoPoint`. Public module (no underscore) per Q7/Q8 decision. |
 | `dispersive_readout/optimization/recommend.py` | `RecommendationReport` Pydantic schema; `_format_value_with_sigma` metrology helper; `recommend_from_fitted_parameters`; `generate_narrative`; `export_recommendation_to_yaml`. |
-| `dispersive_readout/optimization/autodiff_addon.py` | **CONTINGENT** — `autodiff_refine_pulse_edges` with 3 abort signals (90-min / 3-hr / 4-hr). Ships only if Day-11 end-of-day clean and Modal smoke passes. |
+| `dispersive_readout/optimization/autodiff_addon.py` | **CUT 2026-04-23** — Day-11 cut to absorb per-level analytic-formula re-derivation cost. See spec §3.5 cut amendment + Task 18 in this plan. Not created. |
 | `dispersive_readout/tests/test_optimization.py` | 28 tests (29 with contingent O7) per spec §6.1: O1–O24, O5 split as O5a/O5b. |
 | `06_Dispersive_Readout/scripts/fig4_optimization.py` | Composite 3-panel Figure 4 (tornado + analytic regime map + Pareto + closed-loop arrow); generates `fig4_optimization.png` and `fig4_data.yaml`. |
 | `06_Dispersive_Readout/figures/fig4_optimization.png` | Publication-quality composite (150 DPI, 1400 px wide). |
@@ -106,7 +116,7 @@ The `python -m pytest` form ensures the conda env's pytest is used (`/usr/local/
               │     ▼
               │   Task 17 (O5a + O5b closed-loop + demo-device pick)
               │
-              ├── Task 18 (autodiff_addon.py CONTINGENT, 3 abort signals)  [Day 13 AM]
+              ├── Task 18 (autodiff_addon.py — CUT 2026-04-23, day absorbed by item-15 re-derivation)
               │
               ├── Task 19 (fig4_optimization.py composite 3-panel)
               │     │
@@ -3782,7 +3792,15 @@ failure modes, independent diagnostics."
 
 ---
 
-## Task 18: `autodiff_addon.py` — CONTINGENT, 3 abort signals (Day-13 morning)
+## Task 18: `autodiff_addon.py` — **CUT 2026-04-23 (Day 11 PM)**
+
+**Cut rationale:** The contingent autodiff add-on was cut to absorb the one-day cost of the per-level analytic-formula re-derivation forced by the Day-11 Task-10 finding (spec §3.5 cut amendment + spec §0.3 item 15). Trade: one speculative gradient-based refinement extension for one core-deliverable correctness item (regime map matches Lindblad simulator to <5%). Per spec §1 row 1 ("a fourth deliverable is cut or pushed to post-submission") this trade is spec-faithful. **No code shipped** — `autodiff_addon.py` was never created. **No tests shipped** — O7 (autodiff-vs-grid) drops from the test catalog.
+
+The remaining task subsections below are preserved as historical record; **do not implement**. Skip directly from Task 17 to Task 19.
+
+---
+
+#### Original Task 18 contents (CUT — do not implement)
 
 **Rationale:** Spec §3.5 contingent add-on + §9 item 7 (abort means revert, not "30 more minutes"). Ships only if Day-11 smoke passed and baseline deliverables have no unresolved bugs at Day-13 09:00. Three abort signals are concrete: 90-min forward pass, 3-hr FD-vs-grad agreement, 4-hr baseline blocker.
 
