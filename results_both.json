@@ -1,0 +1,36 @@
+{
+  "model": "schwinger",
+  "model_name": "Schwinger(N=4, x=4, m/g=0)",
+  "N": 4,
+  "layers": 4,
+  "ansatz": "RY-CX-RZ",
+  "backend_mode": "both",
+  "qi_backend": "Tuna-5",
+  "shots": 2000,
+  "shots_cal": 2048,
+  "aer_noise": {
+    "p1q": 0.001,
+    "p2q": 0.01,
+    "p01": 0.02,
+    "p10": 0.02
+  },
+  "mitigation": {
+    "mem": true,
+    "zne": true,
+    "zne_scales": "1.0,1.5,2.0,2.5,3.0"
+  },
+  "energies": {
+    "E_ed": -7.9549908838285655,
+    "E_ideal": -7.9307977564211445,
+    "E_aer_raw": -6.008500000000001,
+    "E_aer_mit": -7.883391151815305,
+    "E_qi_raw": -4.141500000000001,
+    "E_qi_mem": -4.546080361220648
+  },
+  "stderr_bootstrap": {
+    "E_aer_raw": 0.09695448962809936,
+    "E_aer_mit": 0.09695448962809936,
+    "E_qi_raw": 0.0964959693680071,
+    "E_qi_mem": 0.10392879517285092
+  }
+}

@@ -1,0 +1,6 @@
+# Generated outputs (do not commit)
+figures/*
+!figures/.gitkeep
+
+# Operational backup archive of pre-refresh result snapshots (do not commit)
+archive_duplicates/

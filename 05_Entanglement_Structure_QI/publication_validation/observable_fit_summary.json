@@ -1,0 +1,85 @@
+{
+  "rows": [
+    {
+      "observable": "S_center",
+      "sizes_used": "N=20",
+      "chi_used": "16,24,32,48,64,96,128",
+      "fit_form": "linear in 1/chi (fallback) or truncation metric",
+      "extrapolated_value": 0.5187166752542018,
+      "fit_uncertainty": 3.359928068781257e-13,
+      "verdict": "stable"
+    },
+    {
+      "observable": "S_max",
+      "sizes_used": "N=20",
+      "chi_used": "16,24,32,48,64,96,128",
+      "fit_form": "linear in 1/chi (fallback) or truncation metric",
+      "extrapolated_value": 0.6008030782740712,
+      "fit_uncertainty": 2.886579864025407e-15,
+      "verdict": "stable"
+    },
+    {
+      "observable": "xi_0",
+      "sizes_used": "N=20",
+      "chi_used": "16,24,32,48,64,96,128",
+      "fit_form": "linear in 1/chi (fallback) or truncation metric",
+      "extrapolated_value": 0.21084751245062755,
+      "fit_uncertainty": 5.4602543680112604e-14,
+      "verdict": "stable"
+    },
+    {
+      "observable": "xi_1",
+      "sizes_used": "N=20",
+      "chi_used": "16,24,32,48,64,96,128",
+      "fit_form": "linear in 1/chi (fallback) or truncation metric",
+      "extrapolated_value": 1.6949486465214891,
+      "fit_uncertainty": 1.3592412927552259e-14,
+      "verdict": "stable"
+    },
+    {
+      "observable": "xi_2",
+      "sizes_used": "N=20",
+      "chi_used": "16,24,32,48,64,96,128",
+      "fit_form": "linear in 1/chi (fallback) or truncation metric",
+      "extrapolated_value": 5.317126019699908,
+      "fit_uncertainty": 8.573317886214359e-13,
+      "verdict": "stable"
+    },
+    {
+      "observable": "xi_3",
+      "sizes_used": "N=20",
+      "chi_used": "16,24,32,48,64,96,128",
+      "fit_form": "linear in 1/chi (fallback) or truncation metric",
+      "extrapolated_value": 6.5108049652372175,
+      "fit_uncertainty": 1.6742022568764028e-11,
+      "verdict": "stable"
+    },
+    {
+      "observable": "S_peak",
+      "sizes_used": "12,16,20,24,28,32",
+      "chi_used": "128",
+      "fit_form": "linear in 1/N",
+      "extrapolated_value": 0.6000003431653291,
+      "fit_uncertainty": 0.0002657039007986315,
+      "verdict": "controlled trend"
+    },
+    {
+      "observable": "S_mid",
+      "sizes_used": "12,16,20,24,28,32",
+      "chi_used": "128",
+      "fit_form": "linear in 1/N",
+      "extrapolated_value": 0.49789364358482696,
+      "fit_uncertainty": 0.0031712909454946945,
+      "verdict": "controlled trend"
+    },
+    {
+      "observable": "A",
+      "sizes_used": "12,16,20,24,28,32",
+      "chi_used": "128",
+      "fit_form": "linear in 1/N",
+      "extrapolated_value": 0.10210669958050246,
+      "fit_uncertainty": 0.002914078227382065,
+      "verdict": "controlled trend"
+    }
+  ]
+}

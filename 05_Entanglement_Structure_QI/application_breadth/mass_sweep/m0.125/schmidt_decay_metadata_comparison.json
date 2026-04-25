@@ -1,0 +1,42 @@
+{
+  "script": "schmidt_decay_analysis.py",
+  "timestamp": "2026-03-09T19:53:14.382192+00:00",
+  "git_commit": "b901a98",
+  "output_directory": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125",
+  "tag": "comparison",
+  "state_source": "compute",
+  "state_path": null,
+  "bc": "open",
+  "application_bundle_role": "comparison",
+  "actual_primary_cut": 10,
+  "actual_reference_cut": 10,
+  "entropy_max_cut": 18,
+  "representative_cut_note": "Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.",
+  "outputs": {
+    "figure": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/schmidt_decay_comparison.png",
+    "schwinger_csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/schmidt_decay_schwinger_comparison.csv",
+    "tfim_csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/schmidt_decay_tfim_comparison.csv",
+    "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/schmidt_decay_metadata_comparison.json"
+  },
+  "args": {
+    "N": 20,
+    "m_over_g": 0.125,
+    "x": 4.0,
+    "chi": 64,
+    "bc": "open",
+    "cut": 10,
+    "nvals": 32,
+    "plot": "both",
+    "entropy_max_cut": 18,
+    "representative_cut_note": "Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.",
+    "compare_reference": true,
+    "reference_model": "tfim",
+    "reference_N": 20,
+    "reference_J": 1.0,
+    "reference_g": 1.0,
+    "reference_chi": 64,
+    "force": true,
+    "show": false,
+    "application_bundle_role": "comparison"
+  }
+}

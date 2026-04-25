@@ -1,0 +1,11 @@
+{
+  "bundle": "application_breadth_upgrade",
+  "timestamp": "2026-03-09T19:56:23.872141+00:00",
+  "git_commit": "b901a98",
+  "bundles": {
+    "mass_sweep": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/mass_sweep_metadata.json",
+    "chi_convergence": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/chi_convergence/chi_convergence_metadata.json",
+    "size_check": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/size_check/size_check_metadata.json"
+  },
+  "commands_run_total": 19
+}

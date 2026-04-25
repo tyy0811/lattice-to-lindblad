@@ -1,0 +1,133 @@
+{
+  "bundle": "mass_sweep",
+  "timestamp": "2026-03-09T19:54:00.289810+00:00",
+  "git_commit": "b901a98",
+  "parameter_grid": {
+    "N": 20,
+    "chi": 64,
+    "coupling": 4.0,
+    "mass_values": [
+      0.05,
+      0.08,
+      0.125,
+      0.2
+    ]
+  },
+  "representative_cut": 10,
+  "representative_cut_note": "Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.",
+  "commands_run": [
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.05 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05 --tag comparison --force",
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.05 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --cut 10 --nlevels 16 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --compare-reference --reference-model tfim --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05 --tag comparison --force",
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schmidt_decay_analysis.py --N 20 --mass 0.05 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --cut 10 --nvals 32 --plot both --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --compare-reference --reference-model tfim --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05 --tag comparison --force",
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.08 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.08 --tag comparison --force",
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.125 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125 --tag comparison --force",
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.125 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --cut 10 --nlevels 16 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --compare-reference --reference-model tfim --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125 --tag comparison --force",
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schmidt_decay_analysis.py --N 20 --mass 0.125 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --cut 10 --nvals 32 --plot both --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --compare-reference --reference-model tfim --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125 --tag comparison --force",
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_entropy.py --N 20 --mass 0.2 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2 --tag comparison --force",
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schwinger_entanglement_spectrum.py --N 20 --mass 0.2 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --cut 10 --nlevels 16 --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --compare-reference --reference-model tfim --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2 --tag comparison --force",
+    "/Users/zenith/Desktop/Quantum_Simulation/.venv/bin/python /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/schmidt_decay_analysis.py --N 20 --mass 0.2 --coupling 4.0 --chi 64 --bc open --application-bundle-role comparison --state-source compute --cut 10 --nvals 32 --plot both --entropy-max-cut 18 --representative-cut-note 'Representative interior cut chosen for spectrum/Schmidt comparison at a near-central bond; entropy maximum is tracked separately in the full entropy profile.' --compare-reference --reference-model tfim --outdir /Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2 --tag comparison --force"
+  ],
+  "outputs": {
+    "base_directory": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep",
+    "aggregate_figure": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/mass_sweep_entropy_comparison.png",
+    "summary_markdown": "/Users/zenith/Desktop/Quantum_Simulation/APPLICATION_MASS_SWEEP_SUMMARY.md",
+    "runs": {
+      "m0.05": {
+        "point": {
+          "N": 20,
+          "mass": 0.05,
+          "coupling": 4.0,
+          "chi": 64
+        },
+        "entropy": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/entropy_profile_metadata_comparison.json",
+          "csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/entropy_profile_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/entropy_profile_comparison.png",
+          "max_cut": 18,
+          "max_entropy": 0.6276349929884566
+        },
+        "spectrum": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/entanglement_spectrum_metadata_comparison.json",
+          "csv_schwinger": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/entanglement_spectrum_schwinger_comparison.csv",
+          "csv_tfim": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/entanglement_spectrum_tfim_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/entanglement_spectrum_comparison.png"
+        },
+        "decay": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/schmidt_decay_metadata_comparison.json",
+          "csv_schwinger": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/schmidt_decay_schwinger_comparison.csv",
+          "csv_tfim": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/schmidt_decay_tfim_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.05/schmidt_decay_comparison.png"
+        }
+      },
+      "m0.08": {
+        "point": {
+          "N": 20,
+          "mass": 0.08,
+          "coupling": 4.0,
+          "chi": 64
+        },
+        "entropy": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.08/entropy_profile_metadata_comparison.json",
+          "csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.08/entropy_profile_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.08/entropy_profile_comparison.png",
+          "max_cut": 18,
+          "max_entropy": 0.617055829499676
+        }
+      },
+      "m0.125": {
+        "point": {
+          "N": 20,
+          "mass": 0.125,
+          "coupling": 4.0,
+          "chi": 64
+        },
+        "entropy": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entropy_profile_metadata_comparison.json",
+          "csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entropy_profile_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entropy_profile_comparison.png",
+          "max_cut": 18,
+          "max_entropy": 0.6008030782740716
+        },
+        "spectrum": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entanglement_spectrum_metadata_comparison.json",
+          "csv_schwinger": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entanglement_spectrum_schwinger_comparison.csv",
+          "csv_tfim": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entanglement_spectrum_tfim_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entanglement_spectrum_comparison.png"
+        },
+        "decay": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/schmidt_decay_metadata_comparison.json",
+          "csv_schwinger": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/schmidt_decay_schwinger_comparison.csv",
+          "csv_tfim": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/schmidt_decay_tfim_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/schmidt_decay_comparison.png"
+        }
+      },
+      "m0.2": {
+        "point": {
+          "N": 20,
+          "mass": 0.2,
+          "coupling": 4.0,
+          "chi": 64
+        },
+        "entropy": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/entropy_profile_metadata_comparison.json",
+          "csv": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/entropy_profile_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/entropy_profile_comparison.png",
+          "max_cut": 18,
+          "max_entropy": 0.5731954347897957
+        },
+        "spectrum": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/entanglement_spectrum_metadata_comparison.json",
+          "csv_schwinger": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/entanglement_spectrum_schwinger_comparison.csv",
+          "csv_tfim": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/entanglement_spectrum_tfim_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/entanglement_spectrum_comparison.png"
+        },
+        "decay": {
+          "metadata": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/schmidt_decay_metadata_comparison.json",
+          "csv_schwinger": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/schmidt_decay_schwinger_comparison.csv",
+          "csv_tfim": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/schmidt_decay_tfim_comparison.csv",
+          "png": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.2/schmidt_decay_comparison.png"
+        }
+      }
+    }
+  }
+}

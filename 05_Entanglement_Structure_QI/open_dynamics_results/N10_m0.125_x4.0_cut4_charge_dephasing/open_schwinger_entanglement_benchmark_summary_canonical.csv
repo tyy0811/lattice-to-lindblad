@@ -1,0 +1,11 @@
+metric_group,gamma,time,peak_entropy_vn,final_entropy_vn,mean_entropy_vn,peak_mean_abs_L,final_mean_abs_L,rank_95,rank_99,top_p_eig,top2_cum_weight,entropy_increase_verdict,compressibility_reduction_verdict,field_perturbation_verdict,cut,N,m_over_g,x,initial_state,quench,channel
+entropy_summary,0.0,,0.9420416238615033,0.6902624995856209,0.7621127419904079,,,,,,,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing
+field_summary,0.0,,,,,0.34705678235365184,0.226013976403446,,,,,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing
+entropy_summary,0.02,,1.5627720982267985,1.425648336530878,1.1411407136758327,,,,,,,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing
+field_summary,0.02,,,,,0.34611748673066417,0.23662435912917237,,,,,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing
+snapshot_rank_summary,0.0,0.0,,,,,,2,2,0.8974607012950838,0.9912838383032929,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing
+snapshot_rank_summary,0.0,3.0,,,,,,2,4,0.5872437855027426,0.9698213078214386,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing
+snapshot_rank_summary,0.0,6.0,,,,,,2,4,0.7563683526636127,0.9666313792784005,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing
+snapshot_rank_summary,0.02,0.0,,,,,,2,2,0.8974607012950838,0.9912838383032929,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing
+snapshot_rank_summary,0.02,3.0,,,,,,6,14,0.5344388325723444,0.8914984149049898,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing
+snapshot_rank_summary,0.02,6.0,,,,,,10,17,0.6120561442787251,0.8135574737160071,✓,✓,~,4,10,0.125,4.0,string_gs,e0_drop,charge_dephasing

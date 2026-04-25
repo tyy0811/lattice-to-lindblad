@@ -1,0 +1,10 @@
+observable,sizes_used,chi_used,fit_form,extrapolated_value,fit_uncertainty,verdict
+S_center,N=20,"16,24,32,48,64,96,128",linear in 1/chi (fallback) or truncation metric,0.5187166752542018,3.359928068781257e-13,stable
+S_max,N=20,"16,24,32,48,64,96,128",linear in 1/chi (fallback) or truncation metric,0.6008030782740712,2.886579864025407e-15,stable
+xi_0,N=20,"16,24,32,48,64,96,128",linear in 1/chi (fallback) or truncation metric,0.21084751245062755,5.4602543680112604e-14,stable
+xi_1,N=20,"16,24,32,48,64,96,128",linear in 1/chi (fallback) or truncation metric,1.6949486465214891,1.3592412927552259e-14,stable
+xi_2,N=20,"16,24,32,48,64,96,128",linear in 1/chi (fallback) or truncation metric,5.317126019699908,8.573317886214359e-13,stable
+xi_3,N=20,"16,24,32,48,64,96,128",linear in 1/chi (fallback) or truncation metric,6.5108049652372175,1.6742022568764028e-11,stable
+S_peak,"12,16,20,24,28,32",128,linear in 1/N,0.6000003431653291,0.0002657039007986315,controlled trend
+S_mid,"12,16,20,24,28,32",128,linear in 1/N,0.49789364358482696,0.0031712909454946945,controlled trend
+A,"12,16,20,24,28,32",128,linear in 1/N,0.10210669958050246,0.002914078227382065,controlled trend

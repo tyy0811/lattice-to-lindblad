@@ -1,0 +1,138 @@
+{
+  "script": "schwinger_symmetry_resolved_entanglement.py",
+  "timestamp": "2026-03-10T17:46:17.363866+00:00",
+  "git_commit": "a976041",
+  "output_directory": "/Users/zenith/Desktop/Quantum_Simulation/05_Entanglement_Structure_QI/symmetry_resolved_results/N20_m0.05_x4.0_chi64_cut9",
+  "tag": "canonical",
+  "sector_definition": "bond-charge-like sector label q taken from conserved-block Schmidt decomposition on the bipartition bond",
+  "sector_note": "q indexes the bond sector labels used to group Schmidt values at the chosen cut.",
+  "mass_trend_enabled": false,
+  "masses_run": [
+    0.05
+  ],
+  "bridge_summary_enabled": false,
+  "bridge_summary_csv_path": null,
+  "bridge_summary_figure_path": null,
+  "bridge_quantities": [
+    "total_entropy",
+    "q0_weight",
+    "q_minus2_weight",
+    "top_2_cum_weight",
+    "shannon_sector_entropy",
+    "weighted_intrasector_entropy_sum",
+    "xi_0",
+    "xi_1",
+    "xi_2",
+    "retained_weight_rank_2",
+    "retained_weight_rank_3"
+  ],
+  "comparison_enabled": false,
+  "masses_compared": [
+    0.05
+  ],
+  "decomposition_available": true,
+  "n_sectors": 6,
+  "total_weight": 1.0000000000000004,
+  "top_2_cum_weight": 0.992858703643219,
+  "top_3_cum_weight": 0.9999868004420746,
+  "top_sectors": [
+    {
+      "sector": "q0",
+      "weight": 0.8057047815776794
+    },
+    {
+      "sector": "q-2",
+      "weight": 0.18715392206553957
+    },
+    {
+      "sector": "q2",
+      "weight": 0.0071280967988554805
+    }
+  ],
+  "sector_entropy_reconstruction": {
+    "shannon_sector_entropy": 0.5230873379098797,
+    "weighted_intrasector_entropy_sum": 0.016582159312112186,
+    "reconstructed_total_entropy": 0.5396694972219919,
+    "direct_total_entropy": 0.539669497221992,
+    "reconstruction_error": -1.1102230246251565e-16
+  },
+  "top_2_cum_weight_by_mass": {
+    "0.05": 0.992858703643219
+  },
+  "top_3_cum_weight_by_mass": {
+    "0.05": 0.9999868004420746
+  },
+  "q0_weight_by_mass": {
+    "0.05": 0.8057047815776794
+  },
+  "q_minus2_weight_by_mass": {
+    "0.05": 0.18715392206553957
+  },
+  "shannon_sector_entropy_by_mass": {
+    "0.05": 0.5230873379098797
+  },
+  "weighted_intrasector_entropy_sum_by_mass": {
+    "0.05": 0.016582159312112186
+  },
+  "reconstructed_total_entropy_by_mass": {
+    "0.05": 0.5396694972219919
+  },
+  "reconstruction_error_by_mass": {
+    "0.05": -1.1102230246251565e-16
+  },
+  "dominant_sector_labels_used_in_figure": [
+    "q0",
+    "q-2",
+    "q2",
+    "q-4"
+  ],
+  "per_mass": [
+    {
+      "mass_label": "m/g=0.05",
+      "m_over_g": 0.05,
+      "n_sectors": 6,
+      "total_weight": 1.0000000000000004,
+      "top_2_cum_weight": 0.992858703643219,
+      "top_3_cum_weight": 0.9999868004420746,
+      "top_sectors": [
+        {
+          "sector": "q0",
+          "weight": 0.8057047815776794
+        },
+        {
+          "sector": "q-2",
+          "weight": 0.18715392206553957
+        },
+        {
+          "sector": "q2",
+          "weight": 0.0071280967988554805
+        }
+      ],
+      "sector_entropy_reconstruction": {
+        "shannon_sector_entropy": 0.5230873379098797,
+        "weighted_intrasector_entropy_sum": 0.016582159312112186,
+        "reconstructed_total_entropy": 0.5396694972219919,
+        "direct_total_entropy": 0.539669497221992,
+        "reconstruction_error": -1.1102230246251565e-16
+      }
+    }
+  ],
+  "outputs": {
+    "csv": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_m0.05_x4.0_chi64_cut9/symmetry_resolved_entanglement_canonical.csv",
+    "figure": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_m0.05_x4.0_chi64_cut9/symmetry_resolved_entanglement_canonical.png",
+    "metadata": "05_Entanglement_Structure_QI/symmetry_resolved_results/N20_m0.05_x4.0_chi64_cut9/symmetry_resolved_metadata_canonical.json"
+  },
+  "args": {
+    "N": 20,
+    "m_over_g": 0.05,
+    "compare_mass": null,
+    "mass_list": null,
+    "x": 4.0,
+    "chi": 64,
+    "cut": 9,
+    "max_sectors": 12,
+    "sort_by": "weight",
+    "force": true,
+    "show": false
+  }
+}
