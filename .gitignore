@@ -35,6 +35,11 @@ docs/superpowers/
 # Local-only career-framing assets (not public)
 Reframing*Career*.pdf
 
+# Local-only Stage 06 plans and specs (not public)
+06_Dispersive_Readout/PLAN.md
+06_Dispersive_Readout/MODULE_*_PLAN.md
+06_Dispersive_Readout/MODULE_*_SPEC.md
+
 # LaTeX build artifacts
 texput.log
 *.aux
