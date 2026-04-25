@@ -55,10 +55,11 @@ def test_analytic_calibration_hits_target_fidelity_within_3_sigma():
 
 def test_B4_negative_contribution_raises():
     """ChannelContribution with delta_F < -0.005 must raise ValueError.
-    Small negatives (shot-noise floor) are floored to zero."""
+    Small shot-noise-range negatives are preserved as signed values
+    (amendment 9b: no one-sided clipping)."""
     from dispersive_readout.analysis import ChannelContribution
 
-    # Below -0.005 floor: must raise
+    # Below -0.005 bug gate: must raise
     with pytest.raises(ValueError, match="negative"):
         ChannelContribution(
             name="T1_intrinsic",
@@ -68,15 +69,15 @@ def test_B4_negative_contribution_raises():
             description="test",
         )
 
-    # Within shot-noise floor: accepted, floored to 0
+    # Within shot-noise range: accepted AND preserved (no clip to 0)
     c = ChannelContribution(
         name="T1_intrinsic",
         group="active_loss",
-        delta_F=-0.003,  # > -0.005 floor
+        delta_F=-0.003,  # > -0.005 gate, still signed
         delta_F_uncertainty=1e-4,
         description="test",
     )
-    assert c.delta_F == 0.0
+    assert c.delta_F == -0.003
 
 
 def test_analytic_purcell_rate_positive_at_reference():
@@ -94,11 +95,12 @@ def test_analytic_purcell_rate_positive_at_reference():
 
 
 def test_T1_intrinsic_contribution_nonzero_at_reference():
-    """Turning off γ_1 at REFERENCE returns a non-negative ΔF with a
-    well-defined uncertainty. The per-channel `> 0` assertion the plan
-    prescribes is flaky at n_shots=10_000 because individual-channel
-    ΔFs are near σ_shot ≈ 1e-3 with independent draws; the aggregate
-    additivity check (B1) is the load-bearing physics test."""
+    """Turning off γ_1 at REFERENCE returns a signed ΔF (no longer clipped,
+    amendment 9b) within the shot-noise-valid range, with a well-defined
+    uncertainty. Per-channel ΔFs at REFERENCE with n_shots=10_000 sit
+    near σ_shot ≈ 1e-3 so even the "always positive T1" can land on
+    either side of zero; the non-triviality is tested via the full
+    budget's B2 / B3 cross-checks, not per-channel sign."""
     from dispersive_readout.analysis import (
         get_reference_operating_point,
         compute_channel_contribution,
@@ -109,17 +111,16 @@ def test_T1_intrinsic_contribution_nonzero_at_reference():
 
     assert c.name == "T1_intrinsic"
     assert c.group == "active_loss"
-    assert c.delta_F >= 0.0
+    # Validator lets signed values through down to -0.005. A physical
+    # bug (wrong turn-off direction) would trigger the raise.
+    assert c.delta_F > -0.005
     assert c.delta_F_uncertainty > 0.0
 
 
 def test_pure_dephasing_contribution_nonzero_at_reference():
     """Pure dephasing in the dispersive frame barely affects |0>/|1>
-    readout populations (dispersive coupling is diagonal, so dephasing
-    only randomizes already-irrelevant qubit coherences). At REFERENCE's
-    γ_φ≈8.3 kHz × 500 ns ≈ 4×σ_shot, the measured ΔF is near the shot-
-    noise floor — validator floors small negatives to 0. Plan §7b
-    expected `> 0` is too strict for this channel at REFERENCE."""
+    readout populations. Post-amendment-9b, ΔF is signed; the only
+    bound on a physical implementation is ΔF > -0.005."""
     from dispersive_readout.analysis import (
         get_reference_operating_point,
         compute_channel_contribution,
@@ -128,14 +129,13 @@ def test_pure_dephasing_contribution_nonzero_at_reference():
     c = compute_channel_contribution(op, channel="pure_dephasing")
     assert c.name == "pure_dephasing"
     assert c.group == "active_loss"
-    assert c.delta_F >= 0.0
+    assert c.delta_F > -0.005
 
 
 def test_thermal_contribution_nonzero_at_reference():
     """Thermal turn-off at n_th=0.01 is below shot-noise floor (σ≈1e-3 vs
-    thermal effect ~1.7e-4 per 500 ns). The validator correctly floors small
-    negatives to 0; assertion is `>= 0` not `> 0` accordingly — plan §7c
-    expected `> 0` is too strict for this channel at REFERENCE's n_th."""
+    thermal effect ~1.7e-4 per 500 ns). Post-amendment-9b, signed ΔF is
+    preserved; only the hard bug gate at -0.005 applies."""
     from dispersive_readout.analysis import (
         get_reference_operating_point,
         compute_channel_contribution,
@@ -144,14 +144,12 @@ def test_thermal_contribution_nonzero_at_reference():
     c = compute_channel_contribution(op, channel="thermal")
     assert c.name == "thermal"
     assert c.group == "active_loss"
-    assert c.delta_F >= 0.0
+    assert c.delta_F > -0.005
 
 
 def test_purcell_contribution_nonzero_at_reference():
-    """Purcell at REFERENCE has γ_P≈10 kHz × 500 ns ≈ 5×σ_shot; ΔF is
-    occasionally pushed to the validator floor by independent shot draws
-    between baseline and turn-off simulations. Plan §7d assertion `> 0`
-    is too strict at n_shots=10_000. B3 (Task 9) provides the tight
+    """Purcell at REFERENCE has γ_P≈10 kHz × 500 ns ≈ 5×σ_shot; signed
+    ΔF can cross zero under shot noise. B3 (Task 9) provides the tight
     γ_P cross-check at this regime."""
     from dispersive_readout.analysis import (
         get_reference_operating_point,
@@ -161,7 +159,7 @@ def test_purcell_contribution_nonzero_at_reference():
     c = compute_channel_contribution(op, channel="purcell")
     assert c.name == "purcell"
     assert c.group == "active_loss"
-    assert c.delta_F >= 0.0
+    assert c.delta_F > -0.005
 
 
 def test_drive_amplitude_sensitivity_matches_first_order_taylor_within_20_percent():
