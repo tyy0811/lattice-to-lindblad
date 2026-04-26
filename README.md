@@ -1,6 +1,14 @@
+> **Featured work — Stage 06: Dispersive readout for transmon qubits.** A 4-module pipeline anchored to Marxer et al. (arXiv:2508.16437): a Lindblad simulator validated against analytic limits, error-budget decomposition into 9 named coherent/incoherent channels, synthetic-trace characterization with parameter recovery, and a closed-loop optimization layer (sensitivity tornado, regime map, Pareto frontier). Reference F_assign at REFERENCE drive: **0.9938**. 50-device harness F-spread: **0.0024** (decoherence-driven; drive-amplitude argmax invariant). 4 figures shipped; 117-test pytest suite under `dispersive_readout/tests/`.
+>
+> Implementation: `dispersive_readout/`. Drivers: `06_Dispersive_Readout/`. One-page summary: `06_Dispersive_Readout/SUMMARY.md`.
+>
+> Earlier stages (01–05) develop the open-quantum-system, tensor-network, and noisy-hardware infrastructure on a lattice gauge theory testbed.
+
+---
+
 # Lattice-to-Lindblad: Dispersive Readout for Transmon Qubits, Lattice Gauge Theory, and Open Quantum Systems
 
-A Python implementation, validation, and optimization suite for **dispersive readout of superconducting transmon qubits** (Stage 06), developed alongside open-quantum-system and tensor-network infrastructure from earlier stages on a **lattice gauge theory** testbed (Schwinger model, 1+1D QED). Earlier stages cover baseline OQS validation, sector-projected VQE on noisy hardware, real-time gauge dynamics, continuum-extrapolated mass-gap analysis, and entanglement-structure diagnostics.
+A Python implementation, validation, and optimization suite for **dispersive readout of superconducting transmon qubits** (Stage 06, the headline deliverable), supported by open-quantum-system, tensor-network, and noisy-hardware infrastructure developed in earlier stages on a **lattice gauge theory** testbed (Schwinger model, 1+1D QED). The repository follows a progressive-validation arc: lattice gauge theory testbeds (Stages 01–05) build the OQS / Lindblad / hardware-mitigation infrastructure that Stage 06 deploys to a superconducting-qubit setting.
 
 ## Repository overview
 
@@ -17,20 +25,12 @@ A Python implementation, validation, and optimization suite for **dispersive rea
 - `docs/Theoretical_Framework.pdf` — modeling assumptions, derivations, conventions
 - `docs/research_highlight.pdf` — high-level summary of goals, methods, outcomes
 
----
+## Stage 06 layout (most relevant)
 
-## Featured hardware-facing extension — Stage 06 Dispersive Readout
-
-Stage 06 is the superconducting-qubit readout extension of this repository. It models dispersive readout of a transmon coupled to a readout resonator, validates the simulator against analytic limits, decomposes assignment infidelity into named coherent and incoherent channels, fits synthetic characterization traces, and uses the recovered parameters in a readout-optimization layer.
-
-The stage is organized into four modules:
-
-1. validated transmon–resonator Lindblad simulation,
-2. readout error-budget decomposition,
-3. synthetic Rabi/Ramsey/T₁/T₂ characterization and parameter recovery,
-4. sensitivity analysis, regime-map diagnostics, and speed–fidelity Pareto optimization.
-
-See `06_Dispersive_Readout/SUMMARY.md` for a one-page overview, `06_Dispersive_Readout/README.md` for design notes, and `dispersive_readout/` for the importable package.
+- **Implementation:** `dispersive_readout/` — `physics/`, `analysis/`, `characterization/`, `optimization/`, `tests/`
+- **Driver scripts and figures:** `06_Dispersive_Readout/scripts/`, `06_Dispersive_Readout/figures/`
+- **Design notes:** `06_Dispersive_Readout/README.md` (full), `06_Dispersive_Readout/SUMMARY.md` (one-page)
+- **Diagnostic artifacts:** `docs/module4_diagnostics/` — diagnostic markdown + reproducible Python scripts for selected validation findings
 
 ---
 
@@ -49,6 +49,8 @@ Singlet survival P_s(t) for the minimal 1⊕1 Lindblad model at T = 200, 300, 45
 - **Code:** `01_Validation-Baseline/code/` — `u1_pure_gauge_mc.py`, `schwinger-hamiltonian-check.py`, `OQS_2D_Hilbert_space.py`, `OQS_9D_Hilbert_space.py`
 - **Report:** `01_Validation-Baseline/results/Validation_Baseline_Results_and_Validation.pdf`
 
+*Shared infrastructure:* the Lindblad-solver validation discipline established here (closed-form analytic agreement at machine precision) is reused across stages 04 and 06.
+
 ### 02 — Static Benchmarks
 
 ED + sector-projected VQE on the Schwinger Hamiltonian (N=4, N=8 with Trotter de-risking), and the `vqe_modular/` package for noisy-simulator (Aer) and real-hardware (Quantum Inspire, Tuna-5) execution with zero-noise extrapolation and measurement-error mitigation. ZNE + MEM reduces Aer noisy error from 24.5% to 0.9% on N=4 Schwinger; on Tuna-5 hardware, gate errors dominate and require richer mitigation than MEM alone.
@@ -59,6 +61,8 @@ Energy estimates for the N=4 Schwinger model with bootstrap error bars (top) and
 
 - **Code:** `02_Static Benchmarks/code/`, `vqe_modular/vqe_runner.py`
 - **Report:** `02_Static Benchmarks/results/Static_Benchmarks_Results_and_Validation.pdf`
+
+*Shared infrastructure:* hardware-facing quantum experience on Quantum Inspire (Tuna-5) and Aer noisy simulator; the ZNE + MEM error-mitigation methodology applied here is reused for error-channel decomposition in Stage 06.
 
 ### 03 — Non-Equilibrium Gauge Dynamics
 
@@ -81,6 +85,8 @@ Left: DMRG-only large-N finite-size convergence at N = 30, 40, 60, 80 across eig
 
 - **Code:** `04_Continuum Physics Results/`
 - **Report:** `04_Continuum Physics Results/Continuum_Physics_Results_and_Validation.md`
+
+*Shared infrastructure:* the singlet–octet (1⊕1, 1⊕8) Lindblad open-system framework (`utils_QOS.py`) is reused in Stage 06's transmon–resonator dispersive simulator.
 
 ### 05 — Entanglement Structure / QI Packaging
 
@@ -127,11 +133,22 @@ Synthetic traces, fitted parameters, and recovery coverage across the four proto
 
 ### Module 4 — Sensitivity, regime map, and Pareto optimization
 
-Three-panel composite: (a) local sensitivity of assignment fidelity to readout-relevant parameters, (b) regime-map diagnostics over \(\chi/\kappa\) and \(\gamma_1\tau_{\rm readout}\) with Purcell, χ-phase-accumulation, and resonator-response boundaries, and (c) speed–fidelity Pareto frontiers with a closed-loop recommendation marker.
+Three-panel composite: (a) local sensitivity of assignment fidelity to readout-relevant parameters, (b) regime-map diagnostics over χ/κ and γ_1·τ_readout with Purcell, χ-phase-accumulation, and resonator-response boundaries, and (c) speed–fidelity Pareto frontiers with a closed-loop recommendation marker.
 
 ![Stage 06 — Figure 4: sensitivity, regime map, Pareto](06_Dispersive_Readout/figures/fig4_optimization.png)
 
-The Pareto argmax is shared across the fitted-device harness; per-device argmax requires resonator spectroscopy and AC-Stark calibration in the characterization layer (deferred extension; see Stage 06 README for details).
+Across a 50-device characterization harness (T₁ ∈ [5.4, 91.9] μs at SEED=42), the optimal readout drive is invariant under decoherence variation (σ(ε₀_opt) = 0 to numerical precision; F_opt varies by 0.0024 due to decoherence alone). This shared-argmax result reflects that the dispersive-saturation peak is controlled by (κ, χ, ω_r) — REFERENCE-inherited in the closed-loop pipeline — rather than by decoherence parameters; it characterizes the parameter regime where the REFERENCE device (Marxer Q1, arXiv:2508.16437) sits. Per-device argmax exploration would require extending Module 3 with resonator spectroscopy and AC-Stark calibration; this is post-submission roadmap work.
+
+### Methodology — validation-first development
+
+Stage 06 development surfaced and resolved a series of substantive physics findings during execution. Selected examples — each with a reproducible diagnostic in `docs/module4_diagnostics/`:
+
+- **Per-level transmon dispersive shifts.** The textbook two-level antisymmetric formula (±χ/2 per state) misses the per-level structure of the transmon ladder. Switching to the full Schrieffer–Wolff per-level χ_j tuple (`χ₀ = +43.6 Mrad/s, χ₁ = +29.7 Mrad/s` at REFERENCE; ratio 1.47) brings the closed-form regime-map vs. Lindblad simulator gap from 22–27% disagreement down to <5% (max 3.48% across three Lindblad-validation points). [`per_level_analytic_derivation.md`]
+- **Multi-modal F(ε₀) Pareto landscape.** The F(ε₀) surface at REFERENCE has two distinct local maxima separated by a sharp valley (peak #1 at ε ≈ 7.8·10⁷ Hz, peak #2 at ε ≈ 1.5·10⁸ Hz; valley at ε ≈ 1.05·10⁸ Hz). The originally-shipped 5-point linear warm-start grid was structurally unable to sample peak #2's basin. Resolved with a 10-point log-spaced grid + K=5 multi-start SLSQP + per-start sub-grid refinement; F_opt at REFERENCE moves from 0.961 to **0.9938**. [`warm_start_grid_bug.md`]
+- **τ-window FD-dispatcher consistency.** External adversarial review (Codex) caught a high-severity sensitivity-FD-dispatcher bug: τ probes rescaled drive duration without co-perturbing integration window, biasing |S_τ| upward by ~20% (from +0.030 to +0.037, crossing the tornado-rendering threshold). Fixed; closed with a dispatcher-self-consistency regression test that interrogates all 7 sensitivity probes for parameter-configuration alignment. [`tau_window_correction.md`]
+- **Sensitivity ceiling characterization.** The empirical |S_θ| ceiling under the Lindblad simulator caps at ~0.4 across the realistic parameter space at REFERENCE. Verified as genuine Lindblad physics — not a solver, truncation, or Purcell-isolation artifact — via three independent reproducibility checks (tolerance independence, truncation independence, pure-γ_1 verification at coupling.g = 0). Led to amending `SENSITIVITY_WARNING_THRESHOLD` from the spec-locked 2.0 (unreachable) to 0.3 (aligned with the spec's "dominance" sensitivity level). [`sensitivity_ceiling_characterization.md`]
+
+Each finding has a reproducible diagnostic script and a markdown writeup in `docs/module4_diagnostics/`. The validation-first methodology surfaced these issues before they reached committed figures or downstream analysis.
 
 ### How to run
 
@@ -152,7 +169,58 @@ python 06_Dispersive_Readout/scripts/fig4_optimization.py          # Figure 4
 
 ---
 
-## Repository structure
+## Getting started
+
+Recommended: **Python 3.10+**
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+TeNPy is included in `requirements.txt` as `physics-tenpy`; QuTiP is required for the Stage 06 Lindblad simulator.
+
+> Some folder names contain spaces (e.g. `02_Static Benchmarks/`); wrap paths in quotes where needed.
+
+---
+
+## Key concepts
+
+- **Progressive validation chain.** Each stage reduces ambiguity in subsequent claims: baseline correctness (Stage 01) → static benchmarks (Stage 02) → real-time dynamics (Stage 03) → continuum extrapolation (Stage 04) → entanglement-structure diagnostics (Stage 05) → superconducting-qubit dispersive readout (Stage 06). Stage 06 inherits validated Lindblad machinery from Stages 01 and 04, and noisy-hardware experience from Stage 02.
+- **Validation-first methodology.** Across the repository, claims are validated against analytic limits before optimization or interpretation. Stage 06 logs four named findings caught by this discipline (see Stage 06 §Methodology); Stage 04 mass-gap extrapolation includes ED ↔ DMRG cross-validation; Stage 02 includes ZNE + MEM cross-checks against ED ground truth.
+- **Shared OQS infrastructure.** `utils_QOS.py` centralizes Lindblad routines reused across baseline (01), continuum (04), and dispersive readout (06) — the same operator construction, time-evolution, and diagnostic routines applied to qualitatively different physics.
+
+---
+
+## References
+
+**Superconducting-qubit dispersive readout (Stage 06):**
+- Marxer et al., arXiv:2508.16437 (2025) — primary reference device.
+- Bengtsson et al., *Phys. Rev. Lett.* **132**, 100603 (2024) — secondary reference; integrated dispersive-readout SNR with √(η·κ·τ) factor explicit.
+- Sank, arXiv:2402.00413 (2024) — companion paper to Bengtsson; source for κ-distribution measurements used in the Module 4 regime-map overlay (cited in `dispersive_readout/characterization/protocols.py`).
+- Abdurakhimov et al., arXiv:2408.12433 (2024) — 20-qubit benchmarks; source for the "Garnet-like" device parameters in the Module 4 regime-map overlay (cited in `dispersive_readout/optimization/regime_map.py`).
+- Blais et al., *Rev. Mod. Phys.* **93**, 025005 (2021) — circuit QED reference; cross-check for the dispersive-SNR formula (cited in `dispersive_readout/analysis/purcell_isolation.py`).
+- Koch et al., *Phys. Rev. A* **76**, 042319 (2007) — transmon dispersion; used in Module 3's E_J back-solve from fitted ω_q (`dispersive_readout/characterization/fitting.py`) and Module 4's per-level χ structure.
+
+**Open quantum systems / pNRQCD (quarkonium in medium):**
+- Brambilla, Escobedo, Soto, Vairo, *Phys. Rev. D* **96**, 034021 (2017); arXiv:1612.07248.
+- Brambilla, Magorsch, Strickland, Vairo, Vander Griend, *Phys. Rev. D* **109**, 114016 (2024); arXiv:2403.15545.
+- Brambilla, Magorsch, Vairo, arXiv:2508.11743 (2025).
+
+**Quantum information / tensor-structure context:**
+- Acuaviva, Makam, Nieuwboer, Pérez-García, Sittner, Walter, Witteveen, *The minimal canonical form of a tensor network*, 2022; arXiv:2209.14358.
+- van den Berg, Christandl, Lysikov, Nieuwboer, Walter, Zuiddam, *Computing moment polytopes of tensors, with applications in algebraic complexity and quantum information*, STOC 2025. doi:10.1145/3717823.3718221.
+
+**Gauge / tensor-network / entanglement context:**
+- Schwinger-model results in this repository use gauge-eliminated Hamiltonian workflows, ED cross-checks, and TeNPy-based tensor-network extensions.
+- The entanglement-structure stage (Stage 05) is intended as a quantitative bridge between lattice gauge dynamics, tensor-network compressibility, and weakly open many-body evolution.
+- For broader mathematical context on tensor-network canonical structure, see the Acuaviva et al. and van den Berg et al. references above.
+
+---
+
+<details>
+<summary><strong>Repository structure</strong> (full directory tree)</summary>
 
 ```text
 utils_QOS.py                                  # Shared Lindblad/OQS helpers used by OQS scripts
@@ -161,6 +229,7 @@ docs/
   research_highlight.pdf
   results_both.json                           # Aer + QI benchmark results (ZNE + MEM)
   results_qi.json                             # QI-only benchmark results
+  module4_diagnostics/                        # Stage 06 Module 4 diagnostic markdown + scripts
 
 06_Dispersive_Readout/                        # Stage 06: stage scripts, figures, summary
   README.md                                   # Full design notes (validations, design decisions, silent-failure findings)
@@ -211,58 +280,4 @@ vqe_modular/                                  # Modular VQE (Aer + Quantum Inspi
 figure/                                       # Cross-stage figures (e.g. dmrg_massgap_plot.png)
 ```
 
----
-
-## Getting started
-
-Recommended: **Python 3.10+**
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-TeNPy is included in `requirements.txt` as `physics-tenpy`.
-
-> Some folder names contain spaces (e.g. `02_Static Benchmarks/`); wrap paths in quotes where needed.
-
----
-
-## Key concepts
-
-**Progressive validation chain.** Each earlier stage reduces ambiguity in later physics claims: baseline correctness → static benchmarks → real-time dynamics → continuum extrapolation → entanglement-structure diagnostics. Stage 06 builds on the validated OQS solver and Lindblad machinery developed in stages 01 and 04.
-
-**Symmetry / constraint preservation.** Where applicable, workflows respect physical structure: Gauss-law / gauge structure via gauge elimination; symmetry / sector projection in VQE; constrained-sector decomposition in symmetry-resolved entanglement analysis.
-
-**Tensor-network perspective.** Stage 05 makes the tensor-network story explicit: entropy profiles across cuts, entanglement spectra, Schmidt decay, and reduced-spectrum broadening under weak openness — letting one discuss *effective compressibility*, not just raw observable values.
-
-**Tensor-network extension (DMRG).** Stage 04 mass-gap analysis uses ED for N ≤ 20 validation and TeNPy DMRG for N up to 80 with `Sz` conservation and χ = 100; the long-range electric term is implemented in a compact running-sum MPO.
-
-**Open-system modeling (Lindblad).** Stages 01 and 04 use the singlet–octet (1⊕1, 1⊕8) open-system framework; Stage 06 reuses the same Lindblad machinery for a transmon ↔ resonator system in the dispersive frame.
-
-**Superconducting readout modeling.** Stage 06 applies the same validation-first OQS approach to dispersive transmon readout: analytic-limit checks before optimization, explicit coherent/incoherent error attribution, synthetic characterization, and Pareto analysis of readout controls.
-
-**Shared OQS utilities.** `utils_QOS.py` centralizes Lindblad routines so baseline, continuum, and Stage 06 scripts share the same operator, propagation, and diagnostic logic.
-
----
-
-## References
-
-**Superconducting-qubit dispersive readout (Stage 06):**
-- Marxer et al., arXiv:2508.16437 (2025) — primary reference device.
-- Bengtsson et al., *Phys. Rev. Lett.* **132**, 100603 (2024) — secondary reference.
-
-**Open quantum systems / pNRQCD (quarkonium in medium):**
-- Brambilla, Escobedo, Soto, Vairo, *Phys. Rev. D* **96**, 034021 (2017); arXiv:1612.07248.
-- Brambilla, Magorsch, Strickland, Vairo, Vander Griend, *Phys. Rev. D* **109**, 114016 (2024); arXiv:2403.15545.
-- Brambilla, Magorsch, Vairo, arXiv:2508.11743 (2025).
-
-**Quantum information / tensor-structure context:**
-- Acuaviva, Makam, Nieuwboer, Pérez-García, Sittner, Walter, Witteveen, *The minimal canonical form of a tensor network*, 2022; arXiv:2209.14358.
-- van den Berg, Christandl, Lysikov, Nieuwboer, Walter, Zuiddam, *Computing moment polytopes of tensors, with applications in algebraic complexity and quantum information*, STOC 2025. doi:10.1145/3717823.3718221.
-
-**Gauge / tensor-network / entanglement context:**
-- Schwinger-model results in this repository use gauge-eliminated Hamiltonian workflows, ED cross-checks, and TeNPy-based tensor-network extensions.
-- The entanglement-structure stage (Stage 05) is intended as a quantitative bridge between lattice gauge dynamics, tensor-network compressibility, and weakly open many-body evolution.
-- For broader mathematical context on tensor-network canonical structure, see the Acuaviva et al. and van den Berg et al. references above.
+</details>
