@@ -51,9 +51,7 @@ At $N = 80$, the minimum mass gap is $M_{\mathrm{gap}}/g = 0.638$ at $x = 24$, a
 
 ![](<../figure/dmrg_massgap_plot.png>)
 
-**Left panel (finite-size convergence):** $M_{\mathrm{gap}}/g$ vs $1/N$ for each lattice spacing across the full DMRG grid ($N = 8$ to $80$, 8 values of $x$). All curves slope downward toward $1/\sqrt{\pi}$ as $1/N \to 0$, with the DMRG-only points ($N = 30$–$80$) visibly closer to the exact value than the ED ceiling at $N = 20$.
-
-**Right panel (continuum extrapolation):** $M_{\mathrm{gap}}/g$ vs $(ag)^2 = 1/x$ for $N = 30, 40, 60, 80$ (DMRG-only). The $N = 80$ curve is nearly flat and sits close to the exact value across most of the $(ag)^2$ range, while smaller $N$ curves show progressively larger finite-size curvature. The upturn at small $(ag)^2$ for $N = 30$ reflects the volume shrinkage discussed above.
+**Left:** DMRG-only large-$N$ finite-size convergence of $M_{\mathrm{gap}}/g$ for $N = 30, 40, 60, 80$ across eight lattice spacings. **Right:** continuum extrapolation in $(ag)^2 = 1/x$ using the large-$N$ DMRG sequence. Small-$N$ ED/DMRG agreement is documented separately in the validation table.
 
 ---
 
