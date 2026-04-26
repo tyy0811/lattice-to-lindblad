@@ -1,21 +1,36 @@
 # Lattice-to-Lindblad: Dispersive Readout for Transmon Qubits, Lattice Gauge Theory, and Open Quantum Systems
 
-A Python implementation, validation, and optimization suite for **dispersive readout of superconducting transmon qubits** (Stage 06), built on open-quantum-system and tensor-network infrastructure developed across earlier stages on a **lattice gauge theory** testbed (Schwinger model, 1+1D QED). Earlier stages cover baseline OQS validation, sector-projected VQE on noisy hardware, real-time gauge dynamics, continuum-extrapolated mass-gap analysis, and entanglement-structure diagnostics.
+A Python implementation, validation, and optimization suite for **dispersive readout of superconducting transmon qubits** (Stage 06), developed alongside open-quantum-system and tensor-network infrastructure from earlier stages on a **lattice gauge theory** testbed (Schwinger model, 1+1D QED). Earlier stages cover baseline OQS validation, sector-projected VQE on noisy hardware, real-time gauge dynamics, continuum-extrapolated mass-gap analysis, and entanglement-structure diagnostics.
 
 ## Repository overview
 
 | Stage | Domain | Status |
 |---|---|---|
 | 01 — Validation Baseline | Gauge + OQS solver baselines | Closed-form analytic agreement at machine precision |
-| 02 — Static Benchmarks | ED + VQE + noisy hardware (Aer + Quantum Inspire) | ZNE+MEM recovers 99% of exact ED energy on N=4 Schwinger |
+| 02 — Static Benchmarks | ED + VQE + noisy hardware (Aer + Quantum Inspire) | ZNE+MEM reduces Aer noisy energy error from 24.5% to 0.9% |
 | 03 — Non-Equilibrium Dynamics | Real-time gauge dynamics, string breaking | Confined vs string-breaking regimes cleanly distinguished |
-| 04 — Continuum Physics | DMRG-extended mass gap, 1+8 quarkonium suppression | M_gap/g consistent with exact 1/√π at 0.7σ |
+| 04 — Continuum Physics | DMRG-extended mass gap, 1+8 quarkonium suppression | DMRG-extended mass-gap extrapolation with bootstrap uncertainty |
 | 05 — Entanglement Structure | Tensor-network bipartite entropy + symmetry-resolved sectors | Top-2 charge sectors carry > 99.3% of entanglement weight |
 | **06 — Dispersive Readout** | Superconducting-qubit modeling | Validated 4-module pipeline with 4 shipped figures |
 
 **Project documents:**
 - `docs/Theoretical_Framework.pdf` — modeling assumptions, derivations, conventions
 - `docs/research_highlight.pdf` — high-level summary of goals, methods, outcomes
+
+---
+
+## Featured hardware-facing extension — Stage 06 Dispersive Readout
+
+Stage 06 is the superconducting-qubit readout extension of this repository. It models dispersive readout of a transmon coupled to a readout resonator, validates the simulator against analytic limits, decomposes assignment infidelity into named coherent and incoherent channels, fits synthetic characterization traces, and uses the recovered parameters in a readout-optimization layer.
+
+The stage is organized into four modules:
+
+1. validated transmon–resonator Lindblad simulation,
+2. readout error-budget decomposition,
+3. synthetic Rabi/Ramsey/T₁/T₂ characterization and parameter recovery,
+4. sensitivity analysis, regime-map diagnostics, and speed–fidelity Pareto optimization.
+
+See `06_Dispersive_Readout/SUMMARY.md` for a one-page overview, `06_Dispersive_Readout/README.md` for design notes, and `dispersive_readout/` for the importable package.
 
 ---
 
@@ -82,11 +97,13 @@ Bipartite von Neumann entropy profiles across all MPS cuts for four masses (m/g 
 
 ## 06 — Dispersive Readout for Superconducting Qubits
 
-A four-module pipeline that models, validates, decomposes, characterizes, and optimizes dispersive readout of a transmon qubit coupled to a readout resonator. Built on a QuTiP Lindblad simulator in the dispersive (rotated) frame, validated against analytic Jaynes–Cummings limits and full-resonator dressed-state overlaps.
+Stage 06 is the main superconducting-hardware-facing artifact in this repository. It models dispersive readout of a transmon coupled to a readout resonator, validates the simulator against analytic limits, decomposes assignment infidelity into named error channels, fits synthetic characterization traces, and uses the recovered parameters in a readout-optimization layer.
+
+The implementation lives in `dispersive_readout/`; runnable scripts and generated figures live in `06_Dispersive_Readout/`.
 
 ### Module 1 — Validated readout model
 
-Open-system simulation of a transmon ↔ resonator system in the 2nd-order Schrieffer–Wolff dispersive frame. Lindblad channels for transmon T₁/T_φ, resonator κ, and Purcell decay. The validation suite covers anharmonicity (next-order formula α ≈ −E_C(1 + √(E_C/E_J))), charge dispersion, χ vs analytic, T₁ recovery, T₂/γ_φ recovery, Purcell rate against full-JC dressed-state overlap (0.17% agreement, consistent with O((g/Δ)⁴) residual), and truncation convergence.
+Open-system simulation of a transmon–resonator system in the second-order Schrieffer–Wolff dispersive frame, with Lindblad channels for transmon relaxation/dephasing, resonator decay, and Purcell decay. The validation suite checks anharmonicity, charge dispersion, dispersive shift, T₁/T₂ recovery, Purcell decay, and Hilbert-space truncation convergence.
 
 ![Stage 06 — Figure 1: validated readout model](06_Dispersive_Readout/figures/dispersive_readout_simulation.png)
 
@@ -110,7 +127,7 @@ Synthetic traces, fitted parameters, and recovery coverage across the four proto
 
 ### Module 4 — Sensitivity, regime map, and Pareto optimization
 
-Three-panel composite: (a) tornado-plot sensitivity of the assignment fidelity to each readout-relevant device parameter, (b) regime classification across the (κ, |χ|) plane separating dispersive / non-linear regions, and (c) Pareto front trading integration time against assignment fidelity, with a closed-loop recommendation marker on the front.
+Three-panel composite: (a) local sensitivity of assignment fidelity to readout-relevant parameters, (b) regime-map diagnostics over \(\chi/\kappa\) and \(\gamma_1\tau_{\rm readout}\) with Purcell, χ-phase-accumulation, and resonator-response boundaries, and (c) speed–fidelity Pareto frontiers with a closed-loop recommendation marker.
 
 ![Stage 06 — Figure 4: sensitivity, regime map, Pareto](06_Dispersive_Readout/figures/fig4_optimization.png)
 
@@ -223,6 +240,8 @@ TeNPy is included in `requirements.txt` as `physics-tenpy`.
 **Tensor-network extension (DMRG).** Stage 04 mass-gap analysis uses ED for N ≤ 20 validation and TeNPy DMRG for N up to 80 with `Sz` conservation and χ = 100; the long-range electric term is implemented in a compact running-sum MPO.
 
 **Open-system modeling (Lindblad).** Stages 01 and 04 use the singlet–octet (1⊕1, 1⊕8) open-system framework; Stage 06 reuses the same Lindblad machinery for a transmon ↔ resonator system in the dispersive frame.
+
+**Superconducting readout modeling.** Stage 06 applies the same validation-first OQS approach to dispersive transmon readout: analytic-limit checks before optimization, explicit coherent/incoherent error attribution, synthetic characterization, and Pareto analysis of readout controls.
 
 **Shared OQS utilities.** `utils_QOS.py` centralizes Lindblad routines so baseline, continuum, and Stage 06 scripts share the same operator, propagation, and diagnostic logic.
 
