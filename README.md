@@ -6,16 +6,77 @@ A Python implementation, validation, and optimization suite for **dispersive rea
 
 | Stage | Domain | Status |
 |---|---|---|
-| **06 — Dispersive Readout** | Superconducting-qubit modeling | Validated 4-module pipeline with 4 shipped figures |
 | 01 — Validation Baseline | Gauge + OQS solver baselines | Closed-form analytic agreement at machine precision |
 | 02 — Static Benchmarks | ED + VQE + noisy hardware (Aer + Quantum Inspire) | ZNE+MEM recovers 99% of exact ED energy on N=4 Schwinger |
 | 03 — Non-Equilibrium Dynamics | Real-time gauge dynamics, string breaking | Confined vs string-breaking regimes cleanly distinguished |
 | 04 — Continuum Physics | DMRG-extended mass gap, 1+8 quarkonium suppression | M_gap/g consistent with exact 1/√π at 0.7σ |
 | 05 — Entanglement Structure | Tensor-network bipartite entropy + symmetry-resolved sectors | Top-2 charge sectors carry > 99.3% of entanglement weight |
+| **06 — Dispersive Readout** | Superconducting-qubit modeling | Validated 4-module pipeline with 4 shipped figures |
 
 **Project documents:**
 - `docs/Theoretical_Framework.pdf` — modeling assumptions, derivations, conventions
 - `docs/research_highlight.pdf` — high-level summary of goals, methods, outcomes
+
+---
+
+## Earlier stages — Lattice gauge theory and entanglement structure
+
+Stages 01–05 develop the open-quantum-system, tensor-network, and noisy-hardware infrastructure on a Schwinger-model (1+1D U(1) gauge theory) testbed. They also document broader scientific scope: continuum-facing extrapolation, real-time dynamics, entanglement-structure diagnostics, and quarkonium-in-medium suppression.
+
+### 01 — Validation Baseline
+
+Pure-gauge U(1) Monte Carlo (Wilson-loop area law cross-checks), gauge-eliminated Schwinger-Hamiltonian sanity checks, and 1⊕1 Lindblad evolution validated against closed-form analytic survival curves at three temperatures. Establishes the building-block correctness reused throughout the repo.
+
+![Stage 01 — 2-level OQS baseline: QuTiP vs analytic](figure/2level_dynamics_with_analytic.png)
+
+Singlet survival P_s(t) for the minimal 1⊕1 Lindblad model at T = 200, 300, 450 MeV. QuTiP numerical evolution (solid) overlaps the closed-form analytic solution (dashed) to machine precision, validating the solver, unit conversion, and detailed-balance construction.
+
+- **Code:** `01_Validation-Baseline/code/` — `u1_pure_gauge_mc.py`, `schwinger-hamiltonian-check.py`, `OQS_2D_Hilbert_space.py`, `OQS_9D_Hilbert_space.py`
+- **Report:** `01_Validation-Baseline/results/Validation_Baseline_Results_and_Validation.pdf`
+
+### 02 — Static Benchmarks
+
+ED + sector-projected VQE on the Schwinger Hamiltonian (N=4, N=8 with Trotter de-risking), and the `vqe_modular/` package for noisy-simulator (Aer) and real-hardware (Quantum Inspire, Tuna-5) execution with zero-noise extrapolation and measurement-error mitigation. ZNE + MEM reduces Aer noisy error from 24.5% to 0.9% on N=4 Schwinger; on Tuna-5 hardware, gate errors dominate and require richer mitigation than MEM alone.
+
+![Stage 02 — energy benchmark: ED vs Ideal vs Aer vs QI](summary_vqe_gap.png)
+
+Energy estimates for the N=4 Schwinger model with bootstrap error bars (top) and absolute error on a log scale (bottom). Aer + ZNE + MEM recovers to within 7×10⁻² of exact — a 27× improvement over raw Aer. On Tuna-5 hardware, MEM alone is insufficient; gate errors dominate.
+
+- **Code:** `02_Static Benchmarks/code/`, `vqe_modular/vqe_runner.py`
+- **Report:** `02_Static Benchmarks/results/Static_Benchmarks_Results_and_Validation.pdf`
+
+### 03 — Non-Equilibrium Gauge Dynamics
+
+Real-time evolution of the Schwinger model under an electric-field quench. Six-panel diagnostic separates confined (heavy mass m/g = 2.5) and string-breaking (light mass m/g = 0.1) regimes via charge density, electric field, excitation count, and Loschmidt echo.
+
+![Stage 03 — string breaking: heavy vs light mass quench dynamics](<03_Non-Equilibrium Gauge Dynamics/gauge_string_breaking.png>)
+
+Heavy (m/g = 2.5, confined) vs light (m/g = 0.1, string-breaking) dynamics under an E₀ = 0 quench. Top: charge density heatmaps. Middle: electric-field heatmaps showing lattice-scale oscillations (confined) vs propagating wavefront (string breaking). Bottom: field diagnostics, excitation count, and Loschmidt echo.
+
+- **Code:** `03_Non-Equilibrium Gauge Dynamics/code/field_quench_gauge.py`
+- **Report:** `03_Non-Equilibrium Gauge Dynamics/results/Non_Equilibrium_Gauge_Dynamics_Results_and_Validation.pdf`
+
+### 04 — Continuum Physics
+
+Mass-gap continuum extrapolation: ED for N ≤ 20 and TeNPy DMRG for N up to 80, with a joint 2D fit in (1/N, (ag)²) and bootstrap error bands. Headline result M_gap/g = 0.50 ± 0.09 is consistent with the exact Schwinger value 1/√π ≈ 0.5642 at 0.7σ. Also includes 1S/2S quarkonium sequential-suppression dynamics in 1⊕8 Lindblad form.
+
+![Stage 04 — DMRG mass gap: ED validated, DMRG extended](figure/dmrg_massgap_plot.png)
+
+Left: DMRG-only large-N finite-size convergence at N = 30, 40, 60, 80 across eight lattice spacings. Right: continuum extrapolation in (ag)² = 1/x using the large-N DMRG sequence. Curves visibly approach the exact 1/√π ≈ 0.5642 (dashed); small-N ED/DMRG agreement is documented separately in the validation report.
+
+- **Code:** `04_Continuum Physics Results/`
+- **Report:** `04_Continuum Physics Results/Continuum_Physics_Results_and_Validation.md`
+
+### 05 — Entanglement Structure / QI Packaging
+
+Tensor-network packaging of Schwinger states: bipartite entropy profiles, entanglement spectra (vs TFIM reference), Schmidt-value decay, symmetry-resolved (charge-sector) entanglement, and weak-dephasing open dynamics. Quantifies how entanglement is *organized* and *compressed*, not just how much there is. Top-2 charge sectors carry > 99.3% of the bipartite entanglement weight at the benchmark point; weak charge dephasing increases peak S_vN by ~1.6× and the rank for 95% reduced-state weight by 5×.
+
+![Stage 05 — mass sweep entropy profiles](05_Entanglement_Structure_QI/application_breadth/mass_sweep/mass_sweep_entropy_comparison.png)
+
+Bipartite von Neumann entropy profiles across all MPS cuts for four masses (m/g = 0.05, 0.08, 0.125, 0.20) at N = 20, χ = 64, x = 4.0. The oscillatory edge-structured profile shifts monotonically downward with increasing mass — controlled parameter sensitivity at fixed truncation.
+
+- **Code:** `05_Entanglement_Structure_QI/code/`
+- **Report:** `05_Entanglement_Structure_QI/Entanglement_Structure_Results_and_Val.md`
 
 ---
 
@@ -71,47 +132,6 @@ python 06_Dispersive_Readout/scripts/fig4_optimization.py          # Figure 4
 - Full design notes (validations, silent-failure findings, design decisions): `06_Dispersive_Readout/README.md`
 - Importable package: `dispersive_readout/`
 - Test suite: `dispersive_readout/tests/`
-
----
-
-## Earlier stages — Lattice gauge theory and entanglement structure
-
-Stages 01–05 develop the open-quantum-system, tensor-network, and noisy-hardware infrastructure on a Schwinger-model (1+1D U(1) gauge theory) testbed. They also document broader scientific scope: continuum-facing extrapolation, real-time dynamics, entanglement-structure diagnostics, and quarkonium-in-medium suppression.
-
-### 01 — Validation Baseline
-
-Pure-gauge U(1) Monte Carlo (Wilson-loop area law cross-checks), gauge-eliminated Schwinger-Hamiltonian sanity checks, and 1⊕1 Lindblad evolution validated against closed-form analytic survival curves at three temperatures. Establishes the building-block correctness reused throughout the repo.
-
-- **Code:** `01_Validation-Baseline/code/` — `u1_pure_gauge_mc.py`, `schwinger-hamiltonian-check.py`, `OQS_2D_Hilbert_space.py`, `OQS_9D_Hilbert_space.py`
-- **Report:** `01_Validation-Baseline/results/Validation_Baseline_Results_and_Validation.pdf`
-
-### 02 — Static Benchmarks
-
-ED + sector-projected VQE on the Schwinger Hamiltonian (N=4, N=8 with Trotter de-risking), and the `vqe_modular/` package for noisy-simulator (Aer) and real-hardware (Quantum Inspire, Tuna-5) execution with zero-noise extrapolation and measurement-error mitigation. ZNE + MEM reduces Aer noisy error from 24.5% to 0.9% on N=4 Schwinger; on Tuna-5 hardware, gate errors dominate and require richer mitigation than MEM alone.
-
-- **Code:** `02_Static Benchmarks/code/`, `vqe_modular/vqe_runner.py`
-- **Report:** `02_Static Benchmarks/results/Static_Benchmarks_Results_and_Validation.pdf`
-
-### 03 — Non-Equilibrium Gauge Dynamics
-
-Real-time evolution of the Schwinger model under an electric-field quench. Six-panel diagnostic separates confined (heavy mass m/g = 2.5) and string-breaking (light mass m/g = 0.1) regimes via charge density, electric field, excitation count, and Loschmidt echo.
-
-- **Code:** `03_Non-Equilibrium Gauge Dynamics/code/field_quench_gauge.py`
-- **Report:** `03_Non-Equilibrium Gauge Dynamics/results/Non_Equilibrium_Gauge_Dynamics_Results_and_Validation.pdf`
-
-### 04 — Continuum Physics
-
-Mass-gap continuum extrapolation: ED for N ≤ 20 and TeNPy DMRG for N up to 80, with a joint 2D fit in (1/N, (ag)²) and bootstrap error bands. Headline result M_gap/g = 0.50 ± 0.09 is consistent with the exact Schwinger value 1/√π ≈ 0.5642 at 0.7σ. Also includes 1S/2S quarkonium sequential-suppression dynamics in 1⊕8 Lindblad form.
-
-- **Code:** `04_Continuum Physics Results/`
-- **Report:** `04_Continuum Physics Results/Continuum_Physics_Results_and_Validation.md`
-
-### 05 — Entanglement Structure / QI Packaging
-
-Tensor-network packaging of Schwinger states: bipartite entropy profiles, entanglement spectra (vs TFIM reference), Schmidt-value decay, symmetry-resolved (charge-sector) entanglement, and weak-dephasing open dynamics. Quantifies how entanglement is *organized* and *compressed*, not just how much there is. Top-2 charge sectors carry > 99.3% of the bipartite entanglement weight at the benchmark point; weak charge dephasing increases peak S_vN by ~1.6× and the rank for 95% reduced-state weight by 5×.
-
-- **Code:** `05_Entanglement_Structure_QI/code/`
-- **Report:** `05_Entanglement_Structure_QI/Entanglement_Structure_Results_and_Val.md`
 
 ---
 
