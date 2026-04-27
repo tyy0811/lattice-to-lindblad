@@ -8,9 +8,12 @@ import pytest
 
 from dispersive_readout.control.pulses import (
     calibrate_pi_pulse_amplitude,
+    drag_correction,
     sin2_windowed_gaussian,
     sin2_windowed_gaussian_derivative,
 )
+
+ALPHA_TEST = -2.0 * math.pi * 210e6  # -210 MHz/2π in rad/s, REFERENCE_DEVICE order
 
 T_GATE = 20e-9
 SIGMA = T_GATE / 4.0
@@ -81,3 +84,39 @@ def test_pi_pulse_pulse_area():
 def test_pi_pulse_amplitude_positive():
     A = calibrate_pi_pulse_amplitude(T_GATE, T_GATE / 4.0)
     assert A > 0.0
+
+
+def test_drag_correction_zero_at_endpoints():
+    A = calibrate_pi_pulse_amplitude(T_GATE, SIGMA)
+    # The DRAG quadrature inherits Ω̇_x's machine-precision residual; bound
+    # the endpoint relative to the natural |Ω_y| scale (≈ A/(|α|·T)) the same
+    # way `test_envelope_derivative_zero_at_boundaries` does for Ω̇_x.
+    peak_omega_y = A * (math.pi / T_GATE) / abs(ALPHA_TEST)
+    tol = peak_omega_y * 1e-15
+    assert drag_correction(0.0, A, T_GATE, SIGMA, ALPHA_TEST, beta=1.0) == pytest.approx(0.0, abs=tol)
+    assert drag_correction(T_GATE, A, T_GATE, SIGMA, ALPHA_TEST, beta=1.0) == pytest.approx(0.0, abs=tol)
+
+
+def test_drag_correction_sign_for_negative_anharmonicity():
+    """Ω_y = -β · Ω̇_x / α. With α < 0 and rising Ω_x (Ω̇_x > 0 in first half of pulse),
+    Ω_y must be POSITIVE for β = +1."""
+    A = calibrate_pi_pulse_amplitude(T_GATE, SIGMA)
+    t_quarter = T_GATE / 4.0  # in the rising half of the envelope
+    omega_y = drag_correction(t_quarter, A, T_GATE, SIGMA, ALPHA_TEST, beta=1.0)
+    assert omega_y > 0.0
+
+
+def test_drag_correction_scales_with_inverse_anharmonicity():
+    """Doubling |α| halves the magnitude of Ω_y."""
+    A = calibrate_pi_pulse_amplitude(T_GATE, SIGMA)
+    t_quarter = T_GATE / 4.0
+    omega_y_alpha = drag_correction(t_quarter, A, T_GATE, SIGMA, ALPHA_TEST, beta=1.0)
+    omega_y_2alpha = drag_correction(t_quarter, A, T_GATE, SIGMA, 2.0 * ALPHA_TEST, beta=1.0)
+    assert omega_y_2alpha == pytest.approx(0.5 * omega_y_alpha, rel=1e-10)
+
+
+def test_drag_correction_zero_for_beta_zero():
+    A = calibrate_pi_pulse_amplitude(T_GATE, SIGMA)
+    grid = np.linspace(0.0, T_GATE, 11)
+    values = drag_correction(grid, A, T_GATE, SIGMA, ALPHA_TEST, beta=0.0)
+    assert np.allclose(values, 0.0)

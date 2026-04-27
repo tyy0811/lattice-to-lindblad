@@ -66,3 +66,20 @@ def calibrate_pi_pulse_amplitude(
         grid,
     )
     return math.pi / unit_integral
+
+
+def drag_correction(
+    t: float | np.ndarray,
+    A: float,
+    T_gate: float,
+    sigma: float,
+    alpha: float,
+    beta: float = 1.0,
+) -> float | np.ndarray:
+    """DRAG quadrature drive Ω_y(t) = -β · Ω̇_x(t) / α.
+
+    Convention (Motzoi, Gambetta, Rebentrost, Wilhelm, PRL 103, 110501 (2009)):
+    α is the transmon anharmonicity ω_{12} − ω_{01} (NEGATIVE for transmon).
+    With Ω̇_x > 0 during pulse rise and α < 0, β = +1 produces Ω_y > 0.
+    """
+    return -beta * sin2_windowed_gaussian_derivative(t, A, T_gate, sigma) / alpha
