@@ -46,3 +46,23 @@ def sin2_windowed_gaussian_derivative(
     term_window = (math.pi / T_gate) * np.sin(2.0 * math.pi * t / T_gate)
     term_gauss = np.sin(math.pi * t / T_gate) ** 2 * (t - T_gate / 2.0) / (sigma ** 2)
     return A * gauss_factor * (term_window - term_gauss)
+
+
+def calibrate_pi_pulse_amplitude(
+    T_gate: float,
+    sigma: float,
+    n_quadrature_points: int = 100_001,
+) -> float:
+    """Solve ∫_0^T Ω_x(t) dt = π for amplitude A given (T_gate, sigma).
+
+    Since the envelope is linear in A, A_calibrated = π / I_unit where
+    I_unit = ∫_0^T sin²(π t / T) · exp(-(t - T/2)²/(2σ²)) dt evaluated at A = 1.
+    Trapezoidal quadrature on a fine grid is sufficient for the spec's
+    <1e-6 tolerance at the default 100,001 points.
+    """
+    grid = np.linspace(0.0, T_gate, n_quadrature_points)
+    unit_integral = np.trapezoid(
+        sin2_windowed_gaussian(grid, 1.0, T_gate, sigma),
+        grid,
+    )
+    return math.pi / unit_integral

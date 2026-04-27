@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from dispersive_readout.control.pulses import (
+    calibrate_pi_pulse_amplitude,
     sin2_windowed_gaussian,
     sin2_windowed_gaussian_derivative,
 )
@@ -63,3 +64,20 @@ def test_envelope_derivative_matches_finite_difference():
     abs_err = np.max(np.abs(analytic - fd))
     fd_scale = np.max(np.abs(fd))
     assert abs_err / fd_scale < 1e-4
+
+
+def test_pi_pulse_pulse_area():
+    """Calibrated A must give ∫_0^T Ω_x(t) dt = π to <1e-6."""
+    sigma = T_GATE / 4.0
+    A = calibrate_pi_pulse_amplitude(T_GATE, sigma)
+    grid = np.linspace(0.0, T_GATE, 100_001)
+    integral = np.trapezoid(
+        sin2_windowed_gaussian(grid, A, T_GATE, sigma),
+        grid,
+    )
+    assert integral == pytest.approx(math.pi, abs=1e-6)
+
+
+def test_pi_pulse_amplitude_positive():
+    A = calibrate_pi_pulse_amplitude(T_GATE, T_GATE / 4.0)
+    assert A > 0.0
