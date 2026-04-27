@@ -256,3 +256,39 @@ def test_truncation_convergence():
 
     spread = abs(fidelities[4] - fidelities[5])
     assert spread < 1e-5, f"V3 truncation convergence failed at T=20ns: |F(n=4) − F(n=5)| = {spread:.3e}, values {fidelities}."
+
+
+def test_v4_decoherence_free_fidelity_ceiling_diagnostic():
+    """V4 (spec §6, non-blocking diagnostic — post-N11): with calibrated
+    fidelity-optimal β_opt and zero decoherence, gate error 1 − F_transfer
+    < 1e−3 at the headline T_gate=20ns. Empirical at v0: 7.3e−5 (passes by ~14×).
+
+    Note: under the round-9 corrected calibration, V4 at headline coincides
+    numerically with V2a's bar (1−F < 1e−4 at T=20ns). Both are reported as
+    distinct gates because they characterize different concerns: V2a tests the
+    DRAG calibration produces a working gate; V4 tests the decoherence-free
+    ceiling (a Hamiltonian-only / Lindblad-disabled property of the gate).
+    """
+    T_gate = 20e-9
+    sigma = T_gate / 4.0
+    decoherence = _zero_decoherence()
+
+    cal = calibrate_drag_beta(
+        device=REFERENCE_DEVICE,
+        T_gate=T_gate,
+        sigma=sigma,
+        decoherence=decoherence,
+    )
+    r = simulate_x_gate(
+        device=REFERENCE_DEVICE,
+        T_gate=T_gate,
+        n_levels=4,
+        drag=True,
+        beta=cal.beta_opt,
+        decoherence=decoherence,
+        sigma=sigma,
+    )
+    from dispersive_readout.analysis.gate_metrics import transfer_fidelity_0_to_1
+    gate_error = 1.0 - transfer_fidelity_0_to_1(r.rho_final)
+    print(f"V4 diagnostic: 1 − F_transfer = {gate_error:.3e} at β_opt={cal.beta_opt:.3f}")
+    assert gate_error < 1e-3, f"V4 ceiling exceeded at headline T=20ns: 1−F = {gate_error:.3e}."
