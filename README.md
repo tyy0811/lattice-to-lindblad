@@ -1,4 +1,4 @@
-> **Headline deliverable — Stage 06: Dispersive readout for transmon qubits.** A 4-module pipeline anchored to Marxer et al. (arXiv:2508.16437): a Lindblad simulator validated against analytic limits, error-budget decomposition into 9 named coherent/incoherent channels, synthetic-trace characterization with parameter recovery, and a closed-loop optimization layer (sensitivity tornado, regime map, Pareto frontier, recommendation pipeline). Reference F_assign at REFERENCE drive: **0.9938**. 50-device harness F-spread: **0.0024** (decoherence-driven; drive-amplitude argmax invariant). 4 figures shipped.
+> **Headline deliverable — Stage 06: Dispersive readout for transmon qubits.** A 4-module pipeline anchored to Marxer et al. (arXiv:2508.16437): a Lindblad simulator validated against analytic limits, error-budget decomposition into 4 active-loss and 2 calibration-sensitivity channels, synthetic-trace characterization with parameter recovery, and a closed-loop optimization layer (sensitivity tornado, regime map, Pareto frontier, recommendation pipeline). Reference F_assign at REFERENCE drive: **0.9938**. 50-device harness F-spread: **0.0024** (decoherence-driven; drive-amplitude argmax invariant). 4 figures shipped.
 >
 > Implementation: `dispersive_readout/`. Drivers: `06_Dispersive_Readout/`. One-page summary: `06_Dispersive_Readout/SUMMARY.md`.
 >
@@ -105,7 +105,7 @@ Bipartite von Neumann entropy profiles across all MPS cuts for four masses (m/g 
 
 Stage 06 is the main superconducting-hardware-facing artifact in this repository. It models dispersive readout of a transmon coupled to a readout resonator, validates the simulator against analytic limits, decomposes assignment infidelity into named error channels, fits synthetic characterization traces, and uses the recovered parameters in a readout-optimization layer.
 
-The implementation lives in `dispersive_readout/`; runnable scripts and generated figures live in `06_Dispersive_Readout/`.
+The implementation lives in `dispersive_readout/`; runnable scripts and generated figures live in `06_Dispersive_Readout/`. Validation discipline carries forward from Stage 01 (closed-form analytic agreement) and Stage 04 (singlet–octet OQS framework); noisy-simulator and real-hardware experience from Stage 02 (Aer, Quantum Inspire Tuna-5) informs the synthetic-trace fitting design in Module 3.
 
 ### Module 1 — Validated readout model
 
@@ -117,11 +117,11 @@ IQ trajectories, SNR vs integration time, and assignment fidelity vs κ/|χ| at 
 
 ### Module 2 — Error-budget decomposition
 
-Coherent and incoherent contributions to readout infidelity, decomposed into nine named Lindblad channels (Purcell promoted from a coupling effect into its own collapse operator with its own turn-off semantic).
+Active-loss decomposition into four independently-toggleable Lindblad channels (T₁ relaxation, pure dephasing, thermal occupation, Purcell-induced decay), marginalized against an analytic ideal-readout floor; calibration sensitivity to ±5% drive-amplitude and ±κ/4 drive-detuning perturbations rendered as a separate panel.
 
 ![Stage 06 — Figure 2: error budget](06_Dispersive_Readout/figures/fig2_error_budget.png)
 
-Channel-by-channel infidelity attribution at the reference device, identifying the dominant decoherence pathways at the operating point.
+**Panel A — active-loss:** four named channels (T₁ relaxation, pure dephasing, thermal occupation, Purcell decay) at the reference operating point, marginalized against the ideal-readout floor (1 − F_ideal ≈ 7.5×10⁻³); the cross-channel residual R = (F_ideal − F_full) − Σ ΔF_c is consistent with zero within shot-noise propagation. **Panel B — calibration sensitivity:** F loss under ±5% drive-amplitude and ±κ/4 drive-detuning perturbations (separate y-axis; not summable with Panel A).
 
 ### Module 3 — Characterization and parameter recovery
 
@@ -133,11 +133,13 @@ Synthetic traces, fitted parameters, and recovery coverage across the four proto
 
 ### Module 4 — Sensitivity, regime map, and Pareto optimization
 
-Three-panel composite: (a) local sensitivity of assignment fidelity to readout-relevant parameters, (b) regime-map diagnostics over χ/κ and γ_1·τ_readout with Purcell, χ-phase-accumulation, and resonator-response boundaries, and (c) speed–fidelity Pareto frontiers with a closed-loop recommendation marker.
+Three-panel composite: (a) local sensitivity of assignment fidelity to readout-relevant parameters, (b) regime-map diagnostics over χ/κ and γ_1·τ_readout with Purcell, χ-phase-accumulation, and resonator-response boundaries, and (c) speed–fidelity Pareto frontiers via multi-start SLSQP over the (ε₀, τ) readout-drive parameter space, with a closed-loop recommendation marker.
 
 ![Stage 06 — Figure 4: sensitivity, regime map, Pareto](06_Dispersive_Readout/figures/fig4_optimization.png)
 
 The optimal readout drive (ε₀, τ) is invariant across the 50-device characterization harness (T₁ ∈ [5.4, 91.9] μs at SEED=42): σ(ε₀_opt) = 0 to numerical precision, with F_opt varying by 0.0024 across devices due to decoherence alone. This shared-argmax behavior reflects that the dispersive-saturation peak is controlled by (κ, χ, ω_r) — REFERENCE-inherited in the closed-loop pipeline — rather than by decoherence parameters. The result characterizes the parameter regime where the REFERENCE device (Marxer Q1, arXiv:2508.16437) sits. Per-device argmax exploration would require extending Module 3 with resonator spectroscopy and AC-Stark calibration — flagged as a future extension.
+
+The underlying transmon–resonator Lindblad simulator (`dispersive_readout/physics/`) is not specific to readout: the same operator construction, time evolution, and error-channel decomposition would apply to single-qubit gate calibration (DRAG, AC-Stark cancellation) or active qubit reset (measurement-based reset, Purcell-filter-assisted reset). Stage 06 scopes to readout; the simulator infrastructure generalizes.
 
 ### Methodology — validation-first development (Module 4)
 
@@ -153,6 +155,7 @@ The validation-first methodology surfaced these issues before they reached commi
 ### How to run
 
 ```bash
+# Prereq: pip install -r requirements.txt  (qutip, tenpy, etc. — see Getting started below)
 pytest dispersive_readout/tests/ -v                                # full suite (~40 s)
 pytest dispersive_readout/tests/ -v -m "not slow"                  # fast TDD suite (~5 s)
 python 06_Dispersive_Readout/dispersive_readout_simulation.py      # Figure 1
