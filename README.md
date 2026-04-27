@@ -318,6 +318,8 @@ Typical outputs from this stage include:
 
 Adds a superconducting-readout modeling stage: validated transmon–resonator Lindblad simulation, coherent/incoherent readout error budget, synthetic characterization and parameter recovery, and sensitivity/Pareto optimization for readout settings.
 
+**Module 5a — DRAG-corrected single-qubit X gate.** Adds a sin²-windowed-Gaussian π-pulse with calibrated DRAG-1 quadrature correction on the transmon (Duffing approximation), with eight-validation suite (V1–V7) and a published bit-flip-error curve `ε_X(T_gate)` over T_gate ∈ [5, 50] ns. Headline number: **ε_X^ref(T_gate = 20 ns) = 1.09 × 10⁻³** under full Lindblad on REFERENCE_DEVICE (T₁ = 30 μs, T₂_echo = 40 μs, Purcell on, n_th = 0.01) at fidelity-optimal β_opt ≈ 0.5. The implementation surfaced and characterized a leakage-vs-fidelity trade-off as a regime finding (panel (b) inset 2 / YAML schema). See `06_Dispersive_Readout/figures/fig5a_drag_leakage.png` and `06_Dispersive_Readout/diagnostics/drag_leakage_suppression.md`.
+
 See `06_Dispersive_Readout/README.md` and the `dispersive_readout/` package.
 
 ---
