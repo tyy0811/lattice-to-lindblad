@@ -292,3 +292,81 @@ def test_v4_decoherence_free_fidelity_ceiling_diagnostic():
     gate_error = 1.0 - transfer_fidelity_0_to_1(r.rho_final)
     print(f"V4 diagnostic: 1 − F_transfer = {gate_error:.3e} at β_opt={cal.beta_opt:.3f}")
     assert gate_error < 1e-3, f"V4 ceiling exceeded at headline T=20ns: 1−F = {gate_error:.3e}."
+
+
+import math
+from dataclasses import replace
+
+from dispersive_readout.physics.config import TransmonParams
+from dispersive_readout.physics.transmon import transmon_summary
+
+
+@pytest.mark.slow
+def test_anharmonicity_scaling_full_sweep():
+    """V5a (spec §6, blocking): fitted log-log slope of no-DRAG leakage vs |α|
+    is negative across the swept range. V5b (spec §6, diagnostic — post-round-9):
+    perturbative-half slope reported; the textbook -2 prediction assumes simple
+    Rabi pulses, while the sin²-windowed envelope produces a much steeper
+    observed slope due to spectral concentration. The qualitative finding (slope
+    is steeply negative) is the deliverable; the precise power is envelope-dependent.
+
+    Sweep |α| by varying device.transmon.E_C (per spec §4.3 / N3): re-extract α
+    via transmon_summary at each point. Pulse amplitude A is determined by the
+    π-pulse area condition (no free amplitude knob, per spec N1). Decoherence
+    zeroed.
+    """
+    T_gate = 10e-9
+    sigma = T_gate / 4.0
+    n_levels = 5  # use highest truncation for V5 to capture leakage tail
+    decoherence = _zero_decoherence()
+
+    e_c_grid_hz = np.linspace(100e6, 500e6, 8)
+    alphas = []
+    leakages_no_drag = []
+
+    for ec_hz in e_c_grid_hz:
+        new_transmon = TransmonParams(
+            E_C=2.0 * math.pi * float(ec_hz),
+            E_J=REFERENCE_DEVICE.transmon.E_J,
+            n_g=REFERENCE_DEVICE.transmon.n_g,
+        )
+        device_alt = replace(REFERENCE_DEVICE, transmon=new_transmon)
+        alpha_value = float(transmon_summary(device_alt.transmon, device_alt.truncation)["alpha"])
+        alphas.append(abs(alpha_value))
+
+        r = simulate_x_gate(
+            device=device_alt,
+            T_gate=T_gate,
+            n_levels=n_levels,
+            drag=False,
+            beta=0.0,
+            decoherence=decoherence,
+            sigma=sigma,
+        )
+        leakages_no_drag.append(leakage_population(r.rho_final, n_levels))
+
+    alphas = np.asarray(alphas)
+    leakages = np.asarray(leakages_no_drag)
+
+    log_alpha = np.log(alphas)
+    log_leak = np.log(leakages + 1e-30)
+    slope, _ = np.polyfit(log_alpha, log_leak, 1)
+    print(f"V5a: full-range fitted log-log slope = {slope:.3f} (negative required)")
+    assert slope < 0.0, (
+        f"V5a failed: fitted log-log slope {slope:.3f} not negative. "
+        f"alphas/2π = {alphas / (2 * math.pi)}, leakages = {leakages}."
+    )
+
+    # V5b diagnostic — perturbative-half slope. Spec post-round-9: the textbook
+    # -2 prediction assumes simple Rabi pulses; sin²-windowed envelopes have
+    # spectral concentration that steepens the slope. Report the value; require
+    # only that it's strongly negative (steeper than -1) — qualitative confirmation.
+    n_pert = len(alphas) // 2
+    slope_pert, _ = np.polyfit(log_alpha[-n_pert:], log_leak[-n_pert:], 1)
+    print(f"V5b: perturbative-half fitted slope = {slope_pert:.3f} "
+          f"(textbook -2 ± 0.5 assumes simple Rabi pulses; sin²-windowed envelope "
+          f"is steeper — empirical envelope-dependent finding)")
+    assert slope_pert < -1.0, (
+        f"V5b sanity: perturbative slope {slope_pert:.3f} is not strongly negative; "
+        f"expected steeper than -1 for sin²-windowed envelope."
+    )
