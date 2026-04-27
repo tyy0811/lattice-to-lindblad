@@ -64,3 +64,40 @@ def test_x_gate_population_transfer_no_decoherence_trajectory():
     assert np.max(np.abs(simulated - analytic)) < 1e-4
     # Also assert endpoint inversion
     assert simulated[-1] == pytest.approx(1.0, abs=1e-4)
+
+
+from dispersive_readout.analysis.gate_metrics import leakage_population
+
+
+def test_drag_sign_flip_increases_leakage():
+    """V6 (spec §6, §7.2): at REFERENCE_DEVICE α with decoherence zeroed, swapping
+    β → −β must increase leakage relative to β = +1. Confirms the rotating-frame
+    sign convention."""
+    n_levels = 4
+    T_gate = 10e-9  # short pulse — leakage is severe and DRAG sign matters most
+    decoherence = _zero_decoherence()
+
+    result_pos = simulate_x_gate(
+        device=REFERENCE_DEVICE,
+        T_gate=T_gate,
+        n_levels=n_levels,
+        drag=True,
+        beta=+1.0,
+        decoherence=decoherence,
+    )
+    result_neg = simulate_x_gate(
+        device=REFERENCE_DEVICE,
+        T_gate=T_gate,
+        n_levels=n_levels,
+        drag=True,
+        beta=-1.0,
+        decoherence=decoherence,
+    )
+
+    leak_pos = leakage_population(result_pos.rho_final, n_levels)
+    leak_neg = leakage_population(result_neg.rho_final, n_levels)
+
+    assert leak_neg > leak_pos, (
+        f"DRAG sign convention bug: β=+1 gave leakage {leak_pos:.4e}, "
+        f"β=-1 gave {leak_neg:.4e} (expected β=+1 to be smaller)."
+    )
