@@ -600,6 +600,54 @@ def test_long_tau_asymmetric_floors(tmp_path):
     )
 
 
+# ---------------------------------------------------------------------------
+# Day 3.3 — V5 slow-tier 1/√N convergence
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_trajectory_count_convergence_pe_prime(tmp_path):
+    """V5 (split, slow-tier): empirical SE on p_e' scales as 1/√N.
+
+    Run extract_joint_matrix at three N values, compute p_e' at ε_X=0,
+    and verify the empirical standard deviation across multiple seeds
+    scales as 1/√N within a factor-of-2 tolerance.
+
+    This catches sampler bugs (correlated draws across s_i, paired
+    sampling regression) that the unit-tier binomial_se formula test
+    cannot detect.
+    """
+    yaml_file = tmp_path / "closed_loop_demo_device.yaml"
+    yaml_file.write_text(SYNTHETIC_CLOSED_LOOP_YAML)
+    device = device_idx18(yaml_path=yaml_file)
+    drive = closed_loop_demo_drive_params(duration=1e-6)
+
+    n_seeds = 8
+    n_grid = [200, 1000, 4000]
+    se_at_n = []
+    for n_traj in n_grid:
+        residuals = []
+        for seed in range(n_seeds):
+            rng = np.random.default_rng(seed=seed + 100 * n_traj)
+            J = extract_joint_matrix(device, drive, n_trajectories=n_traj, rng=rng)
+            residuals.append(reset_residual_single_cycle(p_e=1.0, joint=J, gate_error=0.0))
+        se_at_n.append(float(np.std(residuals, ddof=1)))
+
+    ratio_200_to_1000 = se_at_n[0] / se_at_n[1]
+    ratio_1000_to_4000 = se_at_n[1] / se_at_n[2]
+    expected_ratio_200_1000 = _math.sqrt(1000.0 / 200.0)   # √5 ≈ 2.24
+    expected_ratio_1000_4000 = _math.sqrt(4000.0 / 1000.0)  # 2.00
+
+    assert 0.5 * expected_ratio_200_1000 < ratio_200_to_1000 < 2.0 * expected_ratio_200_1000, (
+        f"V5 slow: SE(200)/SE(1000) = {ratio_200_to_1000:.2f}, "
+        f"expected ≈ {expected_ratio_200_1000:.2f}"
+    )
+    assert 0.5 * expected_ratio_1000_4000 < ratio_1000_to_4000 < 2.0 * expected_ratio_1000_4000, (
+        f"V5 slow: SE(1000)/SE(4000) = {ratio_1000_to_4000:.2f}, "
+        f"expected ≈ {expected_ratio_1000_4000:.2f}"
+    )
+
+
 def test_no_mcsolve_in_reset_protocol():
     """Lint-grade enforcement: v0 has no mcsolve import / call.
 
