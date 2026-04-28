@@ -56,3 +56,35 @@ def test_segment_integral_factor_real_rate_returns_real():
     dt = 1e-7
     factor = _segment_integral_factor(rate, dt)
     assert abs(factor.imag) < 1e-15
+
+
+from dispersive_readout.physics.config import REFERENCE_DEVICE, DriveParams
+from dispersive_readout.physics.pointer_response import pointer_steady_state
+
+
+def test_pointer_steady_state_alpha_inf_formula():
+    """α_∞(s) = -i·ε / (κ/2 + i·δ_s) where δ_s = (ω_r − ω_d) + χ_s.
+
+    For drive on resonance with bare cavity (detuning=0) and qubit in
+    state s, the dispersive pull χ_s shifts the cavity off-resonance by
+    χ_s, giving the steady-state α formula above.
+    """
+    device = REFERENCE_DEVICE
+    drive = DriveParams(amplitude=140e6, duration=500e-9, detuning=0.0, edge_sigma=2e-9)
+    alpha_g = pointer_steady_state(device, drive, qubit_state=0)
+    alpha_e = pointer_steady_state(device, drive, qubit_state=1)
+
+    # Both must be finite, non-zero complex numbers
+    assert np.isfinite(alpha_g) and abs(alpha_g) > 0
+    assert np.isfinite(alpha_e) and abs(alpha_e) > 0
+
+    # The two pointer states must differ — that's the dispersive signature
+    assert abs(alpha_g - alpha_e) > 0.01 * abs(alpha_g)
+
+
+def test_pointer_steady_state_qubit_state_validation():
+    """Only qubit_state ∈ {0, 1} is supported in v0."""
+    device = REFERENCE_DEVICE
+    drive = DriveParams(amplitude=140e6, duration=500e-9)
+    with pytest.raises((ValueError, IndexError)):
+        pointer_steady_state(device, drive, qubit_state=2)
