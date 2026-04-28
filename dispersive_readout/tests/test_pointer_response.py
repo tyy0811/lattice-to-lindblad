@@ -161,3 +161,65 @@ def test_compute_alpha_trajectory_integrated_iq_independent_of_grid():
         device, drive, history, np.linspace(0.0, 1e-6, 200),
     )
     assert iq_2pt == pytest.approx(iq_200pt, rel=1e-12)
+
+
+from dataclasses import replace
+
+from dispersive_readout.physics.config import (
+    DecoherenceParams,
+    TruncationParams,
+)
+from dispersive_readout.physics.readout_model import simulate_readout
+
+
+def test_pointer_response_matches_simulate_readout_in_no_jump_limit():
+    """V4a (blocking integration gate): in the no-jump deterministic limit
+    (γ_eff = 0, no Lindblad collapse), the integrated IQ from
+    compute_alpha_trajectory must agree with the integrated IQ extracted
+    from physics.readout_model.simulate_readout, to within mesolve's
+    integration tolerance plus the erf-vs-square envelope mismatch.
+
+    This is the consistency contract between the analytic semiclassical
+    reduction (used by 5b) and the full mesolve calculation (Module 1
+    canonical). A failure here means the semiclassical reduction's sign
+    or phase conventions disagree with Module 1's, which is the most
+    likely failure mode for 5b's joint-matrix output.
+
+    Uses a smaller drive amplitude (40 MHz, not idx=18's 140 MHz) so the
+    coherent-state cavity occupation |α|² stays well below the default
+    N_resonator=15 Fock truncation. At 140 MHz the steady-state |α|² ≈ 17
+    saturates the truncation ceiling and the mesolve α is artifically
+    bounded — a numerical artifact, not a convention bug. The convention
+    contract is amplitude-independent, so a smaller-amplitude check is
+    fully sufficient.
+    """
+    no_decoherence = DecoherenceParams(
+        gamma_1=0.0, gamma_phi=0.0, n_th=0.0, purcell_enabled=False,
+    )
+    device = replace(REFERENCE_DEVICE, decoherence=no_decoherence)
+    drive = DriveParams(
+        amplitude=40e6, duration=500e-9, detuning=0.0,
+        edge_sigma=2e-9,
+    )
+
+    history_g = QubitStateHistory(segments=((0.0, 0),), t_total=500e-9)
+    history_e = QubitStateHistory(segments=((0.0, 1),), t_total=500e-9)
+    t_grid = np.linspace(0.0, 500e-9, 200)
+    _, iq_g_analytic = compute_alpha_trajectory(device, drive, history_g, t_grid)
+    _, iq_e_analytic = compute_alpha_trajectory(device, drive, history_e, t_grid)
+
+    result_g = simulate_readout(device, drive, initial_qubit_state=0, t_list=t_grid)
+    result_e = simulate_readout(device, drive, initial_qubit_state=1, t_list=t_grid)
+    iq_g_mesolve = result_g.integrated_iq((0.0, 500e-9))
+    iq_e_mesolve = result_e.integrated_iq((0.0, 500e-9))
+
+    # erf-vs-square envelope mismatch + mesolve precision; tolerance set
+    # generously to avoid masking convention bugs while absorbing envelope
+    # difference. >5% failure → investigate sign/phase convention.
+    rel_tol = 0.05
+    assert iq_g_analytic == pytest.approx(iq_g_mesolve, rel=rel_tol), (
+        f"V4a g-state IQ mismatch: analytic={iq_g_analytic}, mesolve={iq_g_mesolve}"
+    )
+    assert iq_e_analytic == pytest.approx(iq_e_mesolve, rel=rel_tol), (
+        f"V4a e-state IQ mismatch: analytic={iq_e_analytic}, mesolve={iq_e_mesolve}"
+    )
