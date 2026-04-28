@@ -65,3 +65,78 @@ def test_drag_calibration_reports_leakage_minimizers_as_diagnostics():
     # coincide with β_opt (they sit at higher β, where the gate is borderline).
     # This documents the trade-off as data, not just prose.
     assert result.beta_min_final_leak != result.beta_opt or result.beta_min_peak_leak != result.beta_opt
+
+
+def test_drag_calibration_rejects_nonperturbative_grid_by_default():
+    """Post-N12 hardening: custom β grids that include values outside [0, 1.2]
+    are rejected unless `allow_nonperturbative=True` is passed. This prevents
+    downstream callers from re-opening the round-9 failure mode."""
+    nonperturbative_grid = np.linspace(0.0, 5.0, 26)
+    with pytest.raises(ValueError, match="perturbative range"):
+        calibrate_drag_beta(
+            device=REFERENCE_DEVICE,
+            T_gate=T_GATE,
+            sigma=SIGMA,
+            beta_grid=nonperturbative_grid,
+            decoherence=_zero_decoherence(),
+        )
+
+
+def test_drag_calibration_accepts_nonperturbative_grid_with_optin():
+    """Post-N12: explicit `allow_nonperturbative=True` allows wider sweeps,
+    but the result is flagged with `perturbative_safe=False` so downstream
+    code can refuse to publish it as calibrated DRAG-1 output."""
+    nonperturbative_grid = np.linspace(0.0, 2.0, 11)
+    result = calibrate_drag_beta(
+        device=REFERENCE_DEVICE,
+        T_gate=T_GATE,
+        sigma=SIGMA,
+        beta_grid=nonperturbative_grid,
+        decoherence=_zero_decoherence(),
+        allow_nonperturbative=True,
+    )
+    assert result.perturbative_safe is False, "Wider grid must mark result as unsafe."
+
+
+def test_drag_calibration_rejects_nonfinite_beta_grid():
+    """Post-N12: NaN/inf β values are rejected outright."""
+    bad_grid = np.array([0.0, 0.5, np.nan, 1.0])
+    with pytest.raises(ValueError, match="finite"):
+        calibrate_drag_beta(
+            device=REFERENCE_DEVICE,
+            T_gate=T_GATE,
+            sigma=SIGMA,
+            beta_grid=bad_grid,
+            decoherence=_zero_decoherence(),
+        )
+
+
+def test_drag_calibration_default_grid_marks_perturbative_safe():
+    """Post-N12: default grid [0, 1.2, 25 points] yields perturbative_safe=True."""
+    result = calibrate_drag_beta(
+        device=REFERENCE_DEVICE,
+        T_gate=T_GATE,
+        sigma=SIGMA,
+        decoherence=_zero_decoherence(),
+    )
+    assert result.perturbative_safe is True
+
+
+def test_drag_calibration_objective_is_average_gate_fidelity():
+    """Post-N12: the calibration objective is `1 − F_avg` (average over the
+    Pauli set), not the one-way `1 − F_transfer`. The result exposes both
+    F_avg and per-state fidelities for verification."""
+    result = calibrate_drag_beta(
+        device=REFERENCE_DEVICE,
+        T_gate=T_GATE,
+        sigma=SIGMA,
+        decoherence=_zero_decoherence(),
+    )
+    assert result.f_avg_curve.shape == result.gate_error_curve.shape
+    # gate_error == 1 - f_avg by construction
+    np.testing.assert_allclose(result.gate_error_curve, 1.0 - result.f_avg_curve, atol=1e-15)
+    # per-state curve is (n_betas, 4) — the four Pauli-set inputs
+    assert result.per_state_fidelity_curve.shape == (len(result.beta_grid), 4)
+    # All per-state fidelities must be in [0, 1] (sanity)
+    assert np.all(result.per_state_fidelity_curve >= 0.0)
+    assert np.all(result.per_state_fidelity_curve <= 1.0 + 1e-12)

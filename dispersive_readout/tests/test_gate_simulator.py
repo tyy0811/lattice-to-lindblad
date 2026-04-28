@@ -108,15 +108,18 @@ from dispersive_readout.control.drag_calibration import calibrate_drag_beta
 
 
 def test_v2a_drag_gate_error_below_1e4_at_headline():
-    """V2a (spec §6, blocking — post-amendment N11): at the headline T_gate=20ns,
-    REFERENCE α, decoherence zeroed, fidelity-optimal β_opt produces
-    1 − F_transfer < 1e−4. Empirical at v0: 7.3e−5, passes by ~14×.
+    """V2a (spec §6, blocking — post-amendments N11 + N12): at the headline
+    T_gate=20ns, REFERENCE α, decoherence zeroed, fidelity-optimal β_opt
+    produces 1 − F_avg < 1e−4 where F_avg is averaged over the Pauli set
+    {|0⟩, |1⟩, |+⟩, |+i⟩}. Empirical at v0: ~5.5e−5 (passes by ~18×).
 
     The β grid is restricted to [0, 1.2] (perturbative DRAG-1 range); the
-    calibration objective is gate error (not leakage ratios). Both guards
-    together ensure the optimizer cannot select non-DRAG values that satisfy
-    a loss but break the gate (see N11 methodology note).
+    calibration objective is average gate fidelity (not one-way transfer or
+    leakage ratios). Both guards together ensure the optimizer cannot select
+    non-DRAG values that satisfy a loss but break the gate (see N11/N12).
     """
+    from dispersive_readout.analysis.gate_metrics import average_gate_fidelity_x
+
     n_levels = 4
     T_gate = 20e-9
     sigma = T_gate / 4.0
@@ -129,8 +132,7 @@ def test_v2a_drag_gate_error_below_1e4_at_headline():
         n_levels=n_levels,
         decoherence=decoherence,
     )
-
-    result_opt = simulate_x_gate(
+    f_avg, _ = average_gate_fidelity_x(
         device=REFERENCE_DEVICE,
         T_gate=T_gate,
         n_levels=n_levels,
@@ -139,26 +141,21 @@ def test_v2a_drag_gate_error_below_1e4_at_headline():
         decoherence=decoherence,
         sigma=sigma,
     )
-    from dispersive_readout.analysis.gate_metrics import transfer_fidelity_0_to_1
-    gate_error = 1.0 - transfer_fidelity_0_to_1(result_opt.rho_final)
+    gate_error = 1.0 - f_avg
     assert gate_error < 1e-4, (
-        f"V2a failed at headline T_gate=20ns: 1−F={gate_error:.3e} at β_opt={cal.beta_opt:.3f}."
+        f"V2a failed at headline T_gate=20ns: 1−F_avg={gate_error:.3e} at β_opt={cal.beta_opt:.3f}."
     )
 
 
 @pytest.mark.parametrize("T_gate_ns", [10, 15, 20, 30])
 def test_v2a_regime_structure_diagnostic(T_gate_ns):
-    """V2a regime context (diagnostic, non-blocking): report 1−F at calibrated
-    β_opt across the panel-(b) range. This documents the regime structure
-    (fidelity ramp from short-pulse non-perturbative regime to long-pulse
-    DRAG-functional regime) without imposing a uniform threshold.
-
-    Empirical v0 values:
-      T=10ns: 1−F ≈ 8.5e−3 (perturbative DRAG breaking down)
-      T=15ns: 1−F ≈ 3.1e−4
-      T=20ns: 1−F ≈ 7.3e−5 (headline)
-      T=30ns: 1−F ≈ 1.4e−5
+    """V2a regime context (diagnostic, non-blocking): report 1−F_avg at
+    calibrated β_opt across the panel-(b) range. This documents the regime
+    structure (fidelity ramp from short-pulse non-perturbative regime to
+    long-pulse DRAG-functional regime) without imposing a uniform threshold.
     """
+    from dispersive_readout.analysis.gate_metrics import average_gate_fidelity_x
+
     n_levels = 4
     T_gate = T_gate_ns * 1e-9
     sigma = T_gate / 4.0
@@ -171,7 +168,7 @@ def test_v2a_regime_structure_diagnostic(T_gate_ns):
         n_levels=n_levels,
         decoherence=decoherence,
     )
-    result_opt = simulate_x_gate(
+    f_avg, _ = average_gate_fidelity_x(
         device=REFERENCE_DEVICE,
         T_gate=T_gate,
         n_levels=n_levels,
@@ -180,10 +177,9 @@ def test_v2a_regime_structure_diagnostic(T_gate_ns):
         decoherence=decoherence,
         sigma=sigma,
     )
-    from dispersive_readout.analysis.gate_metrics import transfer_fidelity_0_to_1
-    gate_error = 1.0 - transfer_fidelity_0_to_1(result_opt.rho_final)
-    # Diagnostic: assert 1−F < 1 (sanity only; documents regime, not threshold).
-    assert gate_error < 1.0, f"Sanity violation at T_gate={T_gate_ns}ns: 1−F={gate_error:.3e}"
+    gate_error = 1.0 - f_avg
+    # Diagnostic: assert 1−F_avg < 1 (sanity only; documents regime, not threshold).
+    assert gate_error < 1.0, f"Sanity violation at T_gate={T_gate_ns}ns: 1−F_avg={gate_error:.3e}"
 
 
 def test_v2b_leakage_vs_fidelity_tradeoff_is_real():
@@ -259,16 +255,16 @@ def test_truncation_convergence():
 
 
 def test_v4_decoherence_free_fidelity_ceiling_diagnostic():
-    """V4 (spec §6, non-blocking diagnostic — post-N11): with calibrated
-    fidelity-optimal β_opt and zero decoherence, gate error 1 − F_transfer
-    < 1e−3 at the headline T_gate=20ns. Empirical at v0: 7.3e−5 (passes by ~14×).
+    """V4 (spec §6, non-blocking diagnostic — post-N11/N12): with calibrated
+    fidelity-optimal β_opt and zero decoherence, average-gate-fidelity error
+    1 − F_avg < 1e−3 at the headline T_gate=20ns.
 
-    Note: under the round-9 corrected calibration, V4 at headline coincides
-    numerically with V2a's bar (1−F < 1e−4 at T=20ns). Both are reported as
-    distinct gates because they characterize different concerns: V2a tests the
-    DRAG calibration produces a working gate; V4 tests the decoherence-free
-    ceiling (a Hamiltonian-only / Lindblad-disabled property of the gate).
+    V2a tests the (tighter) blocking bar; V4 reports the same physical
+    quantity (decoherence-free ceiling) at the looser diagnostic threshold
+    that the spec table already commits to.
     """
+    from dispersive_readout.analysis.gate_metrics import average_gate_fidelity_x
+
     T_gate = 20e-9
     sigma = T_gate / 4.0
     decoherence = _zero_decoherence()
@@ -279,7 +275,7 @@ def test_v4_decoherence_free_fidelity_ceiling_diagnostic():
         sigma=sigma,
         decoherence=decoherence,
     )
-    r = simulate_x_gate(
+    f_avg, per_state = average_gate_fidelity_x(
         device=REFERENCE_DEVICE,
         T_gate=T_gate,
         n_levels=4,
@@ -288,10 +284,11 @@ def test_v4_decoherence_free_fidelity_ceiling_diagnostic():
         decoherence=decoherence,
         sigma=sigma,
     )
-    from dispersive_readout.analysis.gate_metrics import transfer_fidelity_0_to_1
-    gate_error = 1.0 - transfer_fidelity_0_to_1(r.rho_final)
-    print(f"V4 diagnostic: 1 − F_transfer = {gate_error:.3e} at β_opt={cal.beta_opt:.3f}")
-    assert gate_error < 1e-3, f"V4 ceiling exceeded at headline T=20ns: 1−F = {gate_error:.3e}."
+    gate_error = 1.0 - f_avg
+    print(f"V4 diagnostic: 1 − F_avg = {gate_error:.3e} at β_opt={cal.beta_opt:.3f}; "
+          f"per-state F = [|0⟩→|1⟩: {per_state[0]:.6f}, |1⟩→|0⟩: {per_state[1]:.6f}, "
+          f"|+⟩→|+⟩: {per_state[2]:.6f}, |+i⟩→|-i⟩: {per_state[3]:.6f}]")
+    assert gate_error < 1e-3, f"V4 ceiling exceeded at headline T=20ns: 1−F_avg = {gate_error:.3e}."
 
 
 import math

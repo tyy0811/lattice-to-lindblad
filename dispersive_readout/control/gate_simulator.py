@@ -115,6 +115,7 @@ def simulate_x_gate(
     decoherence: DecoherenceParams | None = None,
     sigma: float | None = None,
     n_time_points: int = 401,
+    init_state: qt.Qobj | None = None,
 ) -> GateResult:
     """Simulate a single X-gate cycle on the qubit (Duffing approximation).
 
@@ -139,12 +140,17 @@ def simulate_x_gate(
         Pulse-width parameter. Defaults to T_gate / 4.
     n_time_points : int
         Number of mesolve output samples.
+    init_state : qt.Qobj | None
+        Initial pure state ket OR density matrix. None defaults to |0⟩⟨0|
+        (the V1 Rabi-trajectory convention). Average-gate-fidelity calibration
+        runs the simulator from each Pauli eigenstate via this parameter.
 
     Raises
     ------
     ValueError
         If drag=True with n_levels=2 (α undefined in two-level Duffing).
         If n_levels not in {2, 3, 4, 5}.
+        If init_state shape is incompatible with n_levels.
     """
     if n_levels not in (2, 3, 4, 5):
         raise ValueError(f"n_levels must be 2, 3, 4, or 5; got {n_levels}.")
@@ -196,9 +202,19 @@ def simulate_x_gate(
     if drag:
         H_total.append([H_drive_y, omega_y])
 
-    # Initial state |0⟩⟨0|
-    psi0 = qt.basis(n_levels, 0)
-    rho0 = psi0 * psi0.dag()
+    # Initial state: |0⟩⟨0| by default; otherwise use the supplied ket or density matrix.
+    if init_state is None:
+        psi0 = qt.basis(n_levels, 0)
+        rho0 = psi0 * psi0.dag()
+    else:
+        if init_state.shape[0] != n_levels:
+            raise ValueError(
+                f"init_state shape {init_state.shape} incompatible with n_levels={n_levels}."
+            )
+        if init_state.isket:
+            rho0 = init_state * init_state.dag()
+        else:
+            rho0 = init_state
 
     # Time grid
     t_array = np.linspace(0.0, T_gate, n_time_points)
