@@ -250,3 +250,40 @@ def load_eps_x_5a(
         'F_avg_drag_opt': 1.0 - eps_x,
     }
     return eps_x, provenance
+
+
+# ---------------------------------------------------------------------------
+# Day 2.3 — purcell_rate_1_to_0
+# ---------------------------------------------------------------------------
+
+from dispersive_readout.physics.transmon import (
+    charge_operator_matrix_elements,
+    diagonalize_transmon,
+)
+
+
+def purcell_rate_1_to_0(device: DeviceConfig) -> float:
+    """Purcell decay rate for the |1⟩→|0⟩ transition.
+
+    γ_P = (g · |⟨0|n̂|1⟩| / Δ_{1,0})² · κ · (1 + n_th)
+
+    where Δ_{1,0} = ω_1 − ω_0 − ω_r per the dispersive frame's Purcell
+    construction. Sourced from the same formula used in
+    physics.lindblad.build_collapse_operators (j=1 row); single source
+    of truth so 5b and Module 1 simulate consistent γ_P.
+
+    Used by extract_joint_matrix to construct γ_eff = γ_1 + γ_P for
+    direct-jump exponential sampling. The factor (1 + n_th) is included
+    for consistency with Module 2's qubit-relaxation channel.
+    """
+    energies, eigenstates = diagonalize_transmon(
+        device.transmon, device.truncation,
+    )
+    n_mat = charge_operator_matrix_elements(eigenstates, device.truncation)
+    delta_10 = energies[1] - energies[0] - device.resonator.omega_r
+    n_elem_01 = abs(n_mat[0, 1])
+    return (
+        (device.coupling.g * n_elem_01 / delta_10) ** 2
+        * device.resonator.kappa
+        * (1.0 + device.decoherence.n_th)
+    )

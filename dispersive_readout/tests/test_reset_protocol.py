@@ -203,3 +203,39 @@ def test_load_eps_x_5a_raises_on_missing_yaml(tmp_path):
     missing = tmp_path / "does_not_exist.yaml"
     with pytest.raises(FileNotFoundError, match="5a data YAML not found"):
         load_eps_x_5a(yaml_path=missing)
+
+
+# ---------------------------------------------------------------------------
+# Day 2.3 — purcell_rate_1_to_0
+# ---------------------------------------------------------------------------
+
+from dispersive_readout.control.reset_protocol import purcell_rate_1_to_0
+from dispersive_readout.physics.transmon import (
+    charge_operator_matrix_elements,
+    diagonalize_transmon,
+)
+
+
+def test_purcell_rate_1_to_0_matches_lindblad_formula():
+    """Single source of truth: purcell_rate_1_to_0 must produce the same
+    γ_P_{1→0} value that physics.lindblad.build_collapse_operators uses
+    when constructing the |0⟩⟨1| collapse operator. If these diverge,
+    5b and Module 1 are simulating different physics.
+    """
+    device = REFERENCE_DEVICE
+    rate_helper = purcell_rate_1_to_0(device)
+
+    # Recompute the formula from lindblad.py's build_collapse_operators body
+    # at j=1: γ_P = (g·|n_{0,1}| / Δ_{1,0})²·κ·(1 + n_th)
+    energies, eigenstates = diagonalize_transmon(
+        device.transmon, device.truncation,
+    )
+    n_mat = charge_operator_matrix_elements(eigenstates, device.truncation)
+    delta_10 = energies[1] - energies[0] - device.resonator.omega_r
+    n_elem_01 = abs(n_mat[0, 1])
+    rate_reference = (
+        (device.coupling.g * n_elem_01 / delta_10) ** 2
+        * device.resonator.kappa
+        * (1.0 + device.decoherence.n_th)
+    )
+    assert rate_helper == pytest.approx(rate_reference, rel=1e-12)
