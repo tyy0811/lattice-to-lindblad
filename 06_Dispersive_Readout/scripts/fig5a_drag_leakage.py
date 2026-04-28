@@ -22,10 +22,11 @@ import qutip as qt
 import yaml
 
 from dispersive_readout.analysis.gate_metrics import (
-    epsilon_x_from_transfer,
+    average_gate_fidelity_x,
+    epsilon_x_from_transfer,  # diagnostic only (post-N12)
     leakage_peak,
     leakage_population,
-    transfer_fidelity_0_to_1,
+    transfer_fidelity_0_to_1,  # diagnostic only (post-N12)
 )
 from dispersive_readout.control.drag_calibration import calibrate_drag_beta
 from dispersive_readout.control.gate_simulator import simulate_x_gate
@@ -116,13 +117,19 @@ def _panel_b_sweep(n_levels=4):
         leak_final_opt = leakage_population(r_opt_coh.rho_final, n_levels)
         leak_peak_opt = leakage_peak(r_opt_coh.rho_t, n_levels)
 
-        # ε_X with full Lindblad at β_opt (headline / curve data per §10)
+        # ε_X = 1 − F_avg with full Lindblad at β_opt (headline / curve data per §10).
+        # Post-N12: use average gate fidelity over the Pauli set, not one-way transfer.
+        F_opt_full, _per_state_full = average_gate_fidelity_x(
+            device=REFERENCE_DEVICE, T_gate=T_gate, n_levels=n_levels,
+            drag=True, beta=cal.beta_opt, decoherence=decoh_full, sigma=sigma,
+        )
+        eps_x = 1.0 - F_opt_full
+        # Also retain a |0⟩-start trajectory for the leakage curves (peak/final).
+        # The leakage curves depend only on the |0⟩-initialized run, not on F_avg.
         r_opt_full = simulate_x_gate(
             device=REFERENCE_DEVICE, T_gate=T_gate, n_levels=n_levels,
             drag=True, beta=cal.beta_opt, decoherence=decoh_full, sigma=sigma,
         )
-        F_opt_full = transfer_fidelity_0_to_1(r_opt_full.rho_final)
-        eps_x = epsilon_x_from_transfer(r_opt_full.rho_final)
 
         # V2b trade-off triplet (already computed during calibration)
         rows.append({
@@ -133,7 +140,7 @@ def _panel_b_sweep(n_levels=4):
             "leakage_peak_no_drag": float(leak_peak_no_drag),
             "leakage_peak_drag_opt": float(leak_peak_opt),
             "epsilon_x_drag_opt": float(eps_x),
-            "F_transfer_drag_opt": float(F_opt_full),
+            "F_avg_drag_opt": float(F_opt_full),
             # V2b trade-off (post-N11)
             "beta_min_final_leak": float(cal.beta_min_final_leak),
             "beta_min_peak_leak": float(cal.beta_min_peak_leak),
@@ -148,7 +155,11 @@ def _save_yaml(rows, alpha_2pi_hz):
     payload = {
         "device": "REFERENCE_DEVICE",
         "device_provenance": "Marxer arXiv:2508.16437 + Bengtsson PRL 132 100603 (2024)",
-        "calibration_objective": "argmin_β (1 − F_transfer); β grid [0, 1.2] (post-N11)",
+        "calibration_objective": (
+            "argmin_β (1 − F_avg); F_avg averaged over Pauli set "
+            "{|0⟩, |1⟩, |+⟩, |+i⟩}; β grid [0, 1.2] (post-N11 + N12)"
+        ),
+        "shipped_metric": "epsilon_x = 1 - F_avg (full Lindblad)",
         "alpha_2pi_Hz": float(alpha_2pi_hz),
         "sweep_T_gate_ns": [r["T_gate_ns"] for r in rows],
         "beta_opt_fidelity": [r["beta_opt"] for r in rows],
@@ -161,7 +172,7 @@ def _save_yaml(rows, alpha_2pi_hz):
         "final_leak_supp_at_fidelity_opt": [r["final_leak_supp_at_fidelity_opt"] for r in rows],
         "peak_leak_supp_at_fidelity_opt": [r["peak_leak_supp_at_fidelity_opt"] for r in rows],
         "epsilon_x_drag_opt": [r["epsilon_x_drag_opt"] for r in rows],
-        "F_transfer_drag_opt": [r["F_transfer_drag_opt"] for r in rows],
+        "F_avg_drag_opt": [r["F_avg_drag_opt"] for r in rows],
         "notes": (
             "Headline value: epsilon_x_drag_opt at T_gate = 20 ns. "
             "Module 5b spec consumes this YAML as data. "
