@@ -433,6 +433,98 @@ def test_finite_t1_marginal_within_2x_shot_noise(tmp_path, capsys):
     # Module 1 exposes an IQ-distribution-level finite-T₁ reference.
 
 
+# ---------------------------------------------------------------------------
+# Day 3.1 — passive_reset_residual + reset_residual_single_cycle
+# ---------------------------------------------------------------------------
+
+import math as _math
+
+from dispersive_readout.control.reset_protocol import (
+    passive_reset_residual,
+    reset_residual_single_cycle,
+)
+from dispersive_readout.physics.joint_matrix import JointMatrix
+
+
+def _synthetic_joint_matrix_for_formula_tests():
+    return JointMatrix(
+        probabilities={
+            (1, 1, 0): 0.10, (1, 1, 1): 0.85, (1, 0, 0): 0.04, (1, 0, 1): 0.01,
+            (0, 0, 0): 0.97, (0, 0, 1): 0.02, (0, 1, 0): 0.005, (0, 1, 1): 0.005,
+        },
+        binomial_se={
+            (1, 1, 0): 0.0, (1, 1, 1): 0.0, (1, 0, 0): 0.0, (1, 0, 1): 0.0,
+            (0, 0, 0): 0.0, (0, 0, 1): 0.0, (0, 1, 0): 0.0, (0, 1, 1): 0.0,
+        },
+        n_trajectories=1000,
+        operating_point={'tau_meas': 1e-6},
+    )
+
+
+def test_passive_reset_baseline_formula():
+    """passive_reset_residual(T1, τ) = exp(-τ/T1)."""
+    T1 = 5e-6
+    for tau in [0.0, T1, 2 * T1, 5 * T1]:
+        assert passive_reset_residual(T1, tau) == pytest.approx(
+            _math.exp(-tau / T1), rel=1e-12,
+        )
+
+
+def test_reset_residual_three_terms_sum():
+    """V1 reconstruction: at p_e=1, ε_X=ε, the formula is
+      missed-excited:   P(s_f=e, m=0 | e)
+    + gate-failure:     P(s_f=e, m=1 | e) · ε_X
+    + false-positive:   P(s_f=g, m=1 | e) · (1 - ε_X)
+    """
+    J = _synthetic_joint_matrix_for_formula_tests()
+    for eps in [0.0, 0.001, 0.5, 1.0]:
+        expected = (
+            J.probabilities[(1, 1, 0)]                      # missed
+            + J.probabilities[(1, 1, 1)] * eps              # gate failure
+            + J.probabilities[(1, 0, 1)] * (1.0 - eps)      # false positive
+        )
+        assert reset_residual_single_cycle(p_e=1.0, joint=J, gate_error=eps) == pytest.approx(
+            expected, rel=1e-12,
+        )
+
+
+def test_reset_residual_ideal_gate_two_term_floor():
+    """V1 (blocking, unit-tier): at ε_X=0, p_e=1, residual is the SUM
+    of the missed-excited and false-positive-on-decayed terms.
+
+    The false-positive-on-decayed term does NOT vanish at ε_X=0 — it is
+    maximal there. Missing it is a v2-era bug.
+    """
+    J = _synthetic_joint_matrix_for_formula_tests()
+    expected = J.probabilities[(1, 1, 0)] + J.probabilities[(1, 0, 1)]
+    actual = reset_residual_single_cycle(p_e=1.0, joint=J, gate_error=0.0)
+    assert actual == pytest.approx(expected, rel=1e-12)
+    # Mirror the JointMatrix-class method
+    assert actual == pytest.approx(J.joint_ideal_gate_floor(), rel=1e-12)
+
+
+def test_reset_residual_eps_x_one_is_identity():
+    """At ε_X=1 the conditional X-gate ALWAYS fails (identity), so the
+    formula reduces to: p_e · P(s_f=e | e) + (1-p_e) · P(s_f=e | g).
+    """
+    J = _synthetic_joint_matrix_for_formula_tests()
+    expected = J.probabilities[(1, 1, 0)] + J.probabilities[(1, 1, 1)]
+    actual = reset_residual_single_cycle(p_e=1.0, joint=J, gate_error=1.0)
+    assert actual == pytest.approx(expected, rel=1e-12)
+
+
+def test_worst_case_residual_dominates_mixed_prior():
+    """V6 (blocking, unit-tier): worst-case prior p_e=1 ≥ residual at
+    mixed prior p_e=0.5. Property of the formula on a sensible joint
+    matrix; tested with synthetic input (no MC noise).
+    """
+    J = _synthetic_joint_matrix_for_formula_tests()
+    for eps in [0.0, 8.12e-4, 0.01]:
+        worst = reset_residual_single_cycle(p_e=1.0, joint=J, gate_error=eps)
+        mixed = reset_residual_single_cycle(p_e=0.5, joint=J, gate_error=eps)
+        assert worst >= mixed - 1e-12
+
+
 def test_no_mcsolve_in_reset_protocol():
     """Lint-grade enforcement: v0 has no mcsolve import / call.
 

@@ -435,3 +435,67 @@ def extract_joint_matrix(
             'gamma_eff': float(gamma_eff),
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Day 3.1 — reset formulas
+# ---------------------------------------------------------------------------
+
+
+def passive_reset_residual(T1: float, tau: float) -> float:
+    """Closed-form passive baseline: P_e(τ) = exp(-τ/T₁) for |e⟩-prepared
+    qubit decaying freely over duration τ.
+
+    Matched-duration comparison uses τ = τ_meas + τ_gate, where τ_gate is
+    the gate duration consumed by the conditional X-flip (5a's headline
+    is 20 ns).
+    """
+    if T1 <= 0:
+        raise ValueError(f"T1 must be positive (got {T1})")
+    return float(np.exp(-tau / T1))
+
+
+def reset_residual_single_cycle(
+    p_e: float,
+    joint: JointMatrix,
+    gate_error: float = 0.0,
+) -> float:
+    """p_e' from the three-term direct-jump formula:
+
+      p_e' = p_e · [P(s_f=e, m=0|e) + P(s_f=e, m=1|e)·ε_X +
+                    P(s_f=g, m=1|e)·(1-ε_X)]
+           + (1-p_e) · [P(s_f=e, m=0|g) + P(s_f=e, m=1|g)·ε_X +
+                        P(s_f=g, m=1|g)·(1-ε_X)]
+
+    Three terms per branch:
+      missed-excited:   P(s_f=e, m=0 | s_i) — readout missed; no flip
+      gate-failure:     P(s_f=e, m=1 | s_i) · ε_X — flip failed
+      false-positive:   P(s_f=g, m=1 | s_i) · (1-ε_X) — wrong flip g→e
+
+    Note: the fourth combination P(s_f=g, m=0 | s_i) does NOT appear:
+    qubit decayed, readout correctly said 0, no flip, ends in |g⟩.
+
+    gate_error: classical bit-flip failure probability ε_X. Default 0.0
+    is the v0 stub. The natural value when 5a has shipped is 1 - F_avg
+    from 5a (8.12e-4 at T_gate=20ns); fig5b renders three traces, two of
+    which call this function with eps_x=0 and eps_x=8.12e-4 respectively.
+    """
+    if not 0.0 <= p_e <= 1.0:
+        raise ValueError(f"p_e must be in [0, 1] (got {p_e})")
+    if not 0.0 <= gate_error <= 1.0:
+        raise ValueError(f"gate_error must be in [0, 1] (got {gate_error})")
+
+    p = joint.probabilities
+
+    branch_e = (
+        p[(1, 1, 0)]                          # missed-excited
+        + p[(1, 1, 1)] * gate_error           # gate failure
+        + p[(1, 0, 1)] * (1.0 - gate_error)   # false-positive on decayed
+    )
+    branch_g = (
+        p[(0, 1, 0)]                          # missed-excited (from g — usually ~0)
+        + p[(0, 1, 1)] * gate_error           # gate failure (from g — usually ~0)
+        + p[(0, 0, 1)] * (1.0 - gate_error)   # false-positive on |g⟩ → flips → |e⟩
+    )
+
+    return p_e * branch_e + (1.0 - p_e) * branch_g
