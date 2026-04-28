@@ -262,6 +262,14 @@ from dispersive_readout.physics.transmon import (
 )
 
 
+from dispersive_readout.physics.dispersive import dispersive_shift_full
+from dispersive_readout.physics.joint_matrix import JointMatrix
+from dispersive_readout.physics.pointer_response import (
+    compute_alpha_trajectory,
+)
+from dispersive_readout.physics.readout_model import classify_iq
+
+
 def purcell_rate_1_to_0(device: DeviceConfig) -> float:
     """Purcell decay rate for the |1⟩→|0⟩ transition.
 
@@ -286,4 +294,144 @@ def purcell_rate_1_to_0(device: DeviceConfig) -> float:
         (device.coupling.g * n_elem_01 / delta_10) ** 2
         * device.resonator.kappa
         * (1.0 + device.decoherence.n_th)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Day 2.4 — extract_joint_matrix direct-jump sampler
+# ---------------------------------------------------------------------------
+
+
+def extract_joint_matrix(
+    device: DeviceConfig,
+    drive_params: DriveParams,
+    n_trajectories: int = 1000,
+    threshold: Literal['midpoint'] = 'midpoint',
+    rng: np.random.Generator | None = None,
+) -> JointMatrix:
+    """Direct-jump joint matrix extraction.
+
+    Measurement window: tau_meas := drive_params.duration in v0 (single
+    source of truth). v1.5 may add an integration_window arg for sub-
+    interval integration (e.g., likelihood-ratio threshold optimization).
+
+    Per s_i ∈ {0, 1} (in SEPARATE outer loops with rng.spawn(2) for
+    substream independence):
+      1. Sample t_jump ~ Exp(γ_eff) if s_i=1, else no jump (v0 has no
+         thermal excitation from |g⟩).
+      2. Build QubitStateHistory.
+      3. compute_alpha_trajectory → integrated_iq.
+      4. Add Gaussian shot noise σ = √(tau_meas/(4κ)) (Module 1 noise
+         model, η=1 implicit).
+      5. classify_iq → m ∈ {0, 1}.
+      6. Tally (s_i, s_f, m).
+
+    threshold is Literal['midpoint'] in v0; v1.5 may add 'likelihood_ratio'.
+
+    rng=None defaults to np.random.default_rng() per numpy convention.
+    """
+    if threshold != 'midpoint':
+        raise ValueError(
+            f"v0 supports only threshold='midpoint' (got {threshold!r}); "
+            f"likelihood_ratio is v1.5 territory."
+        )
+
+    if rng is None:
+        rng = np.random.default_rng()
+
+    tau_meas = drive_params.duration
+    kappa = device.resonator.kappa
+    gamma_1 = device.decoherence.gamma_1
+    gamma_purcell = (
+        purcell_rate_1_to_0(device)
+        if device.decoherence.purcell_enabled
+        else 0.0
+    )
+    gamma_eff = gamma_1 + gamma_purcell
+
+    # Pre-compute pure-g and pure-e centroids (consumed by classify_iq)
+    t_grid_2pt = np.array([0.0, tau_meas])
+    history_g = QubitStateHistory(segments=((0.0, 0),), t_total=tau_meas)
+    history_e = QubitStateHistory(segments=((0.0, 1),), t_total=tau_meas)
+    _, centroid_g = compute_alpha_trajectory(device, drive_params, history_g, t_grid_2pt)
+    _, centroid_e = compute_alpha_trajectory(device, drive_params, history_e, t_grid_2pt)
+
+    # Module 1's noise model: σ_per_quadrature = √(τ_meas / (4κ))
+    sigma_iq = float(np.sqrt(tau_meas / (4.0 * kappa)))
+
+    # Independent substreams for s_i=0 and s_i=1
+    rng_g, rng_e = rng.spawn(2)
+
+    counts: dict[tuple[int, int, int], int] = {
+        (s_i, s_f, m): 0
+        for s_i in (0, 1) for s_f in (0, 1) for m in (0, 1)
+    }
+
+    for s_i, rng_si in ((0, rng_g), (1, rng_e)):
+        for _ in range(n_trajectories):
+            if s_i == 0:
+                # v0: no thermal excitation from |g⟩
+                history = QubitStateHistory(segments=((0.0, 0),), t_total=tau_meas)
+                s_f = 0
+            else:
+                if gamma_eff > 0:
+                    t_jump = rng_si.exponential(scale=1.0 / gamma_eff)
+                else:
+                    t_jump = float('inf')  # no jumps possible
+
+                if t_jump < tau_meas:
+                    history = QubitStateHistory(
+                        segments=((0.0, 1), (t_jump, 0)),
+                        t_total=tau_meas,
+                    )
+                    s_f = 0
+                else:
+                    history = QubitStateHistory(segments=((0.0, 1),), t_total=tau_meas)
+                    s_f = 1
+
+            _, integrated_iq = compute_alpha_trajectory(
+                device, drive_params, history, t_grid_2pt,
+            )
+
+            # Gaussian shot noise per quadrature
+            noise = sigma_iq * (
+                rng_si.standard_normal() + 1j * rng_si.standard_normal()
+            )
+            noisy_iq = integrated_iq + noise
+
+            m = classify_iq(noisy_iq, centroid_g, centroid_e)
+            counts[(s_i, s_f, m)] += 1
+
+    probabilities = {
+        key: counts[key] / n_trajectories for key in counts
+    }
+    binomial_se = {
+        key: float(np.sqrt(p * (1 - p) / n_trajectories))
+        for key, p in probabilities.items()
+    }
+
+    # Operating-point metadata
+    energies, eigenstates = diagonalize_transmon(
+        device.transmon, device.truncation,
+    )
+    n_mat = charge_operator_matrix_elements(eigenstates, device.truncation)
+    chi_per_level = dispersive_shift_full(
+        energies, n_mat, device.coupling.g, device.resonator.omega_r,
+    )
+
+    return JointMatrix(
+        probabilities=probabilities,
+        binomial_se=binomial_se,
+        n_trajectories=n_trajectories,
+        operating_point={
+            'tau_meas': float(tau_meas),
+            'kappa': float(kappa),
+            'eps_drive': float(drive_params.amplitude),
+            'delta_drive': float(drive_params.detuning),
+            'chi_g': float(chi_per_level[0]),
+            'chi_e': float(chi_per_level[1]),
+            'gamma_1': float(gamma_1),
+            'gamma_purcell': float(gamma_purcell),
+            'gamma_eff': float(gamma_eff),
+        },
     )

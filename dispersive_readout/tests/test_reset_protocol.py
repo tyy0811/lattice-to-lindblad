@@ -239,3 +239,116 @@ def test_purcell_rate_1_to_0_matches_lindblad_formula():
         * (1.0 + device.decoherence.n_th)
     )
     assert rate_helper == pytest.approx(rate_reference, rel=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# Day 2.4 — extract_joint_matrix direct-jump sampler
+# ---------------------------------------------------------------------------
+
+from dataclasses import replace as dc_replace
+
+from dispersive_readout.control.reset_protocol import extract_joint_matrix
+from dispersive_readout.physics.config import DecoherenceParams
+
+
+class _ZeroNoiseRNG:
+    """RNG wrapper that returns 0.0 from standard_normal but otherwise
+    delegates to the wrapped numpy rng. Used to deterministically zero
+    out shot noise in extract_joint_matrix's state-label bookkeeping
+    test. Implements `spawn` and `exponential` (the only other rng
+    methods extract_joint_matrix calls).
+    """
+
+    def __init__(self, base_rng: np.random.Generator) -> None:
+        self._base = base_rng
+
+    def standard_normal(self, *args, **kwargs):
+        if args:
+            shape = args[0]
+            return np.zeros(shape if isinstance(shape, tuple) else (shape,))
+        return 0.0
+
+    def exponential(self, *args, **kwargs):
+        return self._base.exponential(*args, **kwargs)
+
+    def spawn(self, n_children):
+        return [_ZeroNoiseRNG(child) for child in self._base.spawn(n_children)]
+
+
+def test_extract_joint_matrix_state_label_bookkeeping(tmp_path):
+    """State-label bookkeeping in direct-jump.
+
+    Recipe for deterministic verification:
+      - γ_eff = 0 (no jumps possible) → s_f always == s_i
+      - σ_iq · standard_normal() = 0 (zero-noise rng) → m classified
+        deterministically: noisy_iq == centroid_g for s_i=0,
+        noisy_iq == centroid_e for s_i=1.
+
+    Joint matrix should have only TWO non-zero entries:
+      P(s_f=0, m=0 | s_i=0) = 1   (g-prep stays in g; iq lands at α_∞_g)
+      P(s_f=1, m=1 | s_i=1) = 1   (e-prep stays in e; iq lands at α_∞_e)
+
+    All other 6 entries must be exactly 0.
+
+    Note: the more direct strategy of "make κ huge so σ → 0" doesn't
+    work — |α_∞| ∝ 1/κ collapses faster than σ shrinks (σ scales as
+    1/√κ), so the SNR actually decreases. Zeroing the rng's
+    standard_normal output is the principled fix.
+    """
+    yaml_file = tmp_path / "closed_loop_demo_device.yaml"
+    yaml_file.write_text(SYNTHETIC_CLOSED_LOOP_YAML)
+    device = device_idx18(yaml_path=yaml_file)
+
+    # Force γ_eff = 0 by zeroing γ_1 and disabling Purcell
+    no_decay = DecoherenceParams(
+        gamma_1=0.0, gamma_phi=device.decoherence.gamma_phi,
+        n_th=device.decoherence.n_th, purcell_enabled=False,
+    )
+    device_no_decay = dc_replace(device, decoherence=no_decay)
+
+    drive = closed_loop_demo_drive_params(duration=500e-9)
+    rng = _ZeroNoiseRNG(np.random.default_rng(seed=42))
+    J = extract_joint_matrix(device_no_decay, drive, n_trajectories=100, rng=rng)
+
+    # Two non-zero entries expected
+    assert J.probabilities[(0, 0, 0)] == pytest.approx(1.0, abs=1e-12)
+    assert J.probabilities[(1, 1, 1)] == pytest.approx(1.0, abs=1e-12)
+
+    # All others zero
+    for s_i, s_f, m in [
+        (0, 0, 1), (0, 1, 0), (0, 1, 1),
+        (1, 0, 0), (1, 0, 1), (1, 1, 0),
+    ]:
+        assert J.probabilities[(s_i, s_f, m)] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_no_mcsolve_in_reset_protocol():
+    """Lint-grade enforcement: v0 has no mcsolve import / call.
+
+    Looks at code lines only (strips comments + docstrings). Mentions of
+    mcsolve in module docstrings (which document why v0 excludes it) are
+    intentional and must not trigger the lint.
+    """
+    import ast
+    from dispersive_readout.control import reset_protocol
+    src = open(reset_protocol.__file__).read()
+    tree = ast.parse(src)
+    # Strip top-level + nested docstrings: collect them and check the rest
+    docstrings: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)):
+            doc = ast.get_docstring(node, clean=False)
+            if doc:
+                docstrings.append(doc)
+    src_no_docstrings = src
+    for doc in docstrings:
+        src_no_docstrings = src_no_docstrings.replace(doc, '')
+    # Strip comments
+    src_no_comments = '\n'.join(
+        line for line in src_no_docstrings.splitlines()
+        if not line.lstrip().startswith('#')
+    )
+    assert 'mcsolve' not in src_no_comments, (
+        "v0 reset_protocol must not import or call mcsolve "
+        "(found mcsolve outside docstrings/comments)"
+    )
