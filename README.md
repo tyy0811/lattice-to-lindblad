@@ -1,4 +1,4 @@
-> **Headline deliverable — Stage 06: Dispersive readout for transmon qubits.** A 4-module pipeline anchored to Marxer et al. (arXiv:2508.16437): a Lindblad simulator validated against analytic limits, error-budget decomposition into 4 active-loss channels plus a calibration-sensitivity panel, synthetic-trace characterization with parameter recovery, and a closed-loop optimization layer (sensitivity tornado, regime map, Pareto frontier, recommendation pipeline). Reference F_assign at REFERENCE drive: **0.9938**. 50-device harness F-spread: **0.0024** (decoherence-driven; drive-amplitude argmax invariant). 4 figures shipped.
+> **Headline deliverable — Stage 06: Dispersive readout for transmon qubits.** A 5-module pipeline anchored to Marxer et al. (arXiv:2508.16437): a Lindblad simulator validated against analytic limits, error-budget decomposition into 4 active-loss channels plus a calibration-sensitivity panel, synthetic-trace characterization with parameter recovery, a closed-loop optimization layer (sensitivity tornado, regime map, Pareto frontier, recommendation pipeline), and a DRAG-corrected single-qubit X-gate simulator with a published `ε_X(T_gate)` curve. Reference F_assign at REFERENCE drive: **0.9938**. 50-device harness F-spread: **0.0024** (decoherence-driven; drive-amplitude argmax invariant). Headline X-gate error: **ε_X^ref(T_gate = 20 ns) = 8.12 × 10⁻⁴** (1 − F_avg over the Pauli set). 5 figures shipped.
 >
 > Implementation: `dispersive_readout/`. Drivers: `06_Dispersive_Readout/`. One-page summary: `06_Dispersive_Readout/SUMMARY.md`.
 >
@@ -19,7 +19,7 @@ A Python implementation, validation, and optimization suite for **dispersive rea
 | 03 — Non-Equilibrium Dynamics | Real-time gauge dynamics, string breaking | Confined vs string-breaking regimes cleanly distinguished |
 | 04 — Continuum Physics | DMRG-extended mass gap, 1+8 quarkonium suppression | DMRG-extended mass-gap extrapolation with bootstrap uncertainty |
 | 05 — Entanglement Structure | Tensor-network bipartite entropy + symmetry-resolved sectors | Top-2 charge sectors carry > 99.3% of entanglement weight |
-| **06 — Dispersive Readout** | Superconducting-qubit modeling | Validated 4-module pipeline with 4 shipped figures |
+| **06 — Dispersive Readout + Single-Qubit Gate** | Superconducting-qubit modeling | Validated 5-module pipeline with 5 shipped figures |
 
 **Project documents:**
 - `docs/Theoretical_Framework.pdf` — modeling assumptions, derivations, conventions
@@ -139,7 +139,17 @@ Three-panel composite: (a) local sensitivity of assignment fidelity to readout-r
 
 The optimal readout drive (ε₀, τ) is invariant across the 50-device characterization harness (T₁ ∈ [5.4, 91.9] μs at SEED=42): σ(ε₀_opt) = 0 to numerical precision, with F_opt varying by 0.0024 across devices due to decoherence alone. This shared-argmax behavior reflects that the dispersive-saturation peak is controlled by (κ, χ, ω_r) — REFERENCE-inherited in the closed-loop pipeline — rather than by decoherence parameters. The result characterizes the parameter regime where the REFERENCE device (Marxer Q1, arXiv:2508.16437) sits. Per-device argmax exploration would require extending Module 3 with resonator spectroscopy and AC-Stark calibration — flagged as a future extension.
 
-The underlying transmon–resonator Lindblad simulator (`dispersive_readout/physics/`) is not specific to readout: the same operator construction, time evolution, and error-channel decomposition would apply to single-qubit gate calibration (DRAG, AC-Stark cancellation) or active qubit reset (measurement-based reset, Purcell-filter-assisted reset). Stage 06 scopes to readout; the simulator infrastructure generalizes.
+The underlying transmon–resonator Lindblad simulator (`dispersive_readout/physics/`) is not specific to readout: the same operator construction, time evolution, and error-channel decomposition apply to single-qubit gate calibration (DRAG, AC-Stark cancellation) or active qubit reset (measurement-based reset, Purcell-filter-assisted reset). Module 5a (below) realizes the DRAG calibration extension; active reset is reserved for Module 5b.
+
+### Module 5a — DRAG-corrected single-qubit X gate
+
+Sin²-windowed-Gaussian π-pulse on the transmon (Duffing approximation) with calibrated DRAG-1 quadrature correction. Eight-validation suite (V1–V7) plus a published bit-flip-error curve `ε_X(T_gate)` over `T_gate ∈ [5, 50] ns`. Headline: **ε_X^ref(T_gate = 20 ns) = 8.12 × 10⁻⁴** under full Lindblad on REFERENCE_DEVICE at fidelity-optimal `β_opt ≈ 0.50`, where `ε_X = 1 − F_avg` is the average X-gate-fidelity error over the Pauli set `{|0⟩, |1⟩, |+⟩, |+i⟩}` (an explicit upgrade from one-way `|0⟩ → |1⟩` transfer fidelity, which would mask coherent superposition errors).
+
+![Stage 06 — Figure 5a: DRAG leakage suppression](06_Dispersive_Readout/figures/fig5a_drag_leakage.png)
+
+Panel (a): population trajectories at `T_gate = 20 ns` for no-DRAG, β = 1, and fidelity-optimal β_opt. Panel (b): final + peak leakage vs T_gate over the sweep range, with insets for ε_X(T_gate) under full Lindblad and the V2b leakage-vs-fidelity trade-off (the β values minimizing gate fidelity, final leakage, and peak leakage diverge across the perturbative β grid — characterized as a published curve).
+
+Methodology footnote: calibration was developed across three round-by-round amendments (peak-leakage saturation finding, calibration-objective correction, gate-level fidelity metric upgrade). The narrative is documented in `06_Dispersive_Readout/diagnostics/drag_leakage_suppression.md` and inherits the validation-first discipline established in Module 4.
 
 ### Methodology — validation-first development (Module 4)
 
@@ -162,6 +172,7 @@ python 06_Dispersive_Readout/dispersive_readout_simulation.py      # Figure 1
 python 06_Dispersive_Readout/scripts/fig2_error_budget.py          # Figure 2
 python 06_Dispersive_Readout/characterize.py --help                # Module 3 CLI
 python 06_Dispersive_Readout/scripts/fig4_optimization.py          # Figure 4
+python 06_Dispersive_Readout/scripts/fig5a_drag_leakage.py         # Figure 5a (Module 5a)
 ```
 
 ### More
