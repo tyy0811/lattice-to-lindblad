@@ -88,3 +88,76 @@ def test_pointer_steady_state_qubit_state_validation():
     drive = DriveParams(amplitude=140e6, duration=500e-9)
     with pytest.raises((ValueError, IndexError)):
         pointer_steady_state(device, drive, qubit_state=2)
+
+
+from dispersive_readout.control.reset_protocol import QubitStateHistory
+from dispersive_readout.physics.pointer_response import compute_alpha_trajectory
+
+
+def test_compute_alpha_trajectory_constant_state_reaches_steady_state():
+    """For constant qubit state and t_grid extending past several κ⁻¹,
+    α(t) → α_∞(s) at the final time.
+    """
+    device = REFERENCE_DEVICE
+    drive = DriveParams(amplitude=140e6, duration=5e-6, detuning=0.0)
+    history = QubitStateHistory(segments=((0.0, 1),), t_total=5e-6)
+    t_grid = np.linspace(0.0, 5e-6, 200)
+
+    alpha_traj, integrated_iq = compute_alpha_trajectory(device, drive, history, t_grid)
+
+    alpha_inf = pointer_steady_state(device, drive, qubit_state=1)
+    # 5 µs >> 1/(κ/2) for REFERENCE κ ≈ 2π·5 MHz, so we should be in steady state
+    assert alpha_traj[-1] == pytest.approx(alpha_inf, rel=1e-3)
+
+
+def test_compute_alpha_trajectory_continuous_across_jump():
+    """At a qubit jump, α(t) is continuous (the cavity remembers its phase-
+    space coordinate); only δ_{s(t)} changes. The trajectory grid value at
+    t_jump - epsilon and t_jump + epsilon should agree to high precision.
+    """
+    device = REFERENCE_DEVICE
+    drive = DriveParams(amplitude=140e6, duration=2e-6, detuning=0.0)
+    t_jump = 1e-6
+    history = QubitStateHistory(
+        segments=((0.0, 1), (t_jump, 0)),
+        t_total=2e-6,
+    )
+    # eps small enough that rate·eps << 1e-5 at REFERENCE κ = 2π·5 MHz
+    # (rate·1e-13 ≈ 1.6e-6, comfortably below the tolerance below)
+    eps = 1e-13
+    t_grid = np.array([t_jump - eps, t_jump + eps])
+    alpha_traj, _ = compute_alpha_trajectory(device, drive, history, t_grid)
+    # Continuity at the jump: α drifts by O(rate·eps) within each segment
+    assert alpha_traj[0] == pytest.approx(alpha_traj[1], rel=1e-5)
+
+
+def test_compute_alpha_trajectory_returns_tuple():
+    """Returns (trajectory, integrated_iq); trajectory is array, IQ is scalar."""
+    device = REFERENCE_DEVICE
+    drive = DriveParams(amplitude=140e6, duration=500e-9, detuning=0.0)
+    history = QubitStateHistory(segments=((0.0, 0),), t_total=500e-9)
+    t_grid = np.array([0.0, 500e-9])
+    result = compute_alpha_trajectory(device, drive, history, t_grid)
+    assert isinstance(result, tuple) and len(result) == 2
+    alpha_traj, integrated_iq = result
+    assert isinstance(alpha_traj, np.ndarray) and alpha_traj.shape == (2,)
+    assert isinstance(integrated_iq, complex)
+
+
+def test_compute_alpha_trajectory_integrated_iq_independent_of_grid():
+    """The closed-form integrated_iq is per-segment exact; it does NOT
+    depend on t_grid resolution (t_grid is only for the trajectory output).
+    """
+    device = REFERENCE_DEVICE
+    drive = DriveParams(amplitude=140e6, duration=1e-6, detuning=0.0)
+    history = QubitStateHistory(
+        segments=((0.0, 1), (5e-7, 0)),
+        t_total=1e-6,
+    )
+    _, iq_2pt = compute_alpha_trajectory(
+        device, drive, history, np.array([0.0, 1e-6]),
+    )
+    _, iq_200pt = compute_alpha_trajectory(
+        device, drive, history, np.linspace(0.0, 1e-6, 200),
+    )
+    assert iq_2pt == pytest.approx(iq_200pt, rel=1e-12)

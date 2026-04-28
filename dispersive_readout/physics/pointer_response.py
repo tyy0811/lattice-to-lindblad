@@ -84,3 +84,89 @@ def pointer_steady_state(
     delta_s = -drive_params.detuning + chi_s
 
     return -1j * eps / (kappa / 2.0 + 1j * delta_s)
+
+
+def compute_alpha_trajectory(
+    device: DeviceConfig,
+    drive_params: DriveParams,
+    history: "QubitStateHistory",
+    t_grid: np.ndarray,
+) -> tuple[np.ndarray, complex]:
+    """Closed-form per-segment integration of dα/dt = -(κ/2 + i·δ_s)·α - i·ε.
+
+    Returns (alpha_trajectory, integrated_iq) where:
+    - alpha_trajectory: complex ndarray shape (len(t_grid),). For each
+      t in t_grid, the value of α(t) given the piecewise-constant qubit
+      state history. For diagnostics/plotting; NOT consumed by
+      extract_joint_matrix.
+    - integrated_iq: complex scalar = ∫_0^t_total α(t) dt, computed
+      exactly per segment (sum of segment-wise closed-form integrals).
+      NOT via numerical quadrature on alpha_trajectory. This is the
+      V4a-contract-relevant quantity.
+
+    Plotting note: when called with a 2-point t_grid (as inside
+    extract_joint_matrix's inner loop), the returned trajectory has only
+    endpoint values [α(0), α(t_total)] and is NOT useful for plotting α(t)
+    — it would render as a straight line and miss the κ/2-scale relaxation
+    dynamics. For diagnostic visualization, call separately with a denser
+    grid (e.g., np.linspace(0, t_total, 200)).
+
+    v0 assumes a square pulse: ε(t) = drive_params.amplitude for t ∈
+    [0, t_total]. v1.5 may parameterize the envelope.
+    """
+    # Avoid circular import — QubitStateHistory lives in control/, but we
+    # can't import it at module top because reset_protocol.py imports from
+    # this file. Defer to runtime.
+    from dispersive_readout.control.reset_protocol import QubitStateHistory  # noqa: F401
+
+    chi_per_level = _chi_per_level(device)
+    kappa = device.resonator.kappa
+    eps = drive_params.amplitude
+    omega_r_minus_omega_d = -drive_params.detuning  # ω_r − (ω_r + detuning) = −detuning
+
+    def _delta_s(s: int) -> float:
+        return omega_r_minus_omega_d + float(chi_per_level[s])
+
+    def _alpha_inf(s: int) -> complex:
+        return -1j * eps / (kappa / 2.0 + 1j * _delta_s(s))
+
+    # Build segment list with explicit (t_start, t_end, qubit_state)
+    segments = []
+    for i, (t_start, q) in enumerate(history.segments):
+        t_end = (
+            history.segments[i + 1][0] if i + 1 < len(history.segments)
+            else history.t_total
+        )
+        segments.append((t_start, t_end, q))
+
+    # Step through segments analytically. α(t) is continuous across jumps;
+    # only δ_s changes, after which α relaxes toward the new α_∞ at rate κ/2.
+    integrated_iq: complex = 0.0 + 0.0j
+    alpha_at_segment_start: complex = 0.0 + 0.0j  # cavity starts in vacuum
+    alpha_grid = np.empty(len(t_grid), dtype=complex)
+
+    for seg_start, seg_end, q in segments:
+        a_inf = _alpha_inf(q)
+        rate = kappa / 2.0 + 1j * _delta_s(q)
+        delta_t_seg = seg_end - seg_start
+
+        # Closed-form integral over this segment:
+        # ∫_seg α(t) dt = a_inf · Δt + (α(seg_start) − a_inf) · _segment_integral_factor(rate, Δt)
+        integrated_iq += (
+            a_inf * delta_t_seg
+            + (alpha_at_segment_start - a_inf)
+            * _segment_integral_factor(rate, delta_t_seg)
+        )
+
+        # Populate alpha_grid for any t in this segment
+        in_seg = (t_grid >= seg_start) & (t_grid <= seg_end)
+        for j in np.where(in_seg)[0]:
+            tau = t_grid[j] - seg_start
+            alpha_grid[j] = a_inf + (alpha_at_segment_start - a_inf) * np.exp(-rate * tau)
+
+        # Update alpha at end of this segment for the next one
+        alpha_at_segment_start = (
+            a_inf + (alpha_at_segment_start - a_inf) * np.exp(-rate * delta_t_seg)
+        )
+
+    return alpha_grid, integrated_iq
