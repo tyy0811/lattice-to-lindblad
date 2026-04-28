@@ -322,6 +322,49 @@ def test_extract_joint_matrix_state_label_bookkeeping(tmp_path):
         assert J.probabilities[(s_i, s_f, m)] == pytest.approx(0.0, abs=1e-12)
 
 
+def test_decay_during_measurement_creates_P_ge0_in_sweep(tmp_path):
+    """V7 (blocking, integration-tier): sweep τ_meas/T₁ ∈ [0.1, 2.0] and
+    require P(s_f=g, m=0 | e) > 0.05 + 2·SE at SOME point in the sweep.
+
+    This demonstrates the conceptual finding: in a regime where T₁
+    relaxation during measurement is non-negligible, the joint matrix
+    distinguishes 'qubit decayed AND measurement correctly read ground'
+    (reset succeeds) from 'qubit stayed excited AND measurement missed
+    it' (reset fails). The plain confusion matrix conflates these.
+
+    SE-aware threshold: at N=1000 and p≈0.05, SE ≈ 0.007, so the robust
+    bound is > 0.05 + 2·0.007 ≈ 0.064.
+    """
+    yaml_file = tmp_path / "closed_loop_demo_device.yaml"
+    yaml_file.write_text(SYNTHETIC_CLOSED_LOOP_YAML)
+    device = device_idx18(yaml_path=yaml_file)
+    T1 = 1.0 / device.decoherence.gamma_1
+
+    tau_meas_grid = T1 * np.linspace(0.1, 2.0, 8)
+    rng = np.random.default_rng(seed=20260428)
+    rng_subs = rng.spawn(len(tau_meas_grid))
+
+    p_decayed_missed_curve = []
+    p_decayed_missed_se_curve = []
+    for tau, sub_rng in zip(tau_meas_grid, rng_subs):
+        drive = closed_loop_demo_drive_params(duration=tau)
+        J = extract_joint_matrix(device, drive, n_trajectories=1000, rng=sub_rng)
+        p_decayed_missed_curve.append(J.probabilities[(1, 0, 0)])
+        p_decayed_missed_se_curve.append(J.binomial_se[(1, 0, 0)])
+
+    p_decayed_missed = np.array(p_decayed_missed_curve)
+    p_decayed_missed_se = np.array(p_decayed_missed_se_curve)
+    se_aware_threshold = 0.05 + 2.0 * p_decayed_missed_se
+    margin_above_threshold = p_decayed_missed - se_aware_threshold
+
+    assert margin_above_threshold.max() > 0, (
+        f"V7 failed: P(s_f=g, m=0 | e) never exceeded 0.05 + 2·SE in the sweep. "
+        f"Max value: {p_decayed_missed.max():.4f}, "
+        f"SE at that point: {p_decayed_missed_se[np.argmax(p_decayed_missed)]:.4f}. "
+        f"This is the regime characterization that V7 demonstrates."
+    )
+
+
 def test_no_mcsolve_in_reset_protocol():
     """Lint-grade enforcement: v0 has no mcsolve import / call.
 
