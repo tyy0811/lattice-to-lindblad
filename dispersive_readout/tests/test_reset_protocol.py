@@ -137,3 +137,69 @@ def test_device_idx18_raises_on_high_thermal(tmp_path, monkeypatch):
     )
     with pytest.raises(NotImplementedError, match="thermal"):
         device_idx18(yaml_path=yaml_file)
+
+
+# ---------------------------------------------------------------------------
+# Day 2.2 — load_eps_x_5a with provenance + mtime
+# ---------------------------------------------------------------------------
+
+from dispersive_readout.control.reset_protocol import load_eps_x_5a
+
+
+SYNTHETIC_FIG5A_YAML = textwrap.dedent("""
+device: REFERENCE_DEVICE
+calibration_objective: argmin_β (1 − F_avg)
+shipped_metric: epsilon_x = 1 - F_avg
+alpha_2pi_Hz: -234199032.4133016
+sweep_T_gate_ns: [5.0, 10.0, 15.0, 20.0, 25.0]
+beta_opt_fidelity: [0.65, 0.55, 0.50, 0.50, 0.50]
+epsilon_x_drag_opt: [3.5e-3, 1.8e-3, 1.0e-3, 8.12e-4, 7.5e-4]
+F_avg_drag_opt: [0.9965, 0.9982, 0.999, 0.999188, 0.99925]
+""")
+
+
+def test_load_eps_x_5a_provenance_capture(tmp_path):
+    """Returns (eps_x, provenance) with the four+ required keys."""
+    yaml_file = tmp_path / "fig5a_drag_leakage_data.yaml"
+    yaml_file.write_text(SYNTHETIC_FIG5A_YAML)
+
+    eps_x, provenance = load_eps_x_5a(t_gate=20e-9, yaml_path=yaml_file)
+
+    assert eps_x == pytest.approx(8.12e-4)
+    assert 'source_yaml' in provenance
+    assert 'source_mtime' in provenance
+    assert 'T_gate_ns' in provenance
+    assert provenance['T_gate_ns'] == 20.0
+    assert 'beta_opt' in provenance
+    assert provenance['beta_opt'] == 0.50
+    assert 'F_avg_drag_opt' in provenance
+    assert provenance['F_avg_drag_opt'] == pytest.approx(1 - 8.12e-4)
+
+
+def test_load_eps_x_5a_provenance_mtime_matches_yaml_file(tmp_path):
+    """Guards the staleness-detection capability: provenance mtime must
+    equal yaml_path.stat().st_mtime at load time, so any future re-render
+    of fig5a's YAML is detectable as a mtime advance in fig5b's data YAML.
+    """
+    yaml_file = tmp_path / "fig5a_drag_leakage_data.yaml"
+    yaml_file.write_text(SYNTHETIC_FIG5A_YAML)
+    expected_mtime = yaml_file.stat().st_mtime
+
+    _, provenance = load_eps_x_5a(t_gate=20e-9, yaml_path=yaml_file)
+    assert provenance['source_mtime'] == expected_mtime
+
+
+def test_load_eps_x_5a_raises_on_t_gate_not_in_sweep(tmp_path):
+    """If T_gate isn't in the YAML's sweep grid, raise ValueError with
+    the available grid in the message."""
+    yaml_file = tmp_path / "fig5a_drag_leakage_data.yaml"
+    yaml_file.write_text(SYNTHETIC_FIG5A_YAML)
+    with pytest.raises(ValueError, match="not in 5a's sweep"):
+        load_eps_x_5a(t_gate=12e-9, yaml_path=yaml_file)
+
+
+def test_load_eps_x_5a_raises_on_missing_yaml(tmp_path):
+    """Clear FileNotFoundError if the YAML doesn't exist."""
+    missing = tmp_path / "does_not_exist.yaml"
+    with pytest.raises(FileNotFoundError, match="5a data YAML not found"):
+        load_eps_x_5a(yaml_path=missing)

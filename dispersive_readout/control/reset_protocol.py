@@ -188,3 +188,65 @@ def device_idx18(yaml_path: Path | None = None) -> DeviceConfig:
         decoherence=decoherence,
         truncation=REFERENCE_DEVICE.truncation,
     )
+
+
+def load_eps_x_5a(
+    t_gate: float = 20e-9,
+    yaml_path: Path | None = None,
+) -> tuple[float, dict]:
+    """Load 5a's ε_X = 1 - F_avg at the given T_gate from fig5a's data YAML.
+
+    Returns (eps_x, provenance), where provenance is a dict capturing:
+      - source_yaml:    string path of the YAML
+      - source_mtime:   mtime stamp at load time (staleness detection)
+      - T_gate_ns:      the T_gate row used
+      - beta_opt:       the matching β_opt from fig5a's calibration
+                        (sourced from beta_opt_fidelity, the F_avg-optimal
+                        β grid in the 5a YAML)
+      - F_avg_drag_opt: 1 - eps_x (the underlying fidelity)
+
+    Provenance flows into fig5b's data YAML under epsilon_x_5a_provenance
+    for full lineage from idx=18 reset → 5a's gate calibration.
+
+    yaml_path defaults to the canonical fig5a output path, resolved
+    relative to __file__. Tests inject.
+
+    Raises:
+      FileNotFoundError if yaml_path missing.
+      ValueError if t_gate not in 5a's sweep_T_gate_ns grid.
+      KeyError if the YAML schema has changed.
+    """
+    if yaml_path is None:
+        yaml_path = _FIG5A_DATA_YAML_PATH
+
+    if not yaml_path.exists():
+        raise FileNotFoundError(
+            f"5a data YAML not found at {yaml_path}. "
+            f"Run 06_Dispersive_Readout/scripts/fig5a_drag_leakage.py first."
+        )
+
+    mtime_at_load = yaml_path.stat().st_mtime
+    data = yaml.safe_load(yaml_path.read_text())
+
+    sweep = data['sweep_T_gate_ns']
+    eps_x_curve = data['epsilon_x_drag_opt']
+    beta_opt_curve = data['beta_opt_fidelity']
+
+    t_gate_ns = t_gate * 1e9
+    if t_gate_ns not in sweep:
+        raise ValueError(
+            f"T_gate={t_gate_ns}ns not in 5a's sweep grid {sweep}; "
+            f"available T_gate values: {sweep}."
+        )
+
+    idx = sweep.index(t_gate_ns)
+    eps_x = float(eps_x_curve[idx])
+
+    provenance = {
+        'source_yaml': str(yaml_path),
+        'source_mtime': mtime_at_load,
+        'T_gate_ns': float(t_gate_ns),
+        'beta_opt': float(beta_opt_curve[idx]),
+        'F_avg_drag_opt': 1.0 - eps_x,
+    }
+    return eps_x, provenance
