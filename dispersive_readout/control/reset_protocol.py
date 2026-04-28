@@ -91,7 +91,13 @@ _FIG5A_DATA_YAML_PATH = (
     / "fig5a_drag_leakage_data.yaml"
 )
 
-_THERMAL_REGIME_THRESHOLD = 0.05  # v0 enforces n̄_q < 0.05; v1.5 territory above
+# v0 explicitly assumes zero thermal qubit population: extract_joint_matrix
+# does not sample thermal g→e excitation, so any device with n_th > 0 would
+# silently drop a transition pathway that physics.lindblad.build_collapse_
+# operators *does* model (line 108-114). The reset model is consistent only
+# at strict zero temperature. device_idx18 enforces this by overriding
+# REFERENCE_DEVICE.decoherence.n_th to 0; extract_joint_matrix raises
+# NotImplementedError if it ever sees n_th > 0.
 
 
 def closed_loop_demo_drive_params(duration: float) -> DriveParams:
@@ -125,11 +131,16 @@ def device_idx18(yaml_path: Path | None = None) -> DeviceConfig:
     yaml_path defaults to the canonical Module 4 figure path, resolved
     relative to __file__. Tests inject an alternate path via the kwarg.
 
+    v0 zero-temp invariant: n_th is set to 0.0 in the returned device,
+    overriding REFERENCE_DEVICE.decoherence.n_th (typically 0.01). This
+    matches the v0 reset model in extract_joint_matrix, which does not
+    sample thermal g→e excitation. Thermal-aware reset is v1.5 territory;
+    devices with n_th > 0 would silently drop a transition pathway the
+    underlying Lindblad simulator does model.
+
     Raises:
       FileNotFoundError if yaml_path missing (with regeneration hint).
       KeyError if the 'chosen' block schema has changed.
-      NotImplementedError if device.decoherence.n_th >= 0.05 — v1.5
-        thermal-excitation territory.
     """
     if yaml_path is None:
         yaml_path = _CLOSED_LOOP_YAML_PATH
@@ -156,14 +167,6 @@ def device_idx18(yaml_path: Path | None = None) -> DeviceConfig:
             f"check YAML."
         )
 
-    n_th = REFERENCE_DEVICE.decoherence.n_th
-    if n_th >= _THERMAL_REGIME_THRESHOLD:
-        raise NotImplementedError(
-            f"v0 reset model assumes thermal n̄_q < {_THERMAL_REGIME_THRESHOLD}; "
-            f"got n̄_q = {n_th}. Thermal-excitation initial-state preparation "
-            f"is v1.5 territory."
-        )
-
     # E_J derived from ω_q target while holding E_C fixed at REFERENCE
     # via the simple transmon dispersion ω_q ≈ √(8 E_J E_C) - E_C, so
     # E_J = (ω_q + E_C)² / (8 E_C). For idx=18 ω_q≈4.72 GHz the derived
@@ -178,7 +181,7 @@ def device_idx18(yaml_path: Path | None = None) -> DeviceConfig:
     decoherence = DecoherenceParams(
         gamma_1=gamma_1,
         gamma_phi=gamma_phi,
-        n_th=n_th,
+        n_th=0.0,  # v0 zero-temp reset model (overrides REFERENCE_DEVICE.n_th)
         purcell_enabled=REFERENCE_DEVICE.decoherence.purcell_enabled,
     )
     return DeviceConfig(
@@ -334,6 +337,17 @@ def extract_joint_matrix(
         raise ValueError(
             f"v0 supports only threshold='midpoint' (got {threshold!r}); "
             f"likelihood_ratio is v1.5 territory."
+        )
+
+    if device.decoherence.n_th > 0:
+        raise NotImplementedError(
+            f"v0 reset model assumes zero qubit thermal population "
+            f"(got n_th = {device.decoherence.n_th}). The s_i=0 branch hard-"
+            f"codes |g⟩-stays-|g⟩ for the entire measurement window, which "
+            f"silently drops the thermal g→e excitation pathway that "
+            f"physics.lindblad.build_collapse_operators models. Either pass "
+            f"a device with n_th=0 (e.g., from device_idx18, which sets "
+            f"n_th=0 explicitly) or wait for v1.5 thermal-aware sampling."
         )
 
     if rng is None:

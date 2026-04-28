@@ -99,7 +99,23 @@ def test_device_idx18_matches_yaml(tmp_path):
     assert device.decoherence.gamma_1 == pytest.approx(expected_gamma_1, rel=1e-9)
 
     assert device.resonator.kappa == REFERENCE_DEVICE.resonator.kappa
-    assert device.decoherence.n_th == REFERENCE_DEVICE.decoherence.n_th
+
+
+def test_device_idx18_zeroes_thermal_for_v0(tmp_path):
+    """v0 zero-temp invariant: device_idx18 always sets n_th=0.0 in the
+    returned device, regardless of what REFERENCE_DEVICE has. The reset
+    sampler hard-codes |g⟩-stays-|g⟩ and would silently drop the thermal
+    g→e excitation pathway that build_collapse_operators models, so the
+    only consistent v0 device has n_th=0.
+    """
+    yaml_file = tmp_path / "closed_loop_demo_device.yaml"
+    yaml_file.write_text(SYNTHETIC_CLOSED_LOOP_YAML)
+
+    device = device_idx18(yaml_path=yaml_file)
+    assert device.decoherence.n_th == 0.0
+    # And REFERENCE_DEVICE itself should still have its production n_th
+    # (we override only in the device_idx18 return value, not globally)
+    assert REFERENCE_DEVICE.decoherence.n_th > 0.0
 
 
 def test_device_idx18_raises_on_missing_yaml(tmp_path):
@@ -107,36 +123,6 @@ def test_device_idx18_raises_on_missing_yaml(tmp_path):
     missing = tmp_path / "does_not_exist.yaml"
     with pytest.raises(FileNotFoundError, match="not found"):
         device_idx18(yaml_path=missing)
-
-
-def test_device_idx18_raises_on_high_thermal(tmp_path, monkeypatch):
-    """v0 enforces n̄_q < 0.05 in device_idx18; raise NotImplementedError
-    otherwise (v1.5 thermal-excitation territory)."""
-    yaml_file = tmp_path / "closed_loop_demo_device.yaml"
-    yaml_file.write_text(SYNTHETIC_CLOSED_LOOP_YAML)
-
-    from dispersive_readout.physics.config import (
-        DecoherenceParams,
-        DeviceConfig,
-    )
-    high_thermal = DecoherenceParams(
-        gamma_1=REFERENCE_DEVICE.decoherence.gamma_1,
-        gamma_phi=REFERENCE_DEVICE.decoherence.gamma_phi,
-        n_th=0.10,  # above 0.05 threshold
-    )
-    high_thermal_ref = DeviceConfig(
-        transmon=REFERENCE_DEVICE.transmon,
-        resonator=REFERENCE_DEVICE.resonator,
-        coupling=REFERENCE_DEVICE.coupling,
-        decoherence=high_thermal,
-        truncation=REFERENCE_DEVICE.truncation,
-    )
-    monkeypatch.setattr(
-        "dispersive_readout.control.reset_protocol.REFERENCE_DEVICE",
-        high_thermal_ref,
-    )
-    with pytest.raises(NotImplementedError, match="thermal"):
-        device_idx18(yaml_path=yaml_file)
 
 
 # ---------------------------------------------------------------------------
@@ -646,6 +632,31 @@ def test_trajectory_count_convergence_pe_prime(tmp_path):
         f"V5 slow: SE(1000)/SE(4000) = {ratio_1000_to_4000:.2f}, "
         f"expected ≈ {expected_ratio_1000_4000:.2f}"
     )
+
+
+def test_extract_joint_matrix_rejects_thermal(tmp_path):
+    """Defensive guard from adversarial review: the v0 sampler hard-codes
+    |g⟩-stays-|g⟩ and drops thermal g→e events that build_collapse_
+    operators would model. extract_joint_matrix must therefore refuse any
+    device with n_th > 0 and direct callers to device_idx18 (which sets
+    n_th=0) or to a future v1.5 thermal-aware sampler.
+    """
+    yaml_file = tmp_path / "closed_loop_demo_device.yaml"
+    yaml_file.write_text(SYNTHETIC_CLOSED_LOOP_YAML)
+    device = device_idx18(yaml_path=yaml_file)
+    # Re-introduce thermal population to exercise the guard
+    thermal_decoherence = DecoherenceParams(
+        gamma_1=device.decoherence.gamma_1,
+        gamma_phi=device.decoherence.gamma_phi,
+        n_th=0.01,
+        purcell_enabled=device.decoherence.purcell_enabled,
+    )
+    thermal_device = dc_replace(device, decoherence=thermal_decoherence)
+    drive = closed_loop_demo_drive_params(duration=500e-9)
+    rng = np.random.default_rng(seed=42)
+
+    with pytest.raises(NotImplementedError, match="thermal"):
+        extract_joint_matrix(thermal_device, drive, n_trajectories=10, rng=rng)
 
 
 def test_no_mcsolve_in_reset_protocol():
