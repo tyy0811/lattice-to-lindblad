@@ -1,404 +1,189 @@
-# Lattice-to-Lindblad: Real-Time Gauge Dynamics, Entanglement Structure & Open Quantum Systems
+> **Headline deliverable — Stage 06: Dispersive readout for transmon qubits.** A 5-module pipeline anchored to Marxer et al. (arXiv:2508.16437): a Lindblad simulator validated against analytic limits, error-budget decomposition into 4 active-loss channels plus a calibration-sensitivity panel, synthetic-trace characterization with parameter recovery, a closed-loop optimization layer (sensitivity tornado, regime map, Pareto frontier, recommendation pipeline), and a DRAG-corrected single-qubit X-gate simulator with a published `ε_X(T_gate)` curve. Reference F_assign at REFERENCE drive: **0.9938**. 50-device harness F-spread: **0.0024** (decoherence-driven; drive-amplitude argmax invariant). Headline X-gate error: **ε_X^ref(T_gate = 20 ns) = 8.12 × 10⁻⁴** (1 − F_avg over the Pauli set). 5 figures shipped.
+>
+> Implementation: `dispersive_readout/`. Drivers: `06_Dispersive_Readout/`. One-page summary: `06_Dispersive_Readout/SUMMARY.md`.
+>
+> Earlier stages (01–05) develop the open-quantum-system, tensor-network, and noisy-hardware infrastructure on a lattice gauge theory testbed.
 
-A Python implementation and validation suite spanning **lattice gauge theory (Schwinger model, 1+1D QED)**, **entanglement-structure diagnostics for tensor-network / QI packaging**, and **open quantum systems (pNRQCD-motivated quarkonium in medium)**, with results documented in the included *Results_and_Validation* reports. Shared OQS utilities live in `utils_QOS.py`.
+---
 
+# Lattice-to-Lindblad: Dispersive Readout for Transmon Qubits, Lattice Gauge Theory, and Open Quantum Systems
 
-## Overview
+A Python implementation, validation, and optimization suite for **dispersive readout of superconducting transmon qubits** (Stage 06, the headline deliverable), supported by open-quantum-system, tensor-network, and noisy-hardware infrastructure developed in earlier stages on a **lattice gauge theory** testbed (Schwinger model, 1+1D QED). The repository follows a progressive-validation arc: lattice gauge theory testbeds (Stages 01–05) build the OQS / Lindblad / hardware-mitigation infrastructure that Stage 06 deploys to a superconducting-qubit setting.
 
-This repository contains five stages of code + validation artifacts, organized as a **progressive validation chain**:
+## Repository overview
 
-| Folder                               | Domain                | Core Method(s)                                                                                                                | Output                                  |
-| ------------------------------------ | --------------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| `01_Validation-Baseline/`            | Gauge + OQS           | U(1) MC checks, Schwinger Hamiltonian checks, Lindblad baseline singlet–octet (1 ⊕ 1) evolution                               | Baseline validation PDF + scripts       |
-| `02_Static Benchmarks/`              | Gauge + OQS           | ED cross-checks, sector-preserving VQE benchmarks (N=4, N=8)                                                                  | Static benchmark PDF + VQE scripts      |
-| `03_Non-Equilibrium Gauge Dynamics/` | Gauge                 | Real-time evolution under electric-field quench; string breaking diagnostics                                                  | Dynamics PDF + quench script            |
-| `04_Continuum Physics Results/`      | Gauge + OQS           | Continuum-facing mass-gap analysis with **ED validation (N≤20)** + **DMRG extension (TeNPy, N=30,40)**; continuum OQS studies | Continuum PDF + analysis scripts        |
-| `05_Entanglement_Structure_QI/`      | Gauge + QI/OQS bridge | Entropy profiles, entanglement spectra, Schmidt decay, symmetry-resolved entanglement, weakly open entanglement dynamics      | Entanglement-structure report + scripts |
+| Stage | Domain | Status |
+|---|---|---|
+| 01 — Validation Baseline | Gauge + OQS solver baselines | Closed-form analytic agreement at machine precision |
+| 02 — Static Benchmarks | ED + VQE + noisy hardware (Aer + Quantum Inspire) | ZNE+MEM reduces Aer noisy energy error from 24.5% to 0.9% |
+| 03 — Non-Equilibrium Dynamics | Real-time gauge dynamics, string breaking | Confined vs string-breaking regimes cleanly distinguished |
+| 04 — Continuum Physics | DMRG-extended mass gap, 1+8 quarkonium suppression | DMRG-extended mass-gap extrapolation with bootstrap uncertainty |
+| 05 — Entanglement Structure | Tensor-network bipartite entropy + symmetry-resolved sectors | Top-2 charge sectors carry > 99.3% of entanglement weight |
+| **06 — Dispersive Readout + Single-Qubit Gate** | Superconducting-qubit modeling | Validated 5-module pipeline with 5 shipped figures |
 
 **Project documents:**
+- `docs/Theoretical_Framework.pdf` — modeling assumptions, derivations, conventions
+- `docs/research_highlight.pdf` — high-level summary of goals, methods, outcomes
 
-* `docs/Theoretical_Framework.pdf` — modeling assumptions, derivations, conventions
-* `docs/research_highlight.pdf` — high-level summary of goals, methods, outcomes
+## Stage 06 layout (most relevant)
+
+- **Implementation:** `dispersive_readout/` — `physics/`, `analysis/`, `characterization/`, `optimization/`, `tests/`
+- **Driver scripts and figures:** `06_Dispersive_Readout/scripts/`, `06_Dispersive_Readout/figures/`
+- **Design notes:** `06_Dispersive_Readout/README.md` (full), `06_Dispersive_Readout/SUMMARY.md` (one-page)
+- **Diagnostic artifacts:** `docs/module4_diagnostics/` — diagnostic markdown + reproducible Python scripts for selected validation findings
 
 ---
 
-## 01 — Validation Baseline
+## Earlier stages — Lattice gauge theory and entanglement structure
 
-Establishes correctness of the building blocks used throughout the repo.
+Stages 01–05 develop the open-quantum-system, tensor-network, and noisy-hardware infrastructure on a Schwinger-model (1+1D U(1) gauge theory) testbed. They also document broader scientific scope: continuum-facing extrapolation, real-time dynamics, entanglement-structure diagnostics, and quarkonium-in-medium suppression.
 
-**Gauge (U(1) & Schwinger model)**
+### 01 — Validation Baseline
 
-* Pure-gauge U(1) Monte Carlo with Wilson-loop diagnostics (area law cross-checks).
-* Gauge-eliminated Schwinger Hamiltonian sanity checks (construction/consistency).
+Pure-gauge U(1) Monte Carlo (Wilson-loop area law cross-checks), gauge-eliminated Schwinger-Hamiltonian sanity checks, and 1⊕1 Lindblad evolution validated against closed-form analytic survival curves at three temperatures. Establishes the building-block correctness reused throughout the repo.
 
-**Open quantum systems (Lindblad)**
+![Stage 01 — 2-level OQS baseline: QuTiP vs analytic](figure/2level_dynamics_with_analytic.png)
 
-* Compact Hilbert-space Lindblad evolution in the singlet–octet (1 ⊕ 1) structure.
-* Baseline comparisons against controlled/analytic limits (as documented in the validation PDF).
+Singlet survival P_s(t) for the minimal 1⊕1 Lindblad model at T = 200, 300, 450 MeV. QuTiP numerical evolution (solid) overlaps the closed-form analytic solution (dashed) to machine precision, validating the solver, unit conversion, and detailed-balance construction.
 
-#### 2-level OQS baseline: QuTiP vs analytic solution
+- **Code:** `01_Validation-Baseline/code/` — `u1_pure_gauge_mc.py`, `schwinger-hamiltonian-check.py`, `OQS_2D_Hilbert_space.py`, `OQS_9D_Hilbert_space.py`
+- **Report:** `01_Validation-Baseline/results/Validation_Baseline_Results_and_Validation.pdf`
 
-![2-level OQS baseline](figure/2level_dynamics_with_analytic.png)
+*Shared infrastructure:* the Lindblad-solver validation discipline established here (closed-form analytic agreement at machine precision) is reused across stages 04 and 06.
 
-Singlet survival P_s(t) for the minimal 1+1 Lindblad model at T = 200, 300, 450 MeV. QuTiP numerical evolution (solid) overlaps the closed-form analytic solution (dashed) to machine precision, validating the solver, unit conversion, and detailed-balance construction.
+### 02 — Static Benchmarks
 
-**Code (examples):**
+ED + sector-projected VQE on the Schwinger Hamiltonian (N=4, N=8 with Trotter de-risking), and the `vqe_modular/` package for noisy-simulator (Aer) and real-hardware (Quantum Inspire, Tuna-5) execution with zero-noise extrapolation and measurement-error mitigation. ZNE + MEM reduces Aer noisy error from 24.5% to 0.9% on N=4 Schwinger; on Tuna-5 hardware, gate errors dominate and require richer mitigation than MEM alone.
+
+![Stage 02 — energy benchmark: ED vs Ideal vs Aer vs QI](summary_vqe_gap.png)
+
+Energy estimates for the N=4 Schwinger model with bootstrap error bars (top) and absolute error on a log scale (bottom). Aer + ZNE + MEM recovers to within 7×10⁻² of exact — a 27× improvement over raw Aer. On Tuna-5 hardware, MEM alone is insufficient; gate errors dominate.
+
+- **Code:** `02_Static Benchmarks/code/`, `vqe_modular/vqe_runner.py`
+- **Report:** `02_Static Benchmarks/results/Static_Benchmarks_Results_and_Validation.pdf`
+
+*Shared infrastructure:* hardware-facing quantum experience on Quantum Inspire (Tuna-5) and Aer noisy simulator; the ZNE + MEM error-mitigation methodology applied here is reused for error-channel decomposition in Stage 06.
+
+### 03 — Non-Equilibrium Gauge Dynamics
+
+Real-time evolution of the Schwinger model under an electric-field quench. Six-panel diagnostic separates confined (heavy mass m/g = 2.5) and string-breaking (light mass m/g = 0.1) regimes via charge density, electric field, excitation count, and Loschmidt echo.
+
+![Stage 03 — string breaking: heavy vs light mass quench dynamics](<03_Non-Equilibrium Gauge Dynamics/gauge_string_breaking.png>)
+
+Heavy (m/g = 2.5, confined) vs light (m/g = 0.1, string-breaking) dynamics under an E₀ = 0 quench. Top: charge density heatmaps. Middle: electric-field heatmaps showing lattice-scale oscillations (confined) vs propagating wavefront (string breaking). Bottom: field diagnostics, excitation count, and Loschmidt echo.
+
+- **Code:** `03_Non-Equilibrium Gauge Dynamics/code/field_quench_gauge.py`
+- **Report:** `03_Non-Equilibrium Gauge Dynamics/results/Non_Equilibrium_Gauge_Dynamics_Results_and_Validation.pdf`
+
+### 04 — Continuum Physics
+
+Mass-gap continuum extrapolation: ED for N ≤ 20 and TeNPy DMRG for N up to 80, with a joint 2D fit in (1/N, (ag)²) and bootstrap error bands. Headline result M_gap/g = 0.50 ± 0.09 is consistent with the exact Schwinger value 1/√π ≈ 0.5642 at 0.7σ. Also includes 1S/2S quarkonium sequential-suppression dynamics in 1⊕8 Lindblad form.
+
+![Stage 04 — DMRG mass gap: ED validated, DMRG extended](figure/dmrg_massgap_plot.png)
+
+Left: DMRG-only large-N finite-size convergence at N = 30, 40, 60, 80 across eight lattice spacings. Right: continuum extrapolation in (ag)² = 1/x using the large-N DMRG sequence. Curves visibly approach the exact 1/√π ≈ 0.5642 (dashed); small-N ED/DMRG agreement is documented separately in the validation report.
+
+- **Code:** `04_Continuum Physics Results/`
+- **Report:** `04_Continuum Physics Results/Continuum_Physics_Results_and_Validation.md`
+
+*Shared infrastructure:* the singlet–octet (1⊕1, 1⊕8) Lindblad open-system framework (`utils_QOS.py`) is reused in Stage 06's transmon–resonator dispersive simulator.
+
+### 05 — Entanglement Structure / QI Packaging
+
+Tensor-network packaging of Schwinger states: bipartite entropy profiles, entanglement spectra (vs TFIM reference), Schmidt-value decay, symmetry-resolved (charge-sector) entanglement, and weak-dephasing open dynamics. Quantifies how entanglement is *organized* and *compressed*, not just how much there is. Top-2 charge sectors carry > 99.3% of the bipartite entanglement weight at the benchmark point; weak charge dephasing increases peak S_vN by ~1.6× and the rank for 95% reduced-state weight by 5×.
+
+![Stage 05 — mass sweep entropy profiles](05_Entanglement_Structure_QI/application_breadth/mass_sweep/mass_sweep_entropy_comparison.png)
+
+Bipartite von Neumann entropy profiles across all MPS cuts for four masses (m/g = 0.05, 0.08, 0.125, 0.20) at N = 20, χ = 64, x = 4.0. The oscillatory edge-structured profile shifts monotonically downward with increasing mass — controlled parameter sensitivity at fixed truncation.
+
+- **Code:** `05_Entanglement_Structure_QI/code/`
+- **Report:** `05_Entanglement_Structure_QI/Entanglement_Structure_Results_and_Val.md`
+
+---
+
+## 06 — Dispersive Readout for Superconducting Qubits
+
+Stage 06 is the main superconducting-hardware-facing artifact in this repository. It models dispersive readout of a transmon coupled to a readout resonator, validates the simulator against analytic limits, decomposes assignment infidelity into named error channels, fits synthetic characterization traces, and uses the recovered parameters in a readout-optimization layer.
+
+The implementation lives in `dispersive_readout/`; runnable scripts and generated figures live in `06_Dispersive_Readout/`. Validation discipline carries forward from Stage 01 (closed-form analytic agreement) and Stage 04 (singlet–octet OQS framework); noisy-simulator and real-hardware experience from Stage 02 (Aer, Quantum Inspire Tuna-5) informs the synthetic-trace fitting design in Module 3.
+
+### Module 1 — Validated readout model
+
+Open-system simulation of a transmon–resonator system in the second-order Schrieffer–Wolff dispersive frame, with Lindblad channels for transmon relaxation/dephasing, resonator decay, and Purcell decay. The validation suite checks anharmonicity, charge dispersion, dispersive shift, T₁/T₂ recovery, Purcell decay, and Hilbert-space truncation convergence.
+
+![Stage 06 — Figure 1: validated readout model](06_Dispersive_Readout/figures/dispersive_readout_simulation.png)
+
+IQ trajectories, SNR vs integration time, and assignment fidelity vs κ/|χ| at the reference device.
+
+### Module 2 — Error-budget decomposition
+
+Active-loss decomposition into four independently-toggleable Lindblad channels (T₁ relaxation, pure dephasing, thermal occupation, Purcell-induced decay), marginalized against an analytic ideal-readout floor; calibration sensitivity to ±5% drive-amplitude and ±κ/4 drive-detuning perturbations rendered as a separate panel.
+
+![Stage 06 — Figure 2: error budget](06_Dispersive_Readout/figures/fig2_error_budget.png)
+
+**Panel A — active-loss:** four named channels (T₁ relaxation, pure dephasing, thermal occupation, Purcell decay) at the reference operating point, marginalized against the ideal-readout floor (1 − F_ideal ≈ 7.5×10⁻³); the cross-channel residual R = (F_ideal − F_full) − Σ ΔF_c is consistent with zero within shot-noise propagation. **Panel B — calibration sensitivity:** F loss under ±5% drive-amplitude and ±κ/4 drive-detuning perturbations (separate y-axis; not summable with Panel A).
+
+### Module 3 — Characterization and parameter recovery
+
+Synthetic Rabi / Ramsey / T₁ / T₂* characterization protocols producing fitted device parameters consumed by the optimization layer. The recovery-coverage report quantifies how well fitted parameters match injected ground-truth values across a synthetic device population.
+
+![Stage 06 — Figure 3: characterization recovery](06_Dispersive_Readout/figures/fig3_characterization.png)
+
+Synthetic traces, fitted parameters, and recovery coverage across the four protocols.
+
+### Module 4 — Sensitivity, regime map, and Pareto optimization
+
+Three-panel composite: (a) local sensitivity of assignment fidelity to readout-relevant parameters, (b) regime-map diagnostics over χ/κ and γ_1·τ_readout with Purcell, χ-phase-accumulation, and resonator-response boundaries, and (c) speed–fidelity Pareto frontiers via multi-start SLSQP over the (ε₀, τ) readout-drive parameter space, with a closed-loop recommendation marker.
+
+![Stage 06 — Figure 4: sensitivity, regime map, Pareto](06_Dispersive_Readout/figures/fig4_optimization.png)
+
+The optimal readout drive (ε₀, τ) is invariant across the 50-device characterization harness (T₁ ∈ [5.4, 91.9] μs at SEED=42): σ(ε₀_opt) = 0 to numerical precision, with F_opt varying by 0.0024 across devices due to decoherence alone. This shared-argmax behavior reflects that the dispersive-saturation peak is controlled by (κ, χ, ω_r) — REFERENCE-inherited in the closed-loop pipeline — rather than by decoherence parameters. The result characterizes the parameter regime where the REFERENCE device (Marxer Q1, arXiv:2508.16437) sits. Per-device argmax exploration would require extending Module 3 with resonator spectroscopy and AC-Stark calibration — flagged as a future extension.
+
+The underlying transmon–resonator Lindblad simulator (`dispersive_readout/physics/`) is not specific to readout: the same operator construction, time evolution, and error-channel decomposition apply to single-qubit gate calibration (DRAG, AC-Stark cancellation) or active qubit reset (measurement-based reset, Purcell-filter-assisted reset). Module 5a (below) realizes the DRAG calibration extension; active reset is reserved for Module 5b.
+
+### Module 5a — DRAG-corrected single-qubit X gate
+
+Sin²-windowed-Gaussian π-pulse on the transmon (Duffing approximation) with calibrated DRAG-1 quadrature correction. Eight-validation suite (V1–V7) plus a published bit-flip-error curve `ε_X(T_gate)` over `T_gate ∈ [5, 50] ns`. Headline: **ε_X^ref(T_gate = 20 ns) = 8.12 × 10⁻⁴** under full Lindblad on REFERENCE_DEVICE at fidelity-optimal `β_opt ≈ 0.50`, where `ε_X = 1 − F_avg` is the average X-gate-fidelity error over the Pauli set `{|0⟩, |1⟩, |+⟩, |+i⟩}` (an explicit upgrade from one-way `|0⟩ → |1⟩` transfer fidelity, which would mask coherent superposition errors).
+
+![Stage 06 — Figure 5a: DRAG leakage suppression](06_Dispersive_Readout/figures/fig5a_drag_leakage.png)
+
+Panel (a): population trajectories at `T_gate = 20 ns` for no-DRAG, β = 1, and fidelity-optimal β_opt. Panel (b): final + peak leakage vs T_gate over the sweep range, with insets for ε_X(T_gate) under full Lindblad and the V2b leakage-vs-fidelity trade-off (the β values minimizing gate fidelity, final leakage, and peak leakage diverge across the perturbative β grid — characterized as a published curve).
+
+Methodology footnote: calibration was developed across three round-by-round amendments (peak-leakage saturation finding, calibration-objective correction, gate-level fidelity metric upgrade). The narrative is documented in `06_Dispersive_Readout/diagnostics/drag_leakage_suppression.md` and inherits the validation-first discipline established in Module 4.
+
+### Methodology — validation-first development (Module 4)
+
+Module 4 development surfaced and resolved a series of substantive physics findings during execution. Selected examples — each with a reproducible diagnostic and markdown writeup under `docs/module4_diagnostics/`:
+
+- **Per-level transmon dispersive shifts.** The textbook two-level antisymmetric formula (±χ/2 per state) misses the per-level structure of the transmon ladder. Switching to the full Schrieffer–Wolff per-level χ_j tuple (`χ₀/2π ≈ 6.94 MHz, χ₁/2π ≈ 4.73 MHz` at REFERENCE; ratio 1.47) brings the closed-form regime-map vs. Lindblad simulator gap from 22–27% disagreement down to <5% (max 3.48% across three Lindblad-validation points). See [`per_level_analytic_derivation.md`](docs/module4_diagnostics/per_level_analytic_derivation.md).
+- **Multi-modal F(ε₀) Pareto landscape.** The F(ε₀) surface at REFERENCE has two distinct local maxima separated by a sharp valley (peak #1 at ε ≈ 7.8·10⁷ Hz, peak #2 at ε ≈ 1.5·10⁸ Hz; valley at ε ≈ 1.05·10⁸ Hz). The originally-shipped 5-point linear warm-start grid was structurally unable to sample peak #2's basin. Resolved with a 10-point log-spaced grid + K=5 multi-start SLSQP + per-start sub-grid refinement; F_opt at REFERENCE moves from 0.961 to **0.9938**. See [`warm_start_grid_bug.md`](docs/module4_diagnostics/warm_start_grid_bug.md).
+- **τ-window FD-dispatcher consistency.** External adversarial code review caught a high-severity sensitivity-FD-dispatcher bug: τ probes rescaled drive duration without co-perturbing integration window, biasing |S_τ| upward by ~20% (from +0.030 to +0.037, crossing the tornado-rendering threshold). Fixed; closed with a dispatcher-self-consistency regression test that interrogates all 7 sensitivity probes for parameter-configuration alignment. See [`tau_window_correction.md`](docs/module4_diagnostics/tau_window_correction.md).
+- **Sensitivity ceiling characterization.** The empirical |S_θ| ceiling under the Lindblad simulator caps at ~0.4 across the realistic parameter space at REFERENCE. Verified as genuine Lindblad physics — not a solver, truncation, or Purcell-isolation artifact — via three independent reproducibility checks (tolerance independence, truncation independence, pure-γ_1 verification at coupling.g = 0). Led to amending `SENSITIVITY_WARNING_THRESHOLD` from the spec-locked 2.0 (unreachable) to 0.3 (aligned with the spec's "dominance" sensitivity level). See [`sensitivity_ceiling_characterization.md`](docs/module4_diagnostics/sensitivity_ceiling_characterization.md).
+
+The validation-first methodology surfaced these issues before they reached committed figures or downstream analysis.
+
+### How to run
 
 ```bash
-python 01_Validation-Baseline/code/u1_pure_gauge_mc.py
-python 01_Validation-Baseline/code/schwinger-hamiltonian-check.py
-python 01_Validation-Baseline/code/OQS_2D_Hilbert_space.py
-python 01_Validation-Baseline/code/OQS_9D_Hilbert_space.py
+# Prereq: pip install -r requirements.txt  (qutip, tenpy, etc. — see Getting started below)
+pytest dispersive_readout/tests/ -v                                # full suite (~40 s)
+pytest dispersive_readout/tests/ -v -m "not slow"                  # fast TDD suite (~5 s)
+python 06_Dispersive_Readout/dispersive_readout_simulation.py      # Figure 1
+python 06_Dispersive_Readout/scripts/fig2_error_budget.py          # Figure 2
+python 06_Dispersive_Readout/characterize.py --help                # Module 3 CLI
+python 06_Dispersive_Readout/scripts/fig4_optimization.py          # Figure 4
+python 06_Dispersive_Readout/scripts/fig5a_drag_leakage.py         # Figure 5a (Module 5a)
 ```
 
-**Results:** `01_Validation-Baseline/results/Validation_Baseline_Results_and_Validation.pdf`
+### More
+- One-page reviewer summary: `06_Dispersive_Readout/SUMMARY.md`
+- Full design notes (validations, silent-failure findings, design decisions): `06_Dispersive_Readout/README.md`
+- Importable package: `dispersive_readout/`
+- Test suite: `dispersive_readout/tests/`
 
 ---
 
-## 02 — Static Benchmarks
-
-Benchmarks static observables for the Schwinger Hamiltonian using **ED cross-checks** and **symmetry/sector-preserving VQE** workflows.
-
-* Sector-projected VQE (N=4) for controlled benchmarking.
-* Extension toward larger sizes (e.g., N=8) with staged optimization and Trotter de-risking.
-* Compact Hilbert-space Lindblad evolution in the singlet–octet (1 ⊕ 8) structure.
-
-#### VQE error vs depth (N=4, sector-projected)
-
-![VQE error vs depth](<figure/N=4 VQE Error vs Depth (Projected).png>)
-
-Both global and local HVA ansatze show exponential convergence with depth. At 4 layers, both surpass 10⁻⁸ and reach machine precision (~10⁻¹⁰--10⁻¹¹).
-
-#### 9-level singlet-octet dynamics ($1\oplus 8$)
-
-![9-level dynamics](figure/9level_dynamics.png)
-
-The 9-level model shows substantially stronger suppression than the 2-level baseline due to the 8:1 recombination bottleneck. At T = 300 MeV and tau_QGP = 10 fm/c, singlet survival drops to ~0.41 (vs ~0.84 for 2-level).
-
-#### Trotter de-risking: exact vs first-order Trotter (N=4)
-
-![Trotter de-risking](figure/derisk_observable_vs_time_N4_full.png)
-
-Local charge density ⟨q₂(t)⟩ under exact evolution vs first-order Trotter at dt = 0.1 and 0.05. The O(dt) accumulated error scaling is confirmed quantitatively (ratio ≈ 2.0).
-
-**Code (examples):**
-
-```bash
-python "02_Static Benchmarks/code/vqe_optimizer(N=4).py"
-python "02_Static Benchmarks/code/vqe_ptimizer(N=8)_trotter_derisk.py"
-```
-
-**Results:** `02_Static Benchmarks/results/Static_Benchmarks_Results_and_Validation.pdf`
-
-### Noisy Simulation & Hardware Evaluation (Qiskit + ZNE)
-
-The `vqe_modular/` package extends the static VQE benchmarks to **noisy simulation** (Qiskit Aer) and **real hardware** (Quantum Inspire), with built-in error mitigation:
-
-- **Measurement Error Mitigation (MEM):** full assignment-matrix calibration to correct readout errors.
-- **Zero-Noise Extrapolation (ZNE):** scales depolarizing gate-error rates by factors lambda = {1.0, 1.5, 2.0, 2.5, 3.0}, fits a degree-2 polynomial, and extrapolates to lambda = 0.
-- **Error-source ablation:** decomposes the total error into gate-only vs readout-only contributions.
-
-Supports multiple Hamiltonians: Schwinger, TFIM, XXZ, and custom `.npy` matrices.
-
-**Results: Schwinger model N=4** (x=4, m/g=0, 4-layer RY-CX-RZ ansatz, Aer noise: p1q=10⁻³, p2q=10⁻², p01=p10=2e-2; QI backend: Tuna-5, 2000 shots)
-
-| Method | Energy | Abs. Error | Error % |
-|---|---|---|---|
-| ED (exact) | -7.9550 | -- | -- |
-| Ideal VQE | -7.9308 | 2.42e-02 | 0.30% |
-| Aer noisy (raw) | -6.0085 | 1.946 | 24.5% |
-| **Aer ZNE + MEM** | **-7.8834** | **7.16e-02** | **0.90%** |
-| QI Tuna-5 (raw) | -4.1415 | 3.813 | 47.9% |
-| QI Tuna-5 + MEM | -4.5461 | 3.409 | 42.9% |
-
-**Key finding:** ZNE + MEM reduces the Aer noisy error from 24.5% to 0.9%, recovering 99.1% of the exact energy. On QI Tuna-5 hardware, MEM alone is insufficient — gate errors dominate.
-
-#### Energy comparison: ED vs Ideal vs Aer vs QI
-
-![ED vs Ideal vs Aer vs QI](summary_vqe_gap.png)
-
-Upper panel: energy estimates with bootstrap error bars and dE annotations. Lower panel: absolute error on a log scale -- Aer+mit (ZNE+MEM) recovers to within 7e-2 of exact, a 27x improvement over raw Aer.
-
-#### Zero-Noise Extrapolation curve
-
-![ZNE extrapolation](noisy_vqe_zne.png)
-
-Energy vs noise scale factor lambda. The degree-2 polynomial fit extrapolates to lambda=0 (blue square), landing close to the ED exact (dashed black) and ideal VQE (dotted green) reference lines.
-
-#### Quantum Inspire hardware: QI raw vs QI + MEM
-
-![QI hardware](qi_vqe_mem.png)
-
-MEM provides only a modest improvement on the Tuna-5 backend, confirming that gate errors — not readout errors — are the dominant noise source on this hardware.
-
-**Code:**
-```bash
-# Aer noisy + MEM + ZNE + error analysis
-python vqe_modular/vqe_runner.py --backend aer --model schwinger --N 4 --x 4 \
-  --layers 4 --do_mem --do_zne --error_analysis --save_json results_aer.json --save_plot
-
-# Quantum Inspire hardware + MEM
-python vqe_modular/vqe_runner.py --backend qi --qi_backend "Tuna-5" --model schwinger --N 4 --x 4 \
-  --layers 4 --do_mem --save_json results_qi.json --save_plot
-
-# Full comparison: Aer + QI
-python vqe_modular/vqe_runner.py --backend both --qi_backend "Tuna-5" --model schwinger --N 4 --x 4 \
-  --layers 4 --do_mem --do_zne --save_json results_both.json --save_plot
-```
-
-**Saved results:** `results_both.json`, `results_qi.json`
-
----
-
-## 03 — Non-Equilibrium Gauge Dynamics
-
-Real-time dynamics for the Schwinger model under an **electric-field quench**, with diagnostics targeting **string breaking** behavior across regimes (e.g., heavy vs light mass).
-
-#### String breaking: heavy vs light mass quench dynamics
-
-![](<03_Non-Equilibrium Gauge Dynamics/gauge_string_breaking.png>)
-
-Six-panel diagnostic comparing heavy (m/g=2.5, confined) and light (m/g=0.1, string-breaking) regimes under an E0=0 quench. Top row: charge density heatmaps. Middle row: electric-field heatmaps showing lattice-scale oscillations (confined) vs propagating wavefront (string breaking). Bottom row: field diagnostics, excitation count, and Loschmidt echo.
-
-**Code (example):**
-
-```bash
-python "03_Non-Equilibrium Gauge Dynamics/code/field_quench_gauge.py"
-```
-
-**Results:** `03_Non-Equilibrium Gauge Dynamics/results/Non_Equilibrium_Gauge_Dynamics_Results_and_Validation.pdf`
-
----
-
-## 04 — Continuum Physics Results
-
-Continuum-facing and physics-grade analyses that build on validated baselines.
-
-* **Schwinger-model mass-gap** analysis, using ED validation for `N ≤ 20` and DMRG extension to `N = 30, 40`.
-* **Continuum OQS/Lindblad** analyses, including suppression studies and optional time-dependent medium evolution.
-
-#### Mass gap: ED validated, DMRG extended ($m/g=0$)
-
-![Mass gap ED + DMRG](figure/dmrg_massgap_plot.png)
-
-Left: finite-size convergence of M_gap/g vs 1/N at multiple lattice spacings, with ED (filled) and DMRG (open) markers overlapping at matched N. Right: continuum extrapolation in (ag)² = 1/x, with DMRG extending to N=30,40 where ED is infeasible.
-
-#### Joint continuum extrapolation
-
-![Joint fit](04_Continuum%20Physics%20Results/results/massgap_joint_extrapolation_nmin10.png)
-
-Two-panel joint fit in 1/N and (ag)² with bootstrap confidence bands. The extrapolated continuum mass gap M(0,0)/g = 0.4469 is consistent with the exact Schwinger result 1/sqrt(pi) ≈ 0.5642 within the systematic uncertainty of the tested lattice sizes and coupling range.
-
-#### Sequential suppression: 1S vs 2S quarkonium
-
-![Sequential suppression](figure/sequential_suppression.png)
-
-1+8 Lindblad dynamics at T = 300 MeV comparing tightly bound 1S (dE = 500 MeV) and loosely bound 2S (dE = 200 MeV) quarkonium. The 2S dissociates faster and reaches a lower equilibrium (P_eq ≈ 0.20 vs 0.40), with the double ratio P_s(2S)/P_s(1S) = 0.49 at tau_QGP.
-
-**Code (examples):**
-
-```bash
-python "04_Continuum Physics Results/code/schwinger_continuum_massgap.py" --help
-python "04_Continuum Physics Results/code/schwinger_dmrg.py" --help
-python "04_Continuum Physics Results/code/OQS_continuum.py"
-```
-
-**Results:** `04_Continuum Physics Results/results/Continuum_Physics_Results_and_Validation.pdf`
-
----
-
-## 05 — Entanglement Structure / QI Packaging
-
-This stage packages the Schwinger-model results from a **quantum information / tensor-network** perspective. It extends the static and dynamical gauge analyses with diagnostics that quantify not just *how much* entanglement is present, but *how it is organized*, *how compressible it is*, and *how it changes under weak openness*.
-
-### Key results
-
-**Primary entanglement bundle** at a benchmark point (N=20, m/g=0.125, x=4.0, chi=64):
-- Von Neumann entropy profile across all MPS bipartition cuts (S_max = 0.6008)
-- Entanglement spectrum compared against a TFIM reference (distinct level structure)
-- Schmidt decay analysis: top-2 Schmidt values capture >99.35% of the weight
-
-**Controlled breadth** via mass sweep (m/g = 0.05, 0.08, 0.125, 0.20):
-
-| m/g | S_max | Trend |
-|---|---|---|
-| 0.05 | 0.6276 | Lightest mass, broadest entanglement |
-| 0.08 | 0.6171 | |
-| 0.125 | 0.6008 | Central benchmark |
-| 0.20 | 0.5732 | Heaviest mass, most concentrated |
-
-**Numerical validation:**
-- Bond-dimension convergence (chi=16--128): all observables stable, chi=64 within 10⁻¹² of chi=128
-- Finite-size scaling (N=12--32): S_peak(inf) = 0.6000 +/- 0.0003, with persistent edge-structured entanglement profile collapsing in edge-distance coordinates
-
-**Symmetry-resolved entanglement:** sector decomposition shows the top 2 charge sectors carry >99.3% of entanglement weight. The entropy reduction with mass is driven primarily by narrowing of the inter-sector distribution (dH ≈ 0.048), not by intrasector changes (d(sum p_q S_q) ≈ 0.008).
-
-**Open-system extension:** weak charge dephasing (gamma=0.02) on a Schwinger quench at N=10:
-
-| Metric | Closed (gamma=0) | Open (gamma=0.02) |
-|---|---|---|
-| Peak S_vN | 0.942 | 1.563 |
-| Rank for 95% rho_A weight (t=6) | 2 | 10 |
-| Peak mean abs(L) shift | -- | < 10⁻³ |
-
-Weak openness substantially increases subsystem entropy and reduces tensor-network compressibility while only modestly perturbing the electric-field observable.
-
-#### Mass sweep: entropy profiles across regimes
-
-![Mass sweep entropy](05_Entanglement_Structure_QI/application_breadth/mass_sweep/mass_sweep_entropy_comparison.png)
-
-Bipartite von Neumann entropy profiles across all MPS cuts for four masses at fixed N=20, chi=64, x=4.0. The strongly oscillatory, edge-structured profile shifts monotonically downward with increasing mass, demonstrating controlled parameter sensitivity.
-
-#### Entanglement spectrum: Schwinger vs TFIM
-
-![Entanglement spectrum](05_Entanglement_Structure_QI/application_breadth/mass_sweep/m0.125/entanglement_spectrum_comparison.png)
-
-Entanglement levels xi_i = -log(lambda_i²) at a representative interior cut. The Schwinger state retains more non-negligible Schmidt weight deeper into the spectrum than a TFIM reference at the same N, reflecting the distinct entanglement organization of the gauge theory.
-
-### Included scripts
-
-* `schwinger_entanglement_entropy.py` — full bipartite von Neumann entropy profiles across all MPS cuts
-* `schwinger_entanglement_spectrum.py` — Schmidt values and entanglement levels at representative cuts, with TFIM comparison
-* `schmidt_decay_analysis.py` — Schmidt-value decay, cumulative retained weight, and compressibility
-* `schwinger_symmetry_resolved_entanglement.py` — charge-sector decomposition of bipartite entanglement
-* `open_schwinger_entanglement_dynamics.py` — weakly open dynamics: subsystem entropy growth and compressibility loss under dephasing
-
-**Results:** `05_Entanglement_Structure_QI/Entanglement_Structure_Results_and_Val.md`, `05_Entanglement_Structure_QI/05_Entanglement_Structure_QI.pdf`
-
-### Scientific scope
-
-This stage is organized around five linked questions:
-
-1. **Entropy profile:** where is entanglement concentrated across the lattice?
-2. **Spectrum structure:** how is Schmidt weight distributed across entanglement levels?
-3. **Compressibility:** how many Schmidt components retain most of the state weight?
-4. **Symmetry resolution:** which constrained sectors actually carry the entanglement?
-5. **Open-system extension:** how does weak dissipation reshape subsystem entropy and effective tensor-network compressibility?
-
-### Main results packaged in this stage
-
-* **Structured entropy profiles** across Schwinger-model cuts, with edge-enhanced structure rather than a trivial flat profile.
-* **Distinct entanglement spectra** relative to a simple TFIM reference at matched representative cuts.
-* **Strong Schmidt-space compressibility**, with low rank capturing nearly all retained weight in closed-state benchmarks.
-* **Symmetry-resolved entanglement organization**, showing that most weight is carried by a small number of constrained sectors.
-* **Weakly open dynamics benchmark**, showing that charge dephasing can substantially increase subsystem entropy and broaden the reduced-state spectrum while only modestly perturbing a simple electric-field observable.
-
-### Code (examples)
-
-```bash
-python "05_Entanglement_Structure_QI/code/schwinger_entanglement_entropy.py" --help
-python "05_Entanglement_Structure_QI/code/schwinger_entanglement_spectrum.py" --help
-python "05_Entanglement_Structure_QI/code/schmidt_decay_analysis.py" --help
-python "05_Entanglement_Structure_QI/code/schwinger_symmetry_resolved_entanglement.py" --help
-
-python "05_Entanglement_Structure_QI/code/open_schwinger_entanglement_dynamics.py" \
-  --N 24 --mass 0.125 --coupling 4.0 --chi 64 \
-  --cut 11 --tmax 6.0 --nt 61 \
-  --gamma 0.0 --gamma-ref 0.02 \
-  --channel dephasing \
-  --outdir "05_Entanglement_Structure_QI/results/open_dynamics_test"
-```
-
-### Outputs
-
-Typical outputs from this stage include:
-
-* entropy-profile CSV/PNG bundles
-* entanglement-spectrum and Schmidt-decay comparison figures
-* symmetry-resolved sector-weight tables and bridge summaries
-* open-dynamics CSV + PNG bundles
-* report-style validation summaries in Markdown/PDF form
-
-**Results:**
-`05_Entanglement_Structure_QI/results/Entanglement_Structure_Results_and_Validation.pdf`
-
----
-
-## 06 — Dispersive Readout for Transmon Qubits
-
-Adds a superconducting-readout modeling stage: validated transmon–resonator Lindblad simulation, coherent/incoherent readout error budget, synthetic characterization and parameter recovery, and sensitivity/Pareto optimization for readout settings.
-
-**Module 5a — DRAG-corrected single-qubit X gate.** Adds a sin²-windowed-Gaussian π-pulse with calibrated DRAG-1 quadrature correction on the transmon (Duffing approximation), with an eight-validation suite (V1–V7) and a published X-gate-error curve `ε_X(T_gate)` over T_gate ∈ [5, 50] ns. Headline number: **ε_X^ref(T_gate = 20 ns) = 8.12 × 10⁻⁴** (1 − F_avg averaged over the Pauli set {|0⟩, |1⟩, |+⟩, |+i⟩}) under full Lindblad on REFERENCE_DEVICE (T₁ = 30 μs, T₂_echo = 40 μs, Purcell on, n_th = 0.01) at fidelity-optimal β_opt ≈ 0.5. The implementation surfaced and characterized a leakage-vs-fidelity trade-off as a regime finding (panel (b) inset 2 / YAML schema). See `06_Dispersive_Readout/figures/fig5a_drag_leakage.png` and `06_Dispersive_Readout/diagnostics/drag_leakage_suppression.md`.
-
-See `06_Dispersive_Readout/README.md` and the `dispersive_readout/` package.
-
----
-
-## Repository Structure
-
-```text
-utils_QOS.py                                  # Shared Lindblad/OQS helpers used by OQS scripts
-docs/
-  Theoretical_Framework.pdf
-  research_highlight.pdf
-  results_both.json                             # Aer + QI benchmark results (ZNE + MEM)
-  results_qi.json                               # QI-only benchmark results
-  summary_vqe_gap.png                           # Energy comparison figure (ED/Ideal/Aer/QI)
-  noisy_vqe_zne.png                             # ZNE extrapolation curve
-  qi_vqe_mem.png                                # QI hardware bar chart
-
-01_Validation-Baseline/
-  code/
-    u1_pure_gauge_mc.py
-    schwinger-hamiltonian-check.py
-    OQS_2D_Hilbert_space.py
-    OQS_9D_Hilbert_space.py
-  results/
-    Validation_Baseline_Results_and_Validation.pdf
-
-02_Static Benchmarks/
-  code/
-    vqe_optimizer(N=4).py
-    vqe_ptimizer(N=8)_trotter_derisk.py
-    noisy_vqe_zne.py                            # Standalone QI evaluation + MEM
-  results/
-    Static_Benchmarks_Results_and_Validation.pdf
-
-vqe_modular/                                    # Modular VQE benchmark (Aer + Quantum Inspire)
-    vqe_runner.py                               # CLI entry point
-    models/                                     # Schwinger, TFIM, XXZ, custom .npy
-    backends/                                   # Aer noisy simulator, QI provider
-    mitigation/                                 # MEM (assignment matrix), ZNE (polynomial extrapolation)
-    core/                                       # Ansatz, Pauli decomposition, shot-based evaluation
-    analysis/                                   # Error-source ablation
-    plotting/                                   # Summary figures
-
-03_Non-Equilibrium Gauge Dynamics/
-  code/
-    field_quench_gauge.py
-  results/
-    Non_Equilibrium_Gauge_Dynamics_Results_and_Validation.pdf
-
-04_Continuum Physics Results/
-  code/
-    schwinger_continuum_massgap.py
-    schwinger_dmrg.py
-    OQS_continuum.py
-  results/
-    Continuum_Physics_Results_and_Validation.pdf
-
-05_Entanglement_Structure_QI/
-  code/
-    schwinger_entanglement_entropy.py
-    schwinger_entanglement_spectrum.py
-    schmidt_decay_analysis.py
-    schwinger_symmetry_resolved_entanglement.py
-    open_schwinger_entanglement_dynamics.py
-  results/
-    Entanglement_Structure_Results_and_Validation.pdf
-    figures/                                    # Generated plots (entropy, spectrum, Schmidt, etc.)
-    application_breadth/                        # Mass sweep, chi convergence, size check results
-    publication_validation/                     # Truncation study, finite-size scaling
-    symmetry_resolved_results/                  # Sector decomposition outputs
-    open_dynamics_results/                      # Closed vs open quench benchmark
-
-06_Dispersive_Readout/                          # Stage 06 report, figures, and module documentation
-dispersive_readout/                             # Python package for transmon readout modeling and optimization
-```
-
----
-
-## Getting Started
+## Getting started
 
 Recommended: **Python 3.10+**
 
@@ -408,74 +193,105 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-TeNPy is included in `requirements.txt` as `physics-tenpy`.
+TeNPy is included in `requirements.txt` as `physics-tenpy`; QuTiP is required for the Stage 06 Lindblad simulator.
 
-> Note: some folders include spaces; wrap paths in quotes where needed.
+> Some folder names contain spaces (e.g. `02_Static Benchmarks/`); wrap paths in quotes where needed.
 
 ---
 
-## Key Concepts
+## Key concepts
 
-### Progressive validation chain
-
-Each stage is designed to reduce ambiguity in later physics claims:
-
-1. baseline correctness
-2. static benchmarks
-3. real-time gauge dynamics
-4. continuum-facing extrapolation / OQS packaging
-5. entanglement-structure and compressibility analysis
-
-### Symmetry / constraint preservation
-
-Where applicable, workflows aim to respect physical constraints:
-
-* Gauss-law / gauge structure through gauge elimination
-* symmetry / sector projection in VQE
-* constrained-sector decomposition in symmetry-resolved entanglement analysis
-
-### Tensor-network perspective
-
-The entanglement-structure stage makes the tensor-network story explicit by tracking:
-
-* entropy profiles across cuts
-* entanglement spectra
-* Schmidt decay and retained weight
-* reduced-spectrum broadening under weak openness
-
-This makes it possible to discuss **effective compressibility**, not just raw observable values.
-
-### Tensor-network extension (DMRG)
-
-For continuum-facing Schwinger mass-gap results, ED is used for `N ≤ 20` validation, and TeNPy DMRG extends to `N = 30, 40` with symmetry conservation (`conserve="Sz"`) and `χ = 100`. The long-range electric term is implemented in a compact running-sum MPO to avoid quadratic MPO growth.
-
-### Open-system modeling (Lindblad)
-
-The quarkonium-in-medium component uses a singlet–octet open-system framework and studies survival/suppression under medium effects, with controlled baseline checks documented in the validation reports.
-
-The Schwinger open-dynamics extension complements this by asking a different question: how weak dissipation changes **many-body entanglement structure**, subsystem entropy growth, and reduced-state spectrum compressibility in a lattice gauge theory quench.
-
-### Shared OQS utilities
-
-`utils_QOS.py` centralizes common Lindblad/OQS routines so baseline, continuum, and validation scripts reuse the same operator, propagation, and diagnostic logic.
+- **Progressive validation chain.** Each stage reduces ambiguity in subsequent claims: baseline correctness (Stage 01) → static benchmarks (Stage 02) → real-time dynamics (Stage 03) → continuum extrapolation (Stage 04) → entanglement-structure diagnostics (Stage 05) → superconducting-qubit dispersive readout (Stage 06). Stage 06 inherits validated Lindblad machinery from Stages 01 and 04, and noisy-hardware experience from Stage 02.
+- **Validation-first methodology.** Across the repository, claims are validated against analytic limits before optimization or interpretation. Stage 06 logs four named findings caught by this discipline (see Stage 06 §Methodology); Stage 04 mass-gap extrapolation includes ED ↔ DMRG cross-validation; Stage 02 includes ZNE + MEM cross-checks against ED ground truth.
+- **Shared OQS infrastructure.** `utils_QOS.py` centralizes Lindblad routines reused across baseline (01), continuum (04), and dispersive readout (06) — the same operator construction, time-evolution, and diagnostic routines applied to qualitatively different physics.
 
 ---
 
 ## References
 
-**Open quantum systems / pNRQCD (quarkonium in medium):**
+**Superconducting-qubit dispersive readout (Stage 06):**
+- Marxer et al., arXiv:2508.16437 (2025) — primary reference device.
+- Bengtsson et al., *Phys. Rev. Lett.* **132**, 100603 (2024) — secondary reference; integrated dispersive-readout SNR with √(η·κ·τ) factor explicit.
+- Sank, arXiv:2402.00413 (2024) — companion paper to Bengtsson; source for κ-distribution measurements used in the Module 4 regime-map overlay (cited in `dispersive_readout/characterization/protocols.py`).
+- Abdurakhimov et al., arXiv:2408.12433 (2024) — 20-qubit benchmarks; source for the "Garnet-like" device parameters in the Module 4 regime-map overlay (cited in `dispersive_readout/optimization/regime_map.py`).
+- Blais et al., *Rev. Mod. Phys.* **93**, 025005 (2021) — circuit QED reference; cross-check for the dispersive-SNR formula (cited in `dispersive_readout/analysis/purcell_isolation.py`).
+- Koch et al., *Phys. Rev. A* **76**, 042319 (2007) — transmon dispersion; used in Module 3's E_J back-solve from fitted ω_q (`dispersive_readout/characterization/fitting.py`) and Module 4's per-level χ structure.
 
-* [1] Brambilla, Escobedo, Soto, Vairo, *Phys. Rev. D* **96**, 034021 (2017); arXiv:1612.07248.
-* [2] Brambilla, Magorsch, Strickland, Vairo, Vander Griend, *Phys. Rev. D* **109**, 114016 (2024); arXiv:2403.15545.
-* [3] Brambilla, Magorsch, Vairo, arXiv:2508.11743 (2025).
-  
- **Quantum information / tensor-structure context:**
- 
-* [4] Acuaviva, Makam, Nieuwboer, Pérez-García, Sittner, Walter, Witteveen, *The minimal canonical form of a tensor network*, 2022; arXiv:2209.14358.
-* [5] van den Berg, Christandl, Lysikov, Nieuwboer, Walter, Zuiddam, *Computing moment polytopes of tensors, with applications in algebraic complexity and quantum information*, STOC 2025. doi:10.1145/3717823.3718221.
+**Open quantum systems / pNRQCD (quarkonium in medium):**
+- Brambilla, Escobedo, Soto, Vairo, *Phys. Rev. D* **96**, 034021 (2017); arXiv:1612.07248.
+- Brambilla, Magorsch, Strickland, Vairo, Vander Griend, *Phys. Rev. D* **109**, 114016 (2024); arXiv:2403.15545.
+- Brambilla, Magorsch, Vairo, arXiv:2508.11743 (2025).
+
+**Quantum information / tensor-structure context:**
+- Acuaviva, Makam, Nieuwboer, Pérez-García, Sittner, Walter, Witteveen, *The minimal canonical form of a tensor network*, 2022; arXiv:2209.14358.
+- van den Berg, Christandl, Lysikov, Nieuwboer, Walter, Zuiddam, *Computing moment polytopes of tensors, with applications in algebraic complexity and quantum information*, STOC 2025. doi:10.1145/3717823.3718221.
 
 **Gauge / tensor-network / entanglement context:**
+- Schwinger-model results in this repository use gauge-eliminated Hamiltonian workflows, ED cross-checks, and TeNPy-based tensor-network extensions.
+- The entanglement-structure stage (Stage 05) is intended as a quantitative bridge between lattice gauge dynamics, tensor-network compressibility, and weakly open many-body evolution.
+- For broader mathematical context on tensor-network canonical structure, see the Acuaviva et al. and van den Berg et al. references above.
 
-* Schwinger-model results in this repository use gauge-eliminated Hamiltonian workflows, ED cross-checks, and TeNPy-based tensor-network extensions where applicable.
-* The entanglement-structure stage is intended as a quantitative bridge between lattice gauge dynamics, tensor-network compressibility, and weakly open many-body evolution.
-* For broader mathematical context on tensor-network canonical structure and representability questions, see Refs. [4] and [5].
+---
+
+<details>
+<summary><strong>Repository structure</strong> (full directory tree)</summary>
+
+```text
+utils_QOS.py                                  # Shared Lindblad/OQS helpers used by OQS scripts
+docs/
+  Theoretical_Framework.pdf
+  research_highlight.pdf
+  results_both.json                           # Aer + QI benchmark results (ZNE + MEM)
+  results_qi.json                             # QI-only benchmark results
+  module4_diagnostics/                        # Stage 06 Module 4 diagnostic markdown + scripts
+
+06_Dispersive_Readout/                        # Stage 06: stage scripts, figures, summary
+  README.md                                   # Full design notes (validations, design decisions, silent-failure findings)
+  SUMMARY.md                                  # One-page reviewer summary
+  FIGURE_2_CAPTION.md                         # Stage 06 Figure 2 caption
+  dispersive_readout_simulation.py            # Figure 1 driver
+  characterize.py                             # Module 3 CLI (Rabi / Ramsey / T₁ / T₂*)
+  scripts/                                    # Per-figure render scripts
+  figures/                                    # Rendered PNGs and supporting YAML
+
+dispersive_readout/                           # Importable Python package
+  physics/                                    # Transmon, resonator, dispersive-frame Hamiltonian
+  analysis/                                   # Error-budget decomposition
+  characterization/                           # Protocol fitters and recovery
+  optimization/                               # Sensitivity, regime map, Pareto, recommendation
+  tests/                                      # Pytest suite (~40 s full, ~5 s fast)
+
+01_Validation-Baseline/
+  code/                                       # u1_pure_gauge_mc.py, schwinger-hamiltonian-check.py, OQS_*.py
+  results/Validation_Baseline_Results_and_Validation.pdf
+
+02_Static Benchmarks/
+  code/                                       # vqe_optimizer(N=4).py, vqe_optimizer(N=8)_trotter_derisk.py, noisy_vqe_zne.py
+  results/Static_Benchmarks_Results_and_Validation.pdf
+
+vqe_modular/                                  # Modular VQE (Aer + Quantum Inspire)
+  vqe_runner.py                               # CLI entry point
+  models/                                     # Schwinger, TFIM, XXZ, custom .npy
+  backends/                                   # Aer noisy simulator, QI provider
+  mitigation/                                 # MEM (assignment matrix), ZNE (polynomial)
+  core/                                       # Ansatz, Pauli decomposition, shot-based evaluation
+  analysis/, plotting/
+
+03_Non-Equilibrium Gauge Dynamics/
+  code/field_quench_gauge.py
+  results/Non_Equilibrium_Gauge_Dynamics_Results_and_Validation.pdf
+
+04_Continuum Physics Results/
+  schwinger_continuum_massgap.py, schwinger_dmrg.py, schwinger_joint_extrapolation.py, OQS_continuum.py
+  Continuum_Physics_Results_and_Validation.md
+  results/                                    # Joint extrapolation figures and CSVs
+
+05_Entanglement_Structure_QI/
+  code/                                       # entanglement_entropy / spectrum / schmidt_decay / symmetry-resolved / open dynamics
+  Entanglement_Structure_Results_and_Val.md
+  results/                                    # Generated figures and CSVs
+
+figure/                                       # Cross-stage figures (e.g. dmrg_massgap_plot.png)
+```
+
+</details>
