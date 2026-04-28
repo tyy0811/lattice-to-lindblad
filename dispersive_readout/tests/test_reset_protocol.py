@@ -525,6 +525,81 @@ def test_worst_case_residual_dominates_mixed_prior():
         assert worst >= mixed - 1e-12
 
 
+# ---------------------------------------------------------------------------
+# Day 3.2 — V2 active-beats-passive + V3 long-τ asymmetric floors
+# ---------------------------------------------------------------------------
+
+
+def test_active_beats_passive_at_some_tau(tmp_path):
+    """V2 (blocking, integration-tier): there exists at least one
+    operating point τ_meas in the figure sweep where active reset
+    residual is below the matched-duration passive baseline.
+
+    Sweep-based: no fragile fixed-τ blocker.
+    """
+    yaml_file = tmp_path / "closed_loop_demo_device.yaml"
+    yaml_file.write_text(SYNTHETIC_CLOSED_LOOP_YAML)
+    device = device_idx18(yaml_path=yaml_file)
+    T1 = 1.0 / device.decoherence.gamma_1
+    T_gate = 20e-9
+
+    tau_meas_grid = T1 * np.linspace(0.1, 2.0, 8)
+    rng = np.random.default_rng(seed=20260428)
+    rng_subs = rng.spawn(len(tau_meas_grid))
+
+    p_active = []
+    p_passive = []
+    for tau, sub_rng in zip(tau_meas_grid, rng_subs):
+        drive = closed_loop_demo_drive_params(duration=tau)
+        J = extract_joint_matrix(device, drive, n_trajectories=1000, rng=sub_rng)
+        p_active.append(reset_residual_single_cycle(p_e=1.0, joint=J, gate_error=0.0))
+        p_passive.append(passive_reset_residual(T1, tau + T_gate))
+
+    p_active = np.array(p_active)
+    p_passive = np.array(p_passive)
+    advantage = p_passive - p_active
+
+    assert advantage.max() > 0, (
+        f"V2 failed: active never beats passive in the sweep. "
+        f"p_active min: {p_active.min():.4f}, "
+        f"p_passive at that τ: {p_passive[np.argmin(p_active)]:.4f}."
+    )
+
+
+def test_long_tau_asymmetric_floors(tmp_path):
+    """V3 (blocking, integration-tier): at long τ_meas, passive → 0 (or
+    thermal floor) while active → thermal + readout-false-positive +
+    gate-error contribution. The two should NOT match in this limit;
+    active has a higher floor by the false-positive/gate-error overhead.
+
+    Test: p_active at τ_meas/T₁ = 2.0 must exceed p_passive at the same
+    matched duration by at least the false-positive-on-|g⟩ contribution
+    P(s_f=g, m=1 | g)·(1-ε_X) at ε_X=0.
+    """
+    yaml_file = tmp_path / "closed_loop_demo_device.yaml"
+    yaml_file.write_text(SYNTHETIC_CLOSED_LOOP_YAML)
+    device = device_idx18(yaml_path=yaml_file)
+    T1 = 1.0 / device.decoherence.gamma_1
+    T_gate = 20e-9
+    tau_long = 2.0 * T1
+
+    rng = np.random.default_rng(seed=42)
+    drive = closed_loop_demo_drive_params(duration=tau_long)
+    J = extract_joint_matrix(device, drive, n_trajectories=1000, rng=rng)
+
+    p_active = reset_residual_single_cycle(p_e=1.0, joint=J, gate_error=0.0)
+    p_passive = passive_reset_residual(T1, tau_long + T_gate)
+    false_positive_floor = J.probabilities[(0, 0, 1)]  # P(s_f=g, m=1 | g)
+
+    se_allowance = 2.0 * J.binomial_se[(0, 0, 1)]
+    assert p_active >= p_passive + false_positive_floor - se_allowance, (
+        f"V3 failed at τ=2T1: p_active={p_active:.4f}, "
+        f"p_passive={p_passive:.4f}, false_pos_floor={false_positive_floor:.4f}. "
+        f"Active-reset overhead at long τ should be at least the false-positive "
+        f"contribution from the joint matrix."
+    )
+
+
 def test_no_mcsolve_in_reset_protocol():
     """Lint-grade enforcement: v0 has no mcsolve import / call.
 
