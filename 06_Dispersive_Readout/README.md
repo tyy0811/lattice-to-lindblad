@@ -70,7 +70,7 @@ In the scoped closed-loop harness, fitted devices vary (*T*₁, *T*₂, ω_q) ov
 
 ## Module 5a — Single-qubit gate (DRAG-corrected X)
 
-**What's here:** A sin²-windowed-Gaussian π-pulse with calibrated DRAG-1 quadrature correction on the transmon (Duffing approximation), plus an eight-validation suite (V1–V7) and a published `ε_X(T_gate)` curve over `T_gate ∈ [5, 50] ns`. Headline number: **`ε_X^ref(T_gate = 20 ns) = 1.09 × 10⁻³`** under full Lindblad on REFERENCE_DEVICE at fidelity-optimal `β_opt ≈ 0.50`. Module 5b (active reset) consumes the YAML cache as data.
+**What's here:** A sin²-windowed-Gaussian π-pulse with calibrated DRAG-1 quadrature correction on the transmon (Duffing approximation), plus an eight-validation suite (V1–V7) and a published `ε_X(T_gate)` curve over `T_gate ∈ [5, 50] ns`. Headline number: **`ε_X^ref(T_gate = 20 ns) = 8.12 × 10⁻⁴`** (where `ε_X = 1 − F_avg` over the Pauli set `{|0⟩, |1⟩, |+⟩, |+i⟩}`, post-N12) under full Lindblad on REFERENCE_DEVICE at fidelity-optimal `β_opt ≈ 0.50`. Module 5b (active reset) consumes the YAML cache as data.
 
 **Outputs in this folder:**
 - `scripts/fig5a_drag_leakage.py` — Figure 5a driver (panel a: trajectories at `T_gate = 20 ns` for no-DRAG / β=1 / β_opt; panel b: speed-leakage tradeoff over the sweep + `ε_X(T_gate)` inset + V2b leakage-vs-fidelity trade-off inset).
@@ -94,8 +94,8 @@ In the scoped closed-loop harness, fitted devices vary (*T*₁, *T*₂, ω_q) ov
 - V6 DRAG sign convention check (`β = −1` more leaky than `β = +1`).
 - V7 endpoint smoothness: `Ω_x(0) = Ω_x(T) = Ω̇_x(0) = Ω̇_x(T) = 0` to machine precision.
 
-### Calibration objective (post-N11) and the V2b trade-off
+### Calibration objective (post-N11 + N12) and the V2b trade-off
 
-DRAG calibration minimizes gate error: `β_opt = argmin_β (1 − F_transfer(β))` over the perturbative grid `β ∈ [0, 1.2]`. **Both guards are needed jointly** — leakage-objective calibration drifts to non-perturbative β at long `T_gate` where leakage is at noise floor (selecting β > 1.2 that produce broken gates with `1−F` up to 0.4); fidelity-objective calibration on a wider grid could be overrun by spurious peaks. Final and peak leakage are recorded as **diagnostic curves** alongside the calibration result, not as calibration targets.
+DRAG calibration minimizes average X-gate fidelity error over the Pauli set: `β_opt = argmin_β (1 − F_avg(β))` where `F_avg = mean(F(|ψ_in⟩ → X|ψ_in⟩))` for `ψ_in ∈ {|0⟩, |1⟩, |+⟩, |+i⟩}`, on the perturbative β grid `β ∈ [0, 1.2]`. **Three guards apply jointly** (post-N12) — fidelity objective + Pauli-set averaging + perturbative β grid; custom β grids that exceed `[0, 1.2]` require explicit `allow_nonperturbative=True` opt-in and are flagged with `perturbative_safe=False` in the result. `transfer_fidelity_0_to_1` is retained as an explicit one-way diagnostic. Final and peak leakage are recorded as **diagnostic curves**, not as calibration targets.
 
 The implementation surfaced and characterized a **leakage-vs-fidelity trade-off**: across the panel-(b) `T_gate` sweep, the β values minimizing gate fidelity, final leakage, and peak leakage diverge on the perturbative grid. At `T_gate = 20 ns`: `β_opt_fidelity ≈ 0.50`, `β_min_final_leak ≈ 0.90`, `β_min_peak_leak ≈ 1.20`. The triplet is published as panel (b) inset 2 plus YAML keys `beta_opt_fidelity[]`, `beta_opt_final_leak[]`, `beta_opt_peak_leak[]`. See `diagnostics/drag_leakage_suppression.md` for the methodology trail (round-8 peak-suppression-saturation finding under leakage-objective calibration → round-9 calibration-objective correction; both findings are scientifically valid under their respective objectives).
