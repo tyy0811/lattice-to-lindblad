@@ -365,6 +365,74 @@ def test_decay_during_measurement_creates_P_ge0_in_sweep(tmp_path):
     )
 
 
+def test_finite_t1_marginal_within_2x_shot_noise(tmp_path, capsys):
+    """V4b (diagnostic-tier in v0): the marginal initial-state readout
+    score ½(P(m=0|g) + P(m=1|e)) from extract_joint_matrix should agree
+    with Module 1's compute_assignment_fidelity reference within 2× shot
+    noise + solver tolerance.
+
+    NON-BLOCKING in v0: Module 1 provides a Gaussian-around-∫⟨a⟩dt
+    reference, which is a different statistical object than 5b's jump-
+    time mixture of pointer-history Gaussians. The two will not generally
+    agree to high precision in the finite-T₁ regime; the test logs the
+    discrepancy as a diagnostic but does not assert blocking equality.
+
+    Drive amplitude reduced to 40 MHz (vs idx=18's 140 MHz) so the
+    coherent-state cavity occupation |α|² stays below the default
+    N_resonator=15 Fock truncation (V4a comparison context). At 140 MHz
+    mesolve's α saturates the Fock cutoff and the comparison would be
+    polluted by truncation artifact, not just statistical-object
+    mismatch.
+
+    If a future Module 1 extension exposes a finite-T₁ IQ-distribution
+    reference (e.g., via Hilbert-space mcsolve), this test can be
+    promoted to blocking by raising the assertion below.
+    """
+    from dispersive_readout.physics.config import DriveParams
+    from dispersive_readout.physics.readout_model import (
+        compute_assignment_fidelity,
+        simulate_readout,
+    )
+
+    yaml_file = tmp_path / "closed_loop_demo_device.yaml"
+    yaml_file.write_text(SYNTHETIC_CLOSED_LOOP_YAML)
+    device = device_idx18(yaml_path=yaml_file)
+    # Use a smaller-amplitude drive so the V4b diagnostic compares a
+    # mesolve number that isn't Fock-truncation-saturated.
+    drive_diag = DriveParams(
+        amplitude=40e6,
+        duration=500e-9,
+        detuning=0.0,
+        edge_sigma=2e-9,
+    )
+    rng = np.random.default_rng(seed=20260428)
+
+    J = extract_joint_matrix(device, drive_diag, n_trajectories=2000, rng=rng)
+    confusion = J.marginal_confusion_matrix()
+    fidelity_5b = 0.5 * (confusion[(0, 0)] + confusion[(1, 1)])
+
+    result_g = simulate_readout(device, drive_diag, initial_qubit_state=0)
+    result_e = simulate_readout(device, drive_diag, initial_qubit_state=1)
+    fid_result = compute_assignment_fidelity(
+        result_g, result_e,
+        integration_window=(0.0, drive_diag.duration),
+        n_shots=2000, noise_model='gaussian',
+        rng=np.random.default_rng(seed=20260429),
+    )
+    fidelity_module1 = fid_result.F_assign
+
+    discrepancy = abs(fidelity_5b - fidelity_module1)
+    print(
+        f"\n[V4b diagnostic] 5b marginal fidelity = {fidelity_5b:.4f}, "
+        f"Module 1 reference = {fidelity_module1:.4f}, "
+        f"discrepancy = {discrepancy:.4f}. "
+        f"Non-blocking: Module 1's reference is Gaussian-around-⟨α⟩, "
+        f"not jump-time mixture."
+    )
+    # Diagnostic-only: log magnitude. Promote to assertion if and when
+    # Module 1 exposes an IQ-distribution-level finite-T₁ reference.
+
+
 def test_no_mcsolve_in_reset_protocol():
     """Lint-grade enforcement: v0 has no mcsolve import / call.
 
