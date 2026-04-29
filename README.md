@@ -1,8 +1,9 @@
-> **Headline deliverable — Stage 06: Dispersive readout for transmon qubits.** A 5-module pipeline anchored to Marxer et al. (arXiv:2508.16437): a Lindblad simulator validated against analytic limits, error-budget decomposition into 4 active-loss channels plus a calibration-sensitivity panel, synthetic-trace characterization with parameter recovery, a closed-loop optimization layer (sensitivity tornado, regime map, Pareto frontier, recommendation pipeline), and a DRAG-corrected single-qubit X-gate simulator with a published `ε_X(T_gate)` curve. Reference F_assign at REFERENCE drive: **0.9938**. 50-device harness F-spread: **0.0024** (decoherence-driven; drive-amplitude argmax invariant). Headline X-gate error: **ε_X^ref(T_gate = 20 ns) = 8.12 × 10⁻⁴** (1 − F_avg over the Pauli set). 5 figures shipped.
+> **Headline deliverable — Stage 06: superconducting-qubit readout, gate, and reset modeling.**
+> A 4-module dispersive-readout pipeline plus Module 5a DRAG-gate and Module 5b active-reset extensions, anchored to Marxer et al. (arXiv:2508.16437): validated transmon–resonator Lindblad simulation, four-channel active-loss decomposition, synthetic characterization with parameter recovery, readout sensitivity/regime/Pareto optimization, a DRAG-corrected X-gate simulator with a version-controlled `ε_X(T_gate)` curve, and a semiclassical joint transition–readout reset model. Optimized readout assignment fidelity: **F_assign = 0.9938**. Closed-loop 50-device harness spread: **ΔF = 0.0024**. Reference X-gate probe-set error: **ε_X(20 ns) = 8.12 × 10⁻⁴**. Active-reset residual on the short-T₁ demo device is dominated by joint readout–decay structure rather than conditional-X gate error.
 >
 > Implementation: `dispersive_readout/`. Drivers: `06_Dispersive_Readout/`. One-page summary: `06_Dispersive_Readout/SUMMARY.md`.
 >
-> Earlier stages (01–05) develop the open-quantum-system, tensor-network, and noisy-hardware infrastructure on a lattice gauge theory testbed.
+> Earlier stages (01–05) develop the open-quantum-system, tensor-network, and noisy-hardware validation infrastructure on a lattice gauge theory testbed.
 
 ---
 
@@ -19,7 +20,7 @@ A Python implementation, validation, and optimization suite for **dispersive rea
 | 03 — Non-Equilibrium Dynamics | Real-time gauge dynamics, string breaking | Confined vs string-breaking regimes cleanly distinguished |
 | 04 — Continuum Physics | DMRG-extended mass gap, 1+8 quarkonium suppression | DMRG-extended mass-gap extrapolation with bootstrap uncertainty |
 | 05 — Entanglement Structure | Tensor-network bipartite entropy + symmetry-resolved sectors | Top-2 charge sectors carry > 99.3% of entanglement weight |
-| **06 — Dispersive Readout + Single-Qubit Gate** | Superconducting-qubit modeling | Validated 5-module pipeline with 5 shipped figures |
+| **06 — Dispersive Readout + Single-Qubit Gate + Active Reset** | Superconducting-qubit modeling | 4-module readout pipeline + Module 5a DRAG-gate + Module 5b joint-transition active-reset extensions; 6 figures shipped |
 
 **Project documents:**
 - `docs/Theoretical_Framework.pdf` — modeling assumptions, derivations, conventions
@@ -27,10 +28,114 @@ A Python implementation, validation, and optimization suite for **dispersive rea
 
 ## Stage 06 layout (most relevant)
 
-- **Implementation:** `dispersive_readout/` — `physics/`, `analysis/`, `characterization/`, `optimization/`, `tests/`
+- **Implementation:** `dispersive_readout/` — `physics/`, `analysis/`, `characterization/`, `optimization/`, `control/`, `tests/`
 - **Driver scripts and figures:** `06_Dispersive_Readout/scripts/`, `06_Dispersive_Readout/figures/`
 - **Design notes:** `06_Dispersive_Readout/README.md` (full), `06_Dispersive_Readout/SUMMARY.md` (one-page)
 - **Diagnostic artifacts:** `docs/module4_diagnostics/` — diagnostic markdown + reproducible Python scripts for selected validation findings
+
+---
+
+## 06 — Dispersive Readout for Superconducting Qubits
+
+Stage 06 is the main superconducting-hardware-facing artifact in this repository. It models dispersive readout of a transmon coupled to a readout resonator, validates the simulator against analytic limits, decomposes assignment infidelity into named error channels, fits synthetic characterization traces, and uses the recovered parameters in a readout-optimization layer.
+
+The implementation lives in `dispersive_readout/`; runnable scripts and generated figures live in `06_Dispersive_Readout/`. Validation discipline carries forward from Stage 01 (closed-form analytic agreement) and Stage 04 (singlet–octet OQS framework); noisy-simulator and real-hardware experience from Stage 02 (Aer, Quantum Inspire Tuna-5) informs the synthetic-trace fitting design in Module 3.
+
+### Module 1 — Validated readout model
+
+Open-system simulation of a transmon–resonator system in the second-order Schrieffer–Wolff dispersive frame, with Lindblad channels for transmon relaxation/dephasing, resonator decay, and Purcell decay. The validation suite checks anharmonicity, charge dispersion, dispersive shift, T₁/T₂ recovery, Purcell decay, and Hilbert-space truncation convergence.
+
+![Stage 06 — Figure 1: validated readout model](06_Dispersive_Readout/figures/dispersive_readout_simulation.png)
+
+IQ trajectories, SNR vs integration time, and assignment fidelity vs κ/|χ| at the reference device.
+
+### Module 2 — Error-budget decomposition
+
+Active-loss decomposition into four independently-toggleable Lindblad channels (T₁ relaxation, pure dephasing, thermal occupation, Purcell-induced decay), marginalized against an analytic ideal-readout floor; calibration sensitivity to ±5% drive-amplitude and ±κ/4 drive-detuning perturbations rendered as a separate panel.
+
+![Stage 06 — Figure 2: error budget](06_Dispersive_Readout/figures/fig2_error_budget.png)
+
+**Panel A — active-loss:** four named channels (T₁ relaxation, pure dephasing, thermal occupation, Purcell decay) at the reference operating point, marginalized against the ideal-readout floor (1 − F_ideal ≈ 7.5×10⁻³); the cross-channel residual R = (F_ideal − F_full) − Σ ΔF_c is consistent with zero within shot-noise propagation. **Panel B — calibration sensitivity:** F loss under ±5% drive-amplitude and ±κ/4 drive-detuning perturbations (separate y-axis; not summable with Panel A).
+
+### Module 3 — Characterization and parameter recovery
+
+Synthetic Rabi / Ramsey / T₁ / T₂* characterization protocols producing fitted device parameters consumed by the optimization layer. The recovery-coverage report quantifies how well fitted parameters match injected ground-truth values across a synthetic device population.
+
+![Stage 06 — Figure 3: characterization recovery](06_Dispersive_Readout/figures/fig3_characterization.png)
+
+Synthetic traces, fitted parameters, and recovery coverage across the four protocols.
+
+### Module 4 — Sensitivity, regime map, and Pareto optimization
+
+Three-panel composite: (a) local sensitivity of assignment fidelity to readout-relevant parameters, (b) regime-map diagnostics over χ/κ and γ_1·τ_readout with Purcell, χ-phase-accumulation, and resonator-response boundaries, and (c) speed–fidelity Pareto frontiers via multi-start SLSQP over the (ε₀, τ) readout-drive parameter space, with a closed-loop recommendation marker.
+
+![Stage 06 — Figure 4: sensitivity, regime map, Pareto](06_Dispersive_Readout/figures/fig4_optimization.png)
+
+The optimal readout drive (ε₀, τ) is invariant across the 50-device characterization harness (T₁ ∈ [5.4, 91.9] μs at SEED=42): σ(ε₀_opt) = 0 to numerical precision, with F_opt varying by 0.0024 across devices due to decoherence alone. This shared-argmax behavior reflects that the dispersive-saturation peak is controlled by (κ, χ, ω_r) — REFERENCE-inherited in the closed-loop pipeline — rather than by decoherence parameters. The result characterizes the parameter regime where the REFERENCE device (Marxer Q1, arXiv:2508.16437) sits. Per-device argmax exploration would require extending Module 3 with resonator spectroscopy and AC-Stark calibration — flagged as a future extension.
+
+The underlying transmon–resonator Lindblad simulator (`dispersive_readout/physics/`) is not specific to readout: the same operator construction, time evolution, and error-channel decomposition apply to single-qubit gate calibration (DRAG, AC-Stark cancellation) or active qubit reset (measurement-based reset, Purcell-filter-assisted reset). Module 5a realizes the DRAG calibration extension; Module 5b realizes joint-transition active reset.
+
+### Module 5a — DRAG-corrected single-qubit X gate
+
+Sin²-windowed-Gaussian π-pulse on the transmon in the Duffing approximation, with calibrated DRAG-1 quadrature correction. The validation suite checks shaped-pulse Rabi dynamics, endpoint smoothness, β-sign convention, truncation convergence, leakage scaling with anharmonicity, and both final and peak leakage behavior. Headline: **ε_X^ref(T_gate = 20 ns) = 8.12 × 10⁻⁴**, where `ε_X` is the probe-set mean X-gate error over `{|0⟩, |1⟩, |+⟩, |+i⟩}` at the selected β calibration.
+
+![Stage 06 — Figure 5a: DRAG-calibrated X-gate benchmark](06_Dispersive_Readout/figures/fig5a_drag_xgate.png)
+
+Figure 5a: DRAG-calibrated X-gate benchmark. Left: transient leakage during a 20 ns pulse. Right: gate-error curve `ε_X(T_gate)` after β calibration, with final leakage shown as a diagnostic. Here `β_opt` is selected by the gate-error objective, not by minimizing leakage alone. The dense diagnostic artifact (`fig5a_drag_leakage.png`, with peak leakage and β-trade-off details) is referenced from `06_Dispersive_Readout/diagnostics/drag_leakage_suppression.md`.
+
+Methodology footnote: calibration was developed across three round-by-round amendments (peak-leakage saturation finding, calibration-objective correction, gate-level fidelity metric upgrade). The narrative is documented in `06_Dispersive_Readout/diagnostics/drag_leakage_suppression.md` and inherits the validation-first discipline established in Module 4.
+
+### Module 5b — Joint-transition active reset
+
+Semiclassical active-reset model using direct T₁/Purcell jump sampling and the same Module 1 pointer-response helper used for dispersive readout. Each trajectory samples whether the qubit decays during the measurement window, propagates the cavity pointer response over the resulting piecewise qubit-state history, thresholds the integrated IQ record, and applies a classical conditional-X feedback model using the Module 5a gate error.
+
+![Stage 06 — Figure 5b: joint-transition active reset](06_Dispersive_Readout/figures/fig5b_active_reset.png)
+
+Figure 5b: Left: active reset versus passive T₁ decay on a short-`T₁` demo device (`T₁ = 5.35 μs`), with ideal and Module-5a-realistic conditional-X errors. The active protocol wins at short measurement windows; passive decay catches up at longer waits. Right: residual decomposition at the selected active-reset point. The dominant residual is a joint transition–readout event: the qubit decays during measurement, but the thresholded IQ outcome still triggers an unnecessary X. Gate failure contributes only ~1% of the residual at this operating point — a joint-matrix failure mode the plain confusion matrix does not surface.
+
+The result separates two engineering levers: once the conditional-X error is near `ε_X ≈ 10⁻³`, further reset improvement is dominated by the readout thresholding and feedback policy encoded in the joint transition–readout matrix.
+
+Together, Modules 1–5 cover the three superconducting-control problems most relevant to hardware-facing theory work: readout, single-qubit gate calibration, and reset.
+
+Implementation details and validation findings, including prior-awareness, thermal-population guards, and mesolve consistency checks, are documented in `06_Dispersive_Readout/diagnostics/active_reset_joint_matrix.md`.
+
+### Methodology — validation-first development (Module 4)
+
+Module 4 development surfaced and resolved a series of substantive physics findings during execution. Selected examples — each with a reproducible diagnostic and markdown writeup under `docs/module4_diagnostics/`:
+
+- **Multi-modal F(ε₀) Pareto landscape.** The F(ε₀) surface at REFERENCE has two distinct local maxima separated by a sharp valley (peak #1 at ε ≈ 7.8·10⁷ Hz, peak #2 at ε ≈ 1.5·10⁸ Hz; valley at ε ≈ 1.05·10⁸ Hz). The originally-shipped 5-point linear warm-start grid was structurally unable to sample peak #2's basin. Resolved with a 10-point log-spaced grid + K=5 multi-start SLSQP + per-start sub-grid refinement; F_opt at REFERENCE moves from 0.961 to **0.9938**. See [`warm_start_grid_bug.md`](docs/module4_diagnostics/warm_start_grid_bug.md).
+- **Per-level transmon dispersive shifts.** The textbook two-level antisymmetric formula (±χ/2 per state) misses the per-level structure of the transmon ladder. Switching to the full Schrieffer–Wolff per-level χ_j tuple (`χ₀/2π ≈ 6.94 MHz, χ₁/2π ≈ 4.73 MHz` at REFERENCE; ratio 1.47) brings the closed-form regime-map vs. Lindblad simulator gap from 22–27% disagreement down to <5% (max 3.48% across three Lindblad-validation points). See [`per_level_analytic_derivation.md`](docs/module4_diagnostics/per_level_analytic_derivation.md).
+
+<details>
+<summary><strong>Two further validation findings from Module 4</strong></summary>
+
+- **τ-window FD-dispatcher consistency.** External adversarial code review caught a high-severity sensitivity-FD-dispatcher bug: τ probes rescaled drive duration without co-perturbing integration window, biasing |S_τ| upward by ~20% (from +0.030 to +0.037, crossing the tornado-rendering threshold). Fixed; closed with a dispatcher-self-consistency regression test that interrogates all 7 sensitivity probes for parameter-configuration alignment. See [`tau_window_correction.md`](docs/module4_diagnostics/tau_window_correction.md).
+- **Sensitivity ceiling characterization.** The empirical |S_θ| ceiling under the Lindblad simulator caps at ~0.4 across the realistic parameter space at REFERENCE. Verified as genuine Lindblad physics — not a solver, truncation, or Purcell-isolation artifact — via three independent reproducibility checks (tolerance independence, truncation independence, pure-γ_1 verification at coupling.g = 0). Led to amending `SENSITIVITY_WARNING_THRESHOLD` from the spec-locked 2.0 (unreachable) to 0.3 (aligned with the spec's "dominance" sensitivity level). See [`sensitivity_ceiling_characterization.md`](docs/module4_diagnostics/sensitivity_ceiling_characterization.md).
+
+</details>
+
+The validation-first methodology surfaced these issues before they reached committed figures or downstream analysis.
+
+### How to run
+
+```bash
+# Prereq: pip install -r requirements.txt  (qutip, tenpy, etc. — see Getting started below)
+pytest dispersive_readout/tests/ -v                                # full suite
+pytest dispersive_readout/tests/ -v -m "not slow"                  # fast TDD subset
+python 06_Dispersive_Readout/dispersive_readout_simulation.py      # Figure 1
+python 06_Dispersive_Readout/scripts/fig2_error_budget.py          # Figure 2
+python 06_Dispersive_Readout/characterize.py --help                # Module 3 CLI
+python 06_Dispersive_Readout/scripts/fig4_optimization.py          # Figure 4
+python 06_Dispersive_Readout/scripts/fig5a_drag_xgate.py           # Figure 5a — README version (Module 5a)
+python 06_Dispersive_Readout/scripts/fig5a_drag_leakage.py         # Figure 5a — full diagnostic (peak leakage + β trade-off)
+python 06_Dispersive_Readout/scripts/fig5b_active_reset.py         # Figure 5b (Module 5b)
+```
+
+### More
+- One-page reviewer summary: `06_Dispersive_Readout/SUMMARY.md`
+- Full design notes (validations, silent-failure findings, design decisions): `06_Dispersive_Readout/README.md`
+- Importable package: `dispersive_readout/`
+- Test suite: `dispersive_readout/tests/`
 
 ---
 
@@ -98,88 +203,6 @@ Bipartite von Neumann entropy profiles across all MPS cuts for four masses (m/g 
 
 - **Code:** `05_Entanglement_Structure_QI/code/`
 - **Report:** `05_Entanglement_Structure_QI/Entanglement_Structure_Results_and_Val.md`
-
----
-
-## 06 — Dispersive Readout for Superconducting Qubits
-
-Stage 06 is the main superconducting-hardware-facing artifact in this repository. It models dispersive readout of a transmon coupled to a readout resonator, validates the simulator against analytic limits, decomposes assignment infidelity into named error channels, fits synthetic characterization traces, and uses the recovered parameters in a readout-optimization layer.
-
-The implementation lives in `dispersive_readout/`; runnable scripts and generated figures live in `06_Dispersive_Readout/`. Validation discipline carries forward from Stage 01 (closed-form analytic agreement) and Stage 04 (singlet–octet OQS framework); noisy-simulator and real-hardware experience from Stage 02 (Aer, Quantum Inspire Tuna-5) informs the synthetic-trace fitting design in Module 3.
-
-### Module 1 — Validated readout model
-
-Open-system simulation of a transmon–resonator system in the second-order Schrieffer–Wolff dispersive frame, with Lindblad channels for transmon relaxation/dephasing, resonator decay, and Purcell decay. The validation suite checks anharmonicity, charge dispersion, dispersive shift, T₁/T₂ recovery, Purcell decay, and Hilbert-space truncation convergence.
-
-![Stage 06 — Figure 1: validated readout model](06_Dispersive_Readout/figures/dispersive_readout_simulation.png)
-
-IQ trajectories, SNR vs integration time, and assignment fidelity vs κ/|χ| at the reference device.
-
-### Module 2 — Error-budget decomposition
-
-Active-loss decomposition into four independently-toggleable Lindblad channels (T₁ relaxation, pure dephasing, thermal occupation, Purcell-induced decay), marginalized against an analytic ideal-readout floor; calibration sensitivity to ±5% drive-amplitude and ±κ/4 drive-detuning perturbations rendered as a separate panel.
-
-![Stage 06 — Figure 2: error budget](06_Dispersive_Readout/figures/fig2_error_budget.png)
-
-**Panel A — active-loss:** four named channels (T₁ relaxation, pure dephasing, thermal occupation, Purcell decay) at the reference operating point, marginalized against the ideal-readout floor (1 − F_ideal ≈ 7.5×10⁻³); the cross-channel residual R = (F_ideal − F_full) − Σ ΔF_c is consistent with zero within shot-noise propagation. **Panel B — calibration sensitivity:** F loss under ±5% drive-amplitude and ±κ/4 drive-detuning perturbations (separate y-axis; not summable with Panel A).
-
-### Module 3 — Characterization and parameter recovery
-
-Synthetic Rabi / Ramsey / T₁ / T₂* characterization protocols producing fitted device parameters consumed by the optimization layer. The recovery-coverage report quantifies how well fitted parameters match injected ground-truth values across a synthetic device population.
-
-![Stage 06 — Figure 3: characterization recovery](06_Dispersive_Readout/figures/fig3_characterization.png)
-
-Synthetic traces, fitted parameters, and recovery coverage across the four protocols.
-
-### Module 4 — Sensitivity, regime map, and Pareto optimization
-
-Three-panel composite: (a) local sensitivity of assignment fidelity to readout-relevant parameters, (b) regime-map diagnostics over χ/κ and γ_1·τ_readout with Purcell, χ-phase-accumulation, and resonator-response boundaries, and (c) speed–fidelity Pareto frontiers via multi-start SLSQP over the (ε₀, τ) readout-drive parameter space, with a closed-loop recommendation marker.
-
-![Stage 06 — Figure 4: sensitivity, regime map, Pareto](06_Dispersive_Readout/figures/fig4_optimization.png)
-
-The optimal readout drive (ε₀, τ) is invariant across the 50-device characterization harness (T₁ ∈ [5.4, 91.9] μs at SEED=42): σ(ε₀_opt) = 0 to numerical precision, with F_opt varying by 0.0024 across devices due to decoherence alone. This shared-argmax behavior reflects that the dispersive-saturation peak is controlled by (κ, χ, ω_r) — REFERENCE-inherited in the closed-loop pipeline — rather than by decoherence parameters. The result characterizes the parameter regime where the REFERENCE device (Marxer Q1, arXiv:2508.16437) sits. Per-device argmax exploration would require extending Module 3 with resonator spectroscopy and AC-Stark calibration — flagged as a future extension.
-
-The underlying transmon–resonator Lindblad simulator (`dispersive_readout/physics/`) is not specific to readout: the same operator construction, time evolution, and error-channel decomposition apply to single-qubit gate calibration (DRAG, AC-Stark cancellation) or active qubit reset (measurement-based reset, Purcell-filter-assisted reset). Module 5a (below) realizes the DRAG calibration extension; active reset is reserved for Module 5b.
-
-### Module 5a — DRAG-corrected single-qubit X gate
-
-Sin²-windowed-Gaussian π-pulse on the transmon (Duffing approximation) with calibrated DRAG-1 quadrature correction. Eight-validation suite (V1–V7) plus a published bit-flip-error curve `ε_X(T_gate)` over `T_gate ∈ [5, 50] ns`. Headline: **ε_X^ref(T_gate = 20 ns) = 8.12 × 10⁻⁴** under full Lindblad on REFERENCE_DEVICE at fidelity-optimal `β_opt ≈ 0.50`, where `ε_X = 1 − F_avg` is the average X-gate-fidelity error over the Pauli set `{|0⟩, |1⟩, |+⟩, |+i⟩}` (an explicit upgrade from one-way `|0⟩ → |1⟩` transfer fidelity, which would mask coherent superposition errors).
-
-![Stage 06 — Figure 5a: DRAG leakage suppression](06_Dispersive_Readout/figures/fig5a_drag_leakage.png)
-
-Panel (a): population trajectories at `T_gate = 20 ns` for no-DRAG, β = 1, and fidelity-optimal β_opt. Panel (b): final + peak leakage vs T_gate over the sweep range, with insets for ε_X(T_gate) under full Lindblad and the V2b leakage-vs-fidelity trade-off (the β values minimizing gate fidelity, final leakage, and peak leakage diverge across the perturbative β grid — characterized as a published curve).
-
-Methodology footnote: calibration was developed across three round-by-round amendments (peak-leakage saturation finding, calibration-objective correction, gate-level fidelity metric upgrade). The narrative is documented in `06_Dispersive_Readout/diagnostics/drag_leakage_suppression.md` and inherits the validation-first discipline established in Module 4.
-
-### Methodology — validation-first development (Module 4)
-
-Module 4 development surfaced and resolved a series of substantive physics findings during execution. Selected examples — each with a reproducible diagnostic and markdown writeup under `docs/module4_diagnostics/`:
-
-- **Per-level transmon dispersive shifts.** The textbook two-level antisymmetric formula (±χ/2 per state) misses the per-level structure of the transmon ladder. Switching to the full Schrieffer–Wolff per-level χ_j tuple (`χ₀/2π ≈ 6.94 MHz, χ₁/2π ≈ 4.73 MHz` at REFERENCE; ratio 1.47) brings the closed-form regime-map vs. Lindblad simulator gap from 22–27% disagreement down to <5% (max 3.48% across three Lindblad-validation points). See [`per_level_analytic_derivation.md`](docs/module4_diagnostics/per_level_analytic_derivation.md).
-- **Multi-modal F(ε₀) Pareto landscape.** The F(ε₀) surface at REFERENCE has two distinct local maxima separated by a sharp valley (peak #1 at ε ≈ 7.8·10⁷ Hz, peak #2 at ε ≈ 1.5·10⁸ Hz; valley at ε ≈ 1.05·10⁸ Hz). The originally-shipped 5-point linear warm-start grid was structurally unable to sample peak #2's basin. Resolved with a 10-point log-spaced grid + K=5 multi-start SLSQP + per-start sub-grid refinement; F_opt at REFERENCE moves from 0.961 to **0.9938**. See [`warm_start_grid_bug.md`](docs/module4_diagnostics/warm_start_grid_bug.md).
-- **τ-window FD-dispatcher consistency.** External adversarial code review caught a high-severity sensitivity-FD-dispatcher bug: τ probes rescaled drive duration without co-perturbing integration window, biasing |S_τ| upward by ~20% (from +0.030 to +0.037, crossing the tornado-rendering threshold). Fixed; closed with a dispatcher-self-consistency regression test that interrogates all 7 sensitivity probes for parameter-configuration alignment. See [`tau_window_correction.md`](docs/module4_diagnostics/tau_window_correction.md).
-- **Sensitivity ceiling characterization.** The empirical |S_θ| ceiling under the Lindblad simulator caps at ~0.4 across the realistic parameter space at REFERENCE. Verified as genuine Lindblad physics — not a solver, truncation, or Purcell-isolation artifact — via three independent reproducibility checks (tolerance independence, truncation independence, pure-γ_1 verification at coupling.g = 0). Led to amending `SENSITIVITY_WARNING_THRESHOLD` from the spec-locked 2.0 (unreachable) to 0.3 (aligned with the spec's "dominance" sensitivity level). See [`sensitivity_ceiling_characterization.md`](docs/module4_diagnostics/sensitivity_ceiling_characterization.md).
-
-The validation-first methodology surfaced these issues before they reached committed figures or downstream analysis.
-
-### How to run
-
-```bash
-# Prereq: pip install -r requirements.txt  (qutip, tenpy, etc. — see Getting started below)
-pytest dispersive_readout/tests/ -v                                # full suite (~40 s)
-pytest dispersive_readout/tests/ -v -m "not slow"                  # fast TDD suite (~5 s)
-python 06_Dispersive_Readout/dispersive_readout_simulation.py      # Figure 1
-python 06_Dispersive_Readout/scripts/fig2_error_budget.py          # Figure 2
-python 06_Dispersive_Readout/characterize.py --help                # Module 3 CLI
-python 06_Dispersive_Readout/scripts/fig4_optimization.py          # Figure 4
-python 06_Dispersive_Readout/scripts/fig5a_drag_leakage.py         # Figure 5a (Module 5a)
-```
-
-### More
-- One-page reviewer summary: `06_Dispersive_Readout/SUMMARY.md`
-- Full design notes (validations, silent-failure findings, design decisions): `06_Dispersive_Readout/README.md`
-- Importable package: `dispersive_readout/`
-- Test suite: `dispersive_readout/tests/`
 
 ---
 
@@ -256,9 +279,10 @@ docs/
 
 dispersive_readout/                           # Importable Python package
   physics/                                    # Transmon, resonator, dispersive-frame Hamiltonian
-  analysis/                                   # Error-budget decomposition
+  analysis/                                   # Error-budget decomposition + reset metrics
   characterization/                           # Protocol fitters and recovery
   optimization/                               # Sensitivity, regime map, Pareto, recommendation
+  control/                                    # DRAG gate pulses (Module 5a) + active-reset protocol (Module 5b)
   tests/                                      # Pytest suite (~40 s full, ~5 s fast)
 
 01_Validation-Baseline/
