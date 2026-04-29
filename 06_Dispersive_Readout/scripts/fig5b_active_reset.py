@@ -158,7 +158,7 @@ def main() -> None:
     ax_a.set_ylabel(r"excited-state residual $p_e'$ after one cycle")
     ax_a.set_yscale('log')
     ax_a.set_title(
-        'Active reset beats passive reset on short-$T_1$ demo device\n'
+        r'Short-window active reset beats passive $T_1$ decay' '\n'
         r'($T_1 = 5.35\,\mu s$, $\varepsilon_{\rm drive} = 140$ MHz)',
         fontsize=11,
     )
@@ -215,12 +215,10 @@ def main() -> None:
     # Bottom caption explaining the dominant-residual mechanism in plain language
     fig.text(
         0.5, -0.02,
-        'Dominant residual: the qubit decays during the measurement window, but the '
-        'thresholded IQ outcome still triggers an unnecessary X-flip — a joint '
-        'transition–readout failure mode the plain confusion matrix does not surface.',
+        'Dominant residual: qubit decays during measurement, but thresholded IQ '
+        'still triggers an unnecessary X-flip.',
         ha='center', va='top',
-        fontsize=9, style='italic', color='#444',
-        wrap=True,
+        fontsize=10, style='italic', color='#444',
     )
 
     fig.tight_layout()
