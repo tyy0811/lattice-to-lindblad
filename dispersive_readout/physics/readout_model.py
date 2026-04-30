@@ -62,6 +62,38 @@ class AssignmentFidelityResult:
 _MAX_PHOTON_RATIO = 0.33  # warn if mean photon > 1/3 of N_resonator
 
 
+def classify_iq(
+    iq: complex,
+    centroid_g: complex,
+    centroid_e: complex,
+) -> int:
+    """Perpendicular-bisector midpoint discriminator.
+
+    Projects (iq - midpoint) onto the unit vector pointing from centroid_g
+    to centroid_e and returns 1 if the projection is positive (e-side),
+    else 0 (g-side; midpoint itself classifies as g by the > 0 convention).
+
+    Single source of truth for the threshold convention used by both
+    compute_assignment_fidelity (Module 1) and extract_joint_matrix
+    (Module 5b). Lifted from compute_assignment_fidelity in the Day-0
+    refactor; behavior preservation gated by
+    test_classify_iq_matches_compute_assignment_fidelity_logic.
+
+    Raises ValueError if centroid_g == centroid_e (no separation, no
+    discriminator possible — same condition compute_assignment_fidelity
+    already raises on).
+    """
+    separation = abs(centroid_e - centroid_g)
+    if separation == 0:
+        raise ValueError(
+            "IQ centroids coincide — dispersive regime lost or window too short."
+        )
+    midpoint = 0.5 * (centroid_g + centroid_e)
+    axis = (centroid_e - centroid_g) / separation
+    proj = float(np.real((iq - midpoint) * np.conj(axis)))
+    return 1 if proj > 0 else 0
+
+
 def simulate_readout(
     device: DeviceConfig,
     drive_params: DriveParams,
@@ -245,15 +277,11 @@ def compute_assignment_fidelity(
         draws_1 = c1 + sigma_gaussian * (
             rng.standard_normal(n_shots) + 1j * rng.standard_normal(n_shots)
         )
-        # Perpendicular-bisector discriminator:
-        # decision axis = unit vector from c0 to c1; midpoint = (c0+c1)/2.
-        axis = (c1 - c0) / separation
-        midpoint = 0.5 * (c0 + c1)
-        proj_0 = np.real((draws_0 - midpoint) * np.conj(axis))
-        proj_1 = np.real((draws_1 - midpoint) * np.conj(axis))
-        # Classify: proj > 0 → predicted |1>
-        wrong_0 = np.mean(proj_0 > 0)   # P(1|0)
-        wrong_1 = np.mean(proj_1 <= 0)  # P(0|1)
+        # Perpendicular-bisector classification via the public classify_iq
+        # helper (single source of truth for the discriminator convention;
+        # see test_classify_iq_matches_compute_assignment_fidelity_logic).
+        wrong_0 = float(np.mean([classify_iq(d, c0, c1) == 1 for d in draws_0]))  # P(1|0)
+        wrong_1 = float(np.mean([classify_iq(d, c0, c1) == 0 for d in draws_1]))  # P(0|1)
         F = 1.0 - 0.5 * (wrong_0 + wrong_1)
         # Bootstrap uncertainty (binomial-standard-error of F)
         F_unc = np.sqrt(F * (1.0 - F) / n_shots)

@@ -177,3 +177,52 @@ def test_snr_vs_integration_time_shape_and_monotone_rise():
     assert np.all(np.diff(early) >= -0.05), f"SNR not rising: {early}"
     # Final SNR should exceed the first SNR
     assert snr[-1] > snr[0]
+
+
+# ---------------------------------------------------------------------------
+# Module-1-side classify_iq refactor (Module 5b prerequisite)
+# ---------------------------------------------------------------------------
+
+
+def test_classify_iq_matches_compute_assignment_fidelity_logic():
+    """Module-1-side refactor gate: extracting classify_iq from
+    compute_assignment_fidelity must produce bit-identical classification
+    for any (iq, centroid_g, centroid_e) triple. Failure here means the
+    extraction changed the discriminator behavior — debug before any 5b
+    code consumes the helper.
+    """
+    from dispersive_readout.physics.readout_model import classify_iq
+
+    centroid_g = complex(1.0, 0.0)
+    centroid_e = complex(3.0, 0.5)
+    midpoint = 0.5 * (centroid_g + centroid_e)
+    separation = abs(centroid_e - centroid_g)
+    axis = (centroid_e - centroid_g) / separation
+
+    def reference(iq):
+        proj = np.real((iq - midpoint) * np.conj(axis))
+        return 1 if proj > 0 else 0
+
+    rng = np.random.default_rng(seed=20260428)
+    test_points = [centroid_g, centroid_e, midpoint] + [
+        complex(rng.standard_normal(), rng.standard_normal()) * 5 + midpoint
+        for _ in range(50)
+    ]
+    for iq in test_points:
+        assert classify_iq(iq, centroid_g, centroid_e) == reference(iq), (
+            f"classify_iq disagreed with reference at iq={iq}"
+        )
+
+
+def test_classify_iq_at_centroids():
+    """Edge-case sanity: an IQ point exactly at centroid_g classifies as 0;
+    exactly at centroid_e classifies as 1. The midpoint itself produces
+    proj == 0, which the > 0 rule classifies as 0 (g-side, by convention).
+    """
+    from dispersive_readout.physics.readout_model import classify_iq
+
+    cg = complex(1.0, 0.0)
+    ce = complex(3.0, 0.0)
+    assert classify_iq(cg, cg, ce) == 0
+    assert classify_iq(ce, cg, ce) == 1
+    assert classify_iq(0.5 * (cg + ce), cg, ce) == 0  # midpoint → g
