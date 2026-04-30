@@ -9,7 +9,16 @@
 
 # Lattice-to-Lindblad: Dispersive Readout for Transmon Qubits, Lattice Gauge Theory, and Open Quantum Systems
 
-A Python implementation, validation, and optimization suite for **dispersive readout of superconducting transmon qubits** (Stage 06, the headline deliverable), supported by open-quantum-system, tensor-network, and noisy-hardware infrastructure developed in earlier stages on a **lattice gauge theory** testbed (Schwinger model, 1+1D QED). The repository follows a progressive-validation arc: lattice gauge theory testbeds (Stages 01–05) build the OQS / Lindblad / hardware-mitigation infrastructure that Stage 06 deploys to a superconducting-qubit setting.
+A first-principles theoretical framework, validated implementation, and optimization suite for **dispersive readout of superconducting transmon qubits** (Stage 06, the headline deliverable), supported by open-quantum-system, tensor-network, and noisy-hardware infrastructure developed in earlier stages on a **lattice gauge theory** testbed (Schwinger model, 1+1D QED). The repository follows a progressive-validation arc: lattice gauge theory testbeds (Stages 01–05) build the OQS / Lindblad / hardware-mitigation infrastructure that Stage 06 deploys to a superconducting-qubit setting.
+
+## Theoretical foundation
+
+The derive-first companion to Stage 06's implementation: [`Theoretical_Framework_stage06.md`](Theoretical_Framework_stage06.md) ([PDF](Theoretical_Framework_stage06.pdf)) carries the physics from first principles to the code that simulates it.
+
+- **Derive-first.** Cooper-pair box → transmon → Jaynes–Cummings coupling → second-order Schrieffer–Wolff dispersive transform → Lindblad master equation → IQ-discriminator readout, plus Module 5a (DRAG-corrected single-qubit gates on the Duffing ladder) and Module 5b (semiclassical heterodyne SME for active reset).
+- **Confidence-tagged.** Every step carries one of: **[Exact]**, **[Exact within model]**, **[Approximation]** (with regime of validity), **[Assumption]** (with source), or **[Unverified]** (flagged for cross-check).
+- **Equation-to-code traceability.** Each derivation step names the specific Python module, function, and validation test that implements it.
+- **Convention warnings.** Sign, normalization, and ordering differences vs. common references are flagged as boxed warnings — the most common silent-bug source in quantum-simulation code.
 
 ## Repository overview
 
@@ -23,8 +32,9 @@ A Python implementation, validation, and optimization suite for **dispersive rea
 | **06 — Dispersive Readout + Single-Qubit Gate + Active Reset** | Superconducting-qubit modeling | 4-module readout pipeline + Module 5a DRAG-gate + Module 5b joint-transition active-reset extensions; 6 figures shipped |
 
 **Project documents:**
-- `docs/Theoretical_Framework.pdf` — modeling assumptions, derivations, conventions
-- `docs/research_highlight.pdf` — high-level summary of goals, methods, outcomes
+- [`Theoretical_Framework_stage06.md`](Theoretical_Framework_stage06.md) ([PDF](Theoretical_Framework_stage06.pdf)) — Stage 06 derive-first framework: confidence-tagged derivations with equation-to-code mapping (see *Theoretical foundation* above)
+- [`Theoretical_Framework.pdf`](Theoretical_Framework.pdf) — earlier-stages modeling notes: assumptions, derivations, conventions
+- [`research_highlight.pdf`](research_highlight.pdf) — high-level summary of goals, methods, outcomes
 
 ## Stage 06 layout (most relevant)
 
